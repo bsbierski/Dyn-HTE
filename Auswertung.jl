@@ -1,15 +1,15 @@
-import Pkg 
+using JLD2
+using RobustPade
+
+#import Pkg 
 #Pkg.activate(@__DIR__) #activates the environment in the folder of the current file
 
-include("HTSE_Engine.jl")
+include("Embedding.jl")
+include("GraphGeneration.jl")
 include("LatticeGraphs.jl")
 include("ConvenienceFunctions.jl") 
 #specify max order
 max_order = 10
-
-
-
-
 
 #LOAD FILES 
 #-------------------------------------------------------------------------------------
