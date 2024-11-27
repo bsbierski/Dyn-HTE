@@ -17,19 +17,16 @@ max_order = 10
 #generate list of graphs
 graphs_vec = [load_object("GraphFiles/graphs_"*string(nn)*".jld2") for nn in 0:max_order];
 gG_vec = getGraphsG(graphs_vec);
-## identify which gG have the same underlying simple Graphs structure. Precalculate Symmetry factors. 
+## identify which gG have the same underlying simple-graph structure. Precalculate Symmetry factors. 
 gG_vec_unique = give_unique_gG_vec(gG_vec);
 
 #create vector of all lower order dictionaries
 C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) 
    
 #load dictionaries of all lower orders C_Dict_vec 
-
 for ord = 0:max_order
     C_Dict_vec[ord+1]  = load_object("GraphFiles/GraphG_Lists/C_"*string(ord)*".jld2")
 end 
-
-
 #-----------------------------------
 
 #1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
@@ -37,9 +34,10 @@ L = max_order
 lattice,LatGraph,center_sites = getLattice_Ball(L,"square");
 display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
 
-
 #2.Compute all correlations in the lattice
 @time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
+
+################################# BJÖRN STOPPED HERE ##################################
 
 
 #3. Fourier Transform
@@ -58,7 +56,7 @@ JoverT = 1.5
 padetype = [4,4]
 evaluate(x) = eval_correlator_LR_continuous_pad_Mats(x,iomega, JoverT, padetype); #define evaluation function
 struc = real.(evaluate.(structurefactor));
- p = heatmap(kx,ky,struc)
+p = heatmap(kx,ky,struc)
 
 ############# Brillouin zone path
 #1. Define a high symmetry path through the brillouin zone

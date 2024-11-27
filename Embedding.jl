@@ -1,8 +1,4 @@
 ### find embedding factors
-using Random, Parameters
-using Graphs, SimpleWeightedGraphs,  SparseArrays, Combinatorics, LinearAlgebra
-using GraphRecipes,Plots
-
 include("Structs.jl")
 include("GraphGeneration.jl")
 include("vf2_edited.jl") 

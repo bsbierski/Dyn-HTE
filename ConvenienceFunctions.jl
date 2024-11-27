@@ -1,9 +1,9 @@
 #using RobustPade
 using Symbolics
 
-###### get Dyn-HTE correlators in real-space 
+###### get correlators G_ii' (real-space) 
 function compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int64}}}
-    """compute all correlations from the center_sites to all other sites of the lattice"""
+    """compute all non-trivial coefficients G_ii' on lattice L from the center_sites i to all other sites i' of the lattice"""
     Correlators = Array{Matrix{Rational{Int64}}}(undef, lattice.length,length(lattice.unitcell.basis));
     Threads.@threads for jp = 1:lattice.length
         for b = 1:length(lattice.unitcell.basis)
@@ -22,7 +22,10 @@ function getCorrelators_equalTime(Correlators::Matrix{Matrix{Rational{Int64}}},m
     return Correlators_equalTime
 end
 
-########## Brillouin Zone functions
+################################# BJÖRN STOPPED HERE ##################################
+
+
+###### Brillouin Zone functions
 function brillouin_zone_cut(kmat::Union{Matrix{Tuple{Float64,Float64}},Matrix{Tuple{Float64,Float64,Float64}}},Correlators::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Matrix{Matrix{Float64}}
     """computes the fourier transform along a 2D cut through the 2D or 3D k-space
         given the Correlation Matrix computet from compute_lattice_correlations """
@@ -44,21 +47,19 @@ function brillouin_zone_cut(kmat::Union{Matrix{Tuple{Float64,Float64}},Matrix{Tu
     return structurefactor
 end
 
-
 function brillouin_zone_path(kvec,Correlators::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Vector{Matrix{Float64}}
-    """computes the fourier transform along a 1D path through k-space
-    given the path computet by create_brillouin_zone_path """
+    """computes the fourier transform along a 1D path through k-space given the path computed by create_brillouin_zone_path """
     BrillPath = Array{Matrix{Float64}}(undef,length(kvec));
-for i in eachindex(kvec)
-         z = zeros(size(Correlators[1]))
-         # Compute Fourier transformation at momentum (kx, ky). The real-space position of the i-th spin is obtained via getSitePosition(lattice,i). 
-         for b in 1:length(lattice.unitcell.basis)
-             for k in 1:length(lattice)
-                 z += cos(dot(kvec[i],getSitePosition(lattice,k).-getSitePosition(lattice,center_sites[b]))) *  Correlators[k,b]
-             end
-         end
-         BrillPath[i] = z 
-end
+    for i in eachindex(kvec)
+        z = zeros(size(Correlators[1]))
+        # Compute Fourier transformation at momentum (kx, ky). The real-space position of the i-th spin is obtained via getSitePosition(lattice,i). 
+        for b in 1:length(lattice.unitcell.basis)
+            for k in 1:length(lattice)
+                z += cos(dot(kvec[i],getSitePosition(lattice,k).-getSitePosition(lattice,center_sites[b]))) *  Correlators[k,b]
+            end
+        end
+        BrillPath[i] = z 
+    end
     return BrillPath
 end
 
@@ -101,11 +102,7 @@ function create_brillouin_zone_path(points, num_samples::Int)
     return interpolated_points, input_indices
 end
 
-
 #### evaluation functions
-
-
-
 function eval_correlator_LR_continuous_pad(Correlator,ω,JoverT,pade_order)
     """evaluate the correlator for real frequencies by first fitting it to a continued fraction that preserves the continuity relation """
     orderJ,orderω = size(Correlator)

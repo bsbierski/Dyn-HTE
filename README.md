@@ -7,3 +7,5 @@ High temperature expansion of dynamic Matsubara spin correlators for general Hei
 
 * **ConvenienceFunctions:**  Definition of various functions to help evaluate and plot the results of the Dyn-HSE
 
+* **Dyn-HTE:** The main code which shows a usage example of Dyn-HTE both for real- and momentum-space Matsubara correlators
+
