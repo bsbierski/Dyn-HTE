@@ -1,5 +1,5 @@
 using JLD2
-using RobustPade
+#using RobustPade
 
 #import Pkg 
 #Pkg.activate(@__DIR__) #activates the environment in the folder of the current file
@@ -35,9 +35,7 @@ lattice,LatGraph,center_sites = getLattice_Ball(L,"square");
 display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
 
 #2.Compute all correlations in the lattice
-@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
-
-################################# BJÖRN STOPPED HERE ##################################
+Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
 
 
 #3. Fourier Transform

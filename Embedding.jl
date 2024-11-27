@@ -8,7 +8,7 @@ function is_symmetric(gG::GraphG)::Bool
     find if gG is a symmetric graph with respect to switching the two external legs
     """
     gg = gG.g
-    gg_simple = toSimpleGraph(gg1)
+    gg_simple = toSimpleGraph(gg)
 
     edge_relation(b1,b2) = (gg.weights[src(b1),dst(b1)] == gg.weights[src(b2),dst(b2)])
 
