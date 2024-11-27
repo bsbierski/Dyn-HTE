@@ -1,4 +1,4 @@
-# find embedding factors
+### find embedding factors
 using Random, Parameters
 using Graphs, SimpleWeightedGraphs,  SparseArrays, Combinatorics, LinearAlgebra
 using GraphRecipes,Plots
@@ -7,7 +7,203 @@ include("Structs.jl")
 include("GraphGeneration.jl")
 include("vf2_edited.jl") 
 
+function is_symmetric(gG::GraphG)::Bool
+    """
+    find if gG is a symmetric graph with respect to switching the two external legs
+    """
+    gg = gG.g
+    gg_simple = toSimpleGraph(gg1)
 
+    edge_relation(b1,b2) = (gg.weights[src(b1),dst(b1)] == gg.weights[src(b2),dst(b2)])
+
+    # finds if there is an isomorphism by only permuting the internal vertices between the graph and the graph with its external vertices flipped.
+    count = count_subgraphisomorph(gg_simple,gg,edge_relation=edge_relation,jL1 = gG.jjp[2],jL2 = gG.jjp[1],jG1 = gG.jjp[1],jG2 = gG.jjp[2])
+    
+    if count >0 
+        return true
+    else
+        return false
+    end
+end
+
+function is_isomorphic(gG1::GraphG,gG2::GraphG)::Bool
+    """
+    check if the underlying simple graphs of gG1 and gG2 are isomorphic
+    """
+ 
+    ### convert gg,gg_flip to SimpleGraphs
+    gg1_simple = toSimpleGraph(gG1.g)
+
+    ### catch the cases of one gG being onsite and the other not 
+    if gG1.jjp[1] == gG1.jjp[2] && gG2.jjp[1] != gG2.jjp[2] 
+        return 0
+    end
+
+    if gG1.jjp[1] != gG1.jjp[2] && gG2.jjp[1] == gG2.jjp[2] 
+        return 0
+    end
+
+    gg1_simple_color_vec = zeros(Int64,nv(gG1.g))
+    gg2_simple_color_vec = zeros(Int64,nv(gG2.g))
+
+    if gG1.jjp[1] == gG1.jjp[2] 
+        if gG2.jjp[1] == gG2.jjp[2] 
+        gg1_simple_color_vec[gG1.jjp[1]] = 1
+        gg2_simple_color_vec[gG2.jjp[1]] = 1
+        else
+            return false
+        end
+    else
+        gg1_simple_color_vec[[gG1.jjp[1],gG1.jjp[2]]] = [1,1]
+        gg2_simple_color_vec[[gG2.jjp[1],gG2.jjp[2]]] = [1,1]
+    end
+
+    vertex_relation(j,i) = (gg1_simple_color_vec[j] == gg2_simple_color_vec[i])
+
+    return has_isomorph(gg1_simple,gG2.g ; vertex_relation = vertex_relation)
+end
+
+###Initialize the File if it does not exist yet.
+#vector = [0,[[gG_vec[1][1],[[0,1,1,true]],0]]]
+#@save "GraphFiles/unique_gG_vec_0.jld2" vector
+function give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}})
+    """
+    gives unique_gG_vec with the structure
+        [maxorder,
+        [ 
+        [gG,[gG_index_1,gG_index_2,...], dist ],
+        ...
+        ]
+        where the gG_index_1,2,3 identify the GraphG of the same simple graph structure as gG. These indices have the structure
+        gG_index_1 = [order + 1 ,index,symmetryfactor,is_symmetric] 
+        dist = graph distance between external legs of gG
+    """
+    
+    maxorder = length(gG_vec) - 1
+
+    # try to load the file. if it does not exist try to load the file of one less order
+    file_path = "GraphFiles/unique_gG_vec_$maxorder.jld2"
+
+    if isfile(file_path)
+        unique_gG_vec = load_object(file_path) 
+        return unique_gG_vec
+    else
+        # if the order has not been calculated: try one order less
+        unique_gG_vec =   give_unique_gG_vec(gG_vec[1:end-1])
+    end
+
+    unique_order = unique_gG_vec[1]
+    
+    if maxorder <= unique_order
+        if maxorder == unique_order
+            return  unique_gG_vec
+        else
+            #todo delete all graphs of order larger than "maxorder"
+            return  unique_gG_vec
+        end
+    else
+        #unique_gGs = map(x -> x[1], unique_gG_vec[2])
+        for (o,gG_vec_order) in enumerate(gG_vec[(unique_order+2):end])
+            for (index,gg) in enumerate(gG_vec_order)
+
+                # find first isomorphic graph to gg that is already in the unique list. There is at most one. 
+                unique_index = findfirst(x->is_isomorphic(gg,x[1]), unique_gG_vec[2])
+                # if there is no matching graph: add gg to list of unique graphs
+                if unique_index === nothing
+                    dist = dijkstra_shortest_paths(gg.g,gg.jjp[1]).dists[gg.jjp[2]]
+                    push!(unique_gG_vec[2],[ gg,[[unique_order + o  ,index,symmetryFactor(gg),is_symmetric(gg)]],dist])
+                else
+                    push!(unique_gG_vec[2][unique_index[1]][2],[unique_order + o  ,index,symmetryFactor(gg),is_symmetric(gg)])
+                end
+
+            end
+        end
+    end
+
+    unique_gG_vec[1] = maxorder
+    @save "GraphFiles/unique_gG_vec_$maxorder.jld2" unique_gG_vec
+
+    return unique_gG_vec
+
+end
+
+function e_fast(LL::SimpleGraph{Int64},j::Int,jp::Int,gG::GraphG,issymmetric::Bool)::Int
+    """
+    find embedding factor e 
+    - lattice L (needs to be chosen large enough to avoid boundary effects!)
+    - lattice site indices jjp=[j,j'] can be [i,i'] (or [i',i] if gG is not symmetric under exchange of i <--> i')
+    - embedding of GraphG gG
+
+    assumes that the distance j-jp is smaller or equal to the distance of external vertices of gG
+    """
+    fac = 2
+    if  issymmetric
+        fac = 1
+    end
+
+    numSubIsos = count_subgraphisomorph(LL,gG.g,jL1 = j,jL2 = jp,jG1 = gG.jjp[1],jG2 = gG.jjp[2])
+    return numSubIsos*fac 
+end
+
+function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order::Int,gG_vec_unique::Vector{Any},C_Dict_vec::Vector{Vector{Vector{Rational{Int64}}}})::Vector{Vector{Rational{Int64}}}
+    """ Calculate the coefficients of (-x)^n for TG_ii'(iν_m) from embedding factors of only the unique simple graphs and the gG's symmetry factors """    
+
+    #initialize result array
+    result_array = Vector{Vector{Rational{Int64}}}(undef, max_order+1)
+
+    #for every order we get result vector representing prefactors of [δw,Δ^2,Δ^4,Δ^6,Δ^8,Δ^10,Δ^12,Δ^14,Δ^16,Δ^18]
+    for ord = 1:max_order+1
+        result_array[ord] = zeros(Rational{Int64},10)
+    end
+
+    #calculate the shortest graph distance between ext_j1 and ext_j2
+    ext_dist = dijkstra_shortest_paths(L,ext_j1).dists[ext_j2]
+
+    # only iterate over the unique simple graphs in unique_Gg
+    for unique_Gg in gG_vec_unique[2]
+
+        for gG_idx in eachindex(unique_Gg[2])
+            gg = unique_Gg[1]   #Graph
+            g_order = unique_Gg[2][gG_idx][1] #order
+            gG_vec_index = unique_Gg[2][gG_idx][2] #index
+            symmetry_factor = unique_Gg[2][gG_idx][3] #symmetry factor
+            issymmetric = Bool(unique_Gg[2][gG_idx][4])  #bool if the graph is symmetric
+            gg_dist = unique_Gg[3] #edge distance between the external vertices
+
+            #### now we sum over all graphG
+            
+            # if the graph is long enough
+            if gg_dist < ext_dist 
+                continue
+            end
+
+            #if its the onsite correlator we only need on-site graphs 
+            if ext_dist == 0
+                if gg_dist > ext_dist 
+                    continue
+                end
+            else #if not, we dont need any on site graphs
+                if gg_dist == 0 
+                    continue
+                end
+            end
+
+            #look up the value of the graph from C_Dict_vec
+            look_up_dict =C_Dict_vec[g_order+1][gG_vec_index]
+
+            #calculate the embedding factor
+            emb_fac = e_fast(L,ext_j1,ext_j2,gg,issymmetric)
+            
+            result_array[g_order+1] .+= look_up_dict*emb_fac/symmetry_factor
+        end
+    end
+
+    return result_array
+end
+
+
+###### LEGACY FUNCTIONS
+#=
 function e(L::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
     """
     OLD FUNCTION use e_fast 
@@ -67,231 +263,6 @@ function e(L::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
     return numSubIsos / symmetryFactor(gG)
 end
 
-function is_symmetric(gG::GraphG)::Bool
-    """
-    find if gG1 is a symmetric graph with respect to switching the two external legs
-    """
-    gg1 = gG.g
-    gg_simple = toSimpleGraph(gg1)
-   
-
-    edge_relation(b1,b2) = (gg1.weights[src(b1),dst(b1)] == gg1.weights[src(b2),dst(b2)])
-
-    # finds if there is an isomorphism by only permuting the internal vertices between the graph and the graph with its external vertices flipped.
-    count = count_subgraphisomorph(gg_simple,gg1,edge_relation=edge_relation,jL1 = gG.jjp[2],jL2 = gG.jjp[1],jG1 = gG.jjp[1],jG2 = gG.jjp[2])
-    
-    if count >0 
-        return true
-    else
-        return false
-
-    end
-end
-
-
-function is_isomorphic(gG1::GraphG,gG2::GraphG)::Bool
-    """
-    find if the underlying simple graphs of gG1 and gG2 are isomorphic
-    """
- 
-    ### convert gg,gg_flip to SimpleGraphs
-    gg1_simple = toSimpleGraph(gG1.g)
-    
-
-    if gG1.jjp[1] == gG1.jjp[2] && gG2.jjp[1] != gG2.jjp[2] 
-        return 0
-    end
-
-    if gG1.jjp[1] != gG1.jjp[2] && gG2.jjp[1] == gG2.jjp[2] 
-        return 0
-    end
-
-
-
-    gg1_simple_color_vec = zeros(Int64,nv(gG1.g))
-    gg2_simple_color_vec = zeros(Int64,nv(gG2.g))
-
-    if gG1.jjp[1] == gG1.jjp[2] 
-        if gG2.jjp[1] == gG2.jjp[2] 
-        gg1_simple_color_vec[gG1.jjp[1]] = 1
-        gg2_simple_color_vec[gG2.jjp[1]] = 1
-        else
-            return false
-        end
-    else
-        gg1_simple_color_vec[[gG1.jjp[1],gG1.jjp[2]]] = [1,1]
-        gg2_simple_color_vec[[gG2.jjp[1],gG2.jjp[2]]] = [1,1]
-    end
-
-        
-    
-        vertex_relation(j,i) = (gg1_simple_color_vec[j] == gg2_simple_color_vec[i])
-
-
-        return has_isomorph(gg1_simple,gG2.g ; vertex_relation= vertex_relation)
-end
-
-###Initialize the File if it does not exist yet.
-#vector = [0,[[gG_vec[1][1],[[0,1,1,true]],0]]]
-#@save "GraphFiles/unique_gG_vec_0.jld2" vector
-function give_unique_gG_vec(gG_vec)
-    """
-    gives unique_gG_vec with the structurefactor
-        [maxorder,
-        [ 
-        [gG,[gG_index_1,gG_index_2,...], dist ],
-        ...
-        ]
-        where the indices have the structurefactor
-        gG_index_1 = [order + 1 ,index,symmetryfactor,is_symmetric] 
-        dist = distance between external legs
-    """
-    
-    maxorder = length(gG_vec) - 1
-
-    # try to load the file. if it does not exist try to load the file of one less order
-    file_path = "GraphFiles/unique_gG_vec_$maxorder.jld2"
-
-    if isfile(file_path)
-        unique_gG_vec = load_object(file_path) 
-        return unique_gG_vec
-    else
-        # if the order has not been calculated: try one order less
-        unique_gG_vec =   give_unique_gG_vec(gG_vec[1:end-1])
-    end
-
-    unique_order = unique_gG_vec[1]
-    
-
-
-    if maxorder <= unique_order
-    if maxorder == unique_order
-        return  unique_gG_vec
-    else
-        #todo delete all graphs of order larger than "maxorder"
-        return  unique_gG_vec
-    end
-    else
-    #unique_gGs = map(x -> x[1], unique_gG_vec[2])
-    for (o,gG_vec_order) in enumerate(gG_vec[(unique_order+2):end])
-        for (index,gg) in enumerate(gG_vec_order)
-
-        
-        # find first isomorphic graph to gg that is already in the unique list. There is at most one. 
-        unique_index = findfirst(x->is_isomorphic(gg,x[1]), unique_gG_vec[2])
-        # if there is no matching graph: add gg to list of unique graphs
-        if unique_index === nothing
-            dist = dijkstra_shortest_paths(gg.g,gg.jjp[1]).dists[gg.jjp[2]]
-            push!(unique_gG_vec[2],[ gg,[[unique_order + o  ,index,symmetryFactor(gg),is_symmetric(gg)]],dist])
-        else
-            push!(unique_gG_vec[2][unique_index[1]][2],[unique_order + o  ,index,symmetryFactor(gg),is_symmetric(gg)])
-        end
-        end
-
-    end
-    end
-
-    unique_gG_vec[1] = maxorder
-    @save "GraphFiles/unique_gG_vec_$maxorder.jld2" unique_gG_vec
-
-    return unique_gG_vec
-
-end
-
-function e_fast(LL::SimpleGraph{Int64},j::Int,jp::Int,gG::GraphG,issymmetric::Bool)::Int
-    """
-    find embedding factor e 
-    - lattice L (needs to be chosen large enough to avoid boundary effects!)
-    - lattice site indices jjp=[j,j'] can be [i,i'] (or [i',i] if gG is not symmetric under exchange of i <--> i')
-    - embedding of GraphG gG
-
-    ##assumes that the distance j-jp is smaller or equal to the distance of external vertices of gG
-    """
-    fac = 2
-  if  issymmetric
-    fac = 1
-   end
-
-    numSubIsos = count_subgraphisomorph(LL,gG.g,jL1 = j,jL2 = jp,jG1 = gG.jjp[1],jG2 = gG.jjp[2])
-    return numSubIsos*fac 
-end
-
-
-function create_Vacdict(gVac_vec::Vector{Graph},G0_dict::Vector{SparseVector{Rational{Int64}, Int64}})::Vector{Rational{Int64}}
-
-    number_of_Vacgraphs = length(gVac_vec)
-
-    #create dictionary 
-    dict = Vector{Rational{Int64}}(undef,number_of_Vacgraphs)
-    
-    idx=1
-    #initialize all graphs in the dictionary 
-    Threads.@threads for count in shuffle(Xoshiro(1),eachindex(gVac_vec))  #Threads.@threads 
-
-        dict[count] = D_Graph_no_ext(gVac_vec[count],G0_dict)
-
-        println(idx," / ",number_of_Vacgraphs)
-        idx+=1
-
-
-        # if count >50
-        #     println("DICT INCOMPLETE!!!!!")
-        #     break
-        # end
-    end
-
-    return dict
-end
-
-function create_gGdict(gG_vec::Vector{Vector{GraphG}},gVac_vec::Vector{Vector{Graph}},C_Dict_vec::Vector{Vector{Vector{Rational{Int64}}}},vac_dict::Vector{Vector{Rational{Int64}}},G0_dict::Vector{SparseVector{Rational{Int64}, Int64}})
-
-    #define max order GraphGs
-    gG_vec_max = gG_vec[length(gG_vec)]
-
-
-    #define number of graphs in max order 
-    num_of_graphs= length(gG_vec_max)
-
-    #create dictionary 
-    gG_dict = Vector{Vector{Rational{Int64}}}(undef, num_of_graphs)
-    #fill dictionary with zeros
-    for i in eachindex(gG_dict)
-        gG_dict[i] = [0//1,0//1,0//1,0//1,0//1,0//1,0//1,0//1,0//1,0//1]
-    end
-
-    
-    count= 1
-    
-    #Fill dictionary
-    Threads.@threads for gG_idx in shuffle(Xoshiro(1),eachindex(gG_vec_max)) #Threads.@threads 
-
-
-        #fill dictionary with connected amplitude
-
-        gG_dict[gG_idx]=  G_CDET_Kernel(gG_vec_max[gG_idx],gG_vec,gVac_vec,C_Dict_vec,vac_dict,G0_dict)
-        
-        
-    
-        println(count," / ",num_of_graphs)
-        count+=1
-        
-
-        # if count%100 ==0
-        #     save_object("GraphFiles/GraphG_Lists/C_"*string(length(gG_vec)-1)*"_unfinished.jld2",gG_dict)
-        # end
-
-        # if count >10
-        #     println("DICTIONARY IS INCOMPLETE!!!!!!!!!!!!!!")
-        #     break
-        # end
-
-    end
-
-
-    return gG_dict
-
-end
-
 function Calculate_Correlator(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order,gG_vec::Vector{Vector{GraphG}},C_Dict_vec::Vector{Vector{Vector{Rational{Int64}}}})::Vector{Vector{Rational{Int64}}}
     """OLD FUNCTION: use Calculate_Correlator_fast"""
 
@@ -328,68 +299,4 @@ function Calculate_Correlator(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_or
 
     return result_array
 end
-
-function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order::Int,gG_vec_unique::Vector{Any},C_Dict_vec::Vector{Vector{Vector{Rational{Int64}}}})::Vector{Vector{Rational{Int64}}}
-    """
-    Calculate the Correlator by calculating the embedding factors only for the unique simple graphs.
-    """    
-
-    #initialize result array
-    result_array = Vector{Vector{Rational{Int64}}}(undef, max_order+1)
-
-
-    #for every order we get result vector representing Delta^2 prefactors
-    for ord = 1:max_order+1
-        result_array[ord] = zeros(Rational{Int64},10)
-    end
-
-    #calculate the shortest edge distance between ext_j1 and ext_j2
-    ext_dist = dijkstra_shortest_paths(L,ext_j1).dists[ext_j2]
-
-    
-    # only iterate over the unique simple graphs in unique_Gg
-    for unique_Gg in gG_vec_unique[2]
-
-        for gG_idx in eachindex(unique_Gg[2])
-            gg = unique_Gg[1]   #Graph
-            g_order = unique_Gg[2][gG_idx][1] #order
-            gG_vec_index = unique_Gg[2][gG_idx][2] #index
-            symmetry_factor = unique_Gg[2][gG_idx][3] #symmetry factor
-            issymmetric = Bool(unique_Gg[2][gG_idx][4])  #bool if the graph is symmetric
-            gg_dist = unique_Gg[3] #edge distance between the external vertices
-
-            #now we sum over all graphG
-            
-            #if the graph is long enough
-            if gg_dist < ext_dist 
-                continue
-            end
-
-            #if its teh onsite correlator we only need on-site graphs 
-            if ext_dist == 0
-                if gg_dist > ext_dist 
-                    continue
-                end
-            else #if not, we dont need any on site graphs
-                if gg_dist == 0 
-                    continue
-                end
-            end
-
-            #look up the value of the graph from C_Dict_vec
-            look_up_dict =C_Dict_vec[g_order+1][gG_vec_index]
-
-            #calculate the embedding factor
-            emb_fac = e_fast(L,ext_j1,ext_j2,gg,issymmetric)
-            
-            result_array[g_order+1] .+= (-1)^g_order*look_up_dict*emb_fac/symmetry_factor
-            
-        
-        end
-    end
-
-
-    return result_array
-end
-
-
+=#
