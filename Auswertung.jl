@@ -32,7 +32,7 @@ end
 
 #-----------------------------------
 
-#1. Define Lattice
+#1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
 L = max_order
 lattice,LatGraph,center_sites = getLattice_Ball(L,"square");
 display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))

@@ -4,8 +4,8 @@
 # License: MIT License 
 # Vendored on: 2024-11-05
 # Modifications: 
-#[Removed Interaction Matrix argument from addInteraction
-#Added Lattice function without periodic boundary conditions]
+# [Removed Interaction Matrix argument from addInteraction]
+# [Added Lattice function without periodic boundary conditions]
 
 # Original code follows:
 
@@ -250,8 +250,6 @@ end
 function getInteractionField(lattice::Lattice{D,N}, site::Int)::NTuple{3,Float64} where {D,N}
     return lattice.interactionField[site]
 end
-
-
 
 
 function LatticeNoPBC(uc::UnitCell{D}, L::NTuple{D,Int}) where D
