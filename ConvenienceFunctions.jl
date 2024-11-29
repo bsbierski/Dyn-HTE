@@ -1,26 +1,30 @@
 #using RobustPade
 using Symbolics
 
-###### get correlators G_ii' (real-space) 
-function compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int64}}}
+###### get expansion coefficitns for correlators G_ii' in real-space (dynamic-Matsubara and equal-time) 
+function get_GiipDyn_mat(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int64}}}
     """compute all non-trivial coefficients G_ii' on lattice L from the center_sites i to all other sites i' of the lattice"""
     Correlators = Array{Matrix{Rational{Int64}}}(undef, lattice.length,length(lattice.unitcell.basis));
     Threads.@threads for jp = 1:lattice.length
         for b = 1:length(lattice.unitcell.basis)
-        Correlators[jp,b] = mapreduce(permutedims, vcat, Calculate_Correlator_fast(LatGraph,center_sites[b],jp,max_order,gG_vec_unique,C_Dict_vec))
+            Correlators[jp,b] = mapreduce(permutedims, vcat, Calculate_Correlator_fast(LatGraph,center_sites[b],jp,max_order,gG_vec_unique,C_Dict_vec))
         end
     end
     return Correlators
 end
 
-function getCorrelators_equalTime(Correlators::Matrix{Matrix{Rational{Int64}}},max_order::Int)::Matrix{Rational{Int64}}
+function get_GiipEqualTime_mat(GiipDyn_mat::Matrix{Matrix{Rational{Int64}}},max_order::Int)::Matrix{Rational{Int64}}
     """ perform frequency sum over real-space dynamic correlators to obtain equal time correlators """
-    Correlators_equalTime = Matrix{Rational{Int64}}(undef, length(Correlators),max_order+1)
-    for j in eachindex(Correlators)
-        Correlators_equalTime[j,:] = [sum(Correlators[j][n+1,:] .* [1//1,1//12,1//720,1//30240,1//1209600,1//47900160,691//1307674368000,1//74724249600,3617//10670622842880000,43867//5109094217170944000]) for n in 0:max_order]
+    GiipEqualTime_mat = Matrix{Rational{Int64}}(undef, length(GiipDyn_mat),max_order+1)
+    for j in eachindex(GiipDyn_mat)
+        GiipEqualTime_mat[j,:] = [sum(GiipDyn_mat[j][n+1,:] .* [1//1,1//12,1//720,1//30240,1//1209600,1//47900160,691//1307674368000,1//74724249600,3617//10670622842880000,43867//5109094217170944000]) for n in 0:max_order]
     end
-    return Correlators_equalTime
+    return GiipEqualTime_mat
 end
+
+
+
+
 
 ################################# BJÖRN STOPPED HERE ##################################
 
@@ -112,22 +116,21 @@ function eval_correlator_LR_continuous_pad(Correlator,ω,JoverT,pade_order)
     cs = [ x-> sum([Correlator[i,n]*x^(i-1) for i =  1:orderJ#= (1+max_order) =#]) for n = 2:orderω]
     Gs = x-> sum(Correlator[i,1]*x^(i-1) for i =  1:orderJ) #static correlator
  
-     #pade aprpox
- 
-     cs_pad = [robustpade(c,8,0) for c in cs]
-     Gs_pad = robustpade(Gs,pade_order[1],pade_order[2])
- 
-     c = [cf(JoverT) for cf in cs_pad]
-     G = Gs_pad(JoverT)
-     return  c[1] / (-(JoverT*(ω + 1im*δ))^2 - c[2]/c[1] - (-c[2]^2 + c[1]*c[3]) /
-             (c[1]^2 * (-(JoverT*(ω + 1im*δ))^2 + (G * (c[2]^2 - c[1]*c[3])) /
-             (c[1]^3 + G*c[1]*c[2]))))
- end
+    #pade aprpox
+
+    cs_pad = [robustpade(c,8,0) for c in cs]
+    Gs_pad = robustpade(Gs,pade_order[1],pade_order[2])
+
+    c = [cf(JoverT) for cf in cs_pad]
+    G = Gs_pad(JoverT)
+    return  c[1] / (-(JoverT*(ω + 1im*δ))^2 - c[2]/c[1] - (-c[2]^2 + c[1]*c[3]) /
+            (c[1]^2 * (-(JoverT*(ω + 1im*δ))^2 + (G * (c[2]^2 - c[1]*c[3])) /
+            (c[1]^3 + G*c[1]*c[2]))))
+end
 
 
 
 #= 
-
 ### this function is unstable
  function eval_correlator_LR_continuous_pad(Correlator,ω,JoverT,pade_order)
     orderJ,orderω = size(Correlator)
@@ -162,10 +165,10 @@ function eval_correlator_LR_continuous_pad(Correlator,ω,JoverT,pade_order)
     return numerator / denominator
 
 end
- =#
+=#
  
  
- function eval_correlator_LR_continuous_pad_Mats(Correlator,ω,X,pade_order)
+function eval_correlator_LR_continuous_pad_Mats(Correlator,ω,X,pade_order)
     """evaluate the correlator for imaginary frequencies by first fitting it to a continued fraction that preserves the continuity relation"""
     orderJ,orderω = size(Correlator)
 
@@ -173,22 +176,22 @@ end
     cs = [ x-> sum([Correlator[i,n]*x^(i-1) for i =  1:orderJ#= (1+max_order) =#]) for n = 2:orderω]
     Gs = x-> sum(Correlator[i,1]*x^(i-1) for i =  1:orderJ) #static correlator
  
-     #pade aprpox
- 
-     cs_pad = [robustpade(c,orderJ-1,0) for c in cs]
-     Gs_pad = robustpade(Gs,pade_order[1],pade_order[2])
- 
-     c = [cf(X) for cf in cs_pad]
-     G = Gs_pad(X)
- 
-     if ω ==0 
-         return G
-     end
-     
-     return  c[1] / (-(1im*ω)^2 - c[2]/c[1] - (-c[2]^2 + c[1]*c[3]) /
-             (c[1]^2 * (-(1im*ω)^2 + (G * (c[2]^2 - c[1]*c[3])) /
-             (c[1]^3 + G*c[1]*c[2]))))
- end
+    #pade aprpox
+
+    cs_pad = [robustpade(c,orderJ-1,0) for c in cs]
+    Gs_pad = robustpade(Gs,pade_order[1],pade_order[2])
+
+    c = [cf(X) for cf in cs_pad]
+    G = Gs_pad(X)
+
+    if ω ==0 
+        return G
+    end
+    
+    return  c[1] / (-(1im*ω)^2 - c[2]/c[1] - (-c[2]^2 + c[1]*c[3]) /
+            (c[1]^2 * (-(1im*ω)^2 + (G * (c[2]^2 - c[1]*c[3])) /
+            (c[1]^3 + G*c[1]*c[2]))))
+end
  
 
 

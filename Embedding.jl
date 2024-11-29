@@ -85,7 +85,7 @@ function give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}})
         return unique_gG_vec
     else
         # if the order has not been calculated: try one order less
-        unique_gG_vec =   give_unique_gG_vec(gG_vec[1:end-1])
+        unique_gG_vec = give_unique_gG_vec(gG_vec[1:end-1])
     end
 
     unique_order = unique_gG_vec[1]
