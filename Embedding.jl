@@ -199,7 +199,6 @@ end
 
 
 ###### LEGACY FUNCTIONS
-#=
 function e(L::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
     """
     OLD FUNCTION use e_fast 
@@ -295,4 +294,3 @@ function Calculate_Correlator(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_or
 
     return result_array
 end
-=#
