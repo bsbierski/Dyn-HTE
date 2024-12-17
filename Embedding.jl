@@ -285,9 +285,7 @@ function Calculate_Correlator(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_or
             emb_fac = e(L,ext_j1,ext_j2,gG_arr[gG_idx])
 
 
-            result_array[g_order+1] += (-1)^g_order*look_up_dict*emb_fac
-                
-        
+            result_array[g_order+1] += look_up_dict*emb_fac   
         end
     end
 
