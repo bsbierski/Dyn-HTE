@@ -65,21 +65,21 @@ function get_intDiffApprox(p::Polynomial,x_vec::Vector{Float64},M::Int,L::Int,N:
     pp= derivative(p)
     @variables x
 
-    f=series(p.coeffs,x)
-    fp=series(pp.coeffs,x)
+    f = Symbolics.series(p.coeffs,x)
+    fp = Symbolics.series(pp.coeffs,x)
 
     cs, = @variables c[1:(M+L+N+2)]
-    Q = series([c[k] for k in 1:M+1],x)
-    P = expand(1.0 + x*series([c[k] for k in M+2:M+1+L],x))
-    R = series([c[k] for k in M+2+L:M+L+N+2],x)
+    Q = Symbolics.series([c[k] for k in 1:M+1],x)
+    P = expand(1.0 + x*Symbolics.series([c[k] for k in M+2:M+1+L],x))
+    R = Symbolics.series([c[k] for k in M+2+L:M+L+N+2],x)
     s = Q * fp + P * f + R
     eqns = [taylor_coeff(s,x,m) ~ 0 for m in 0:M+L+N+1]
     res = symbolic_linear_solve(eqns, cs)
 
     ## solve differential equation
-    function Q_fit(x) return series([res[k] for k in 1:M+1],x) end
-    function P_fit(x) return expand(1.0 + x*series([res[k] for k in M+2:M+1+L],x)) end
-    function R_fit(x) return series([res[k] for k in M+2+L:M+L+N+2],x) end
+    function Q_fit(x) return Symbolics.series([res[k] for k in 1:M+1],x) end
+    function P_fit(x) return expand(1.0 + x*Symbolics.series([res[k] for k in M+2:M+1+L],x)) end
+    function R_fit(x) return Symbolics.series([res[k] for k in M+2+L:M+L+N+2],x) end
 
     g(f, ppp, x) = -(P_fit(x)*f+R_fit(x))/(Q_fit(x))
     f0 = p(0.0)
