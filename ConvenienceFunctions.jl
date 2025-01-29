@@ -276,6 +276,92 @@ end
 
 
 
+function get_JSkw_mat_finitex(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},η::Float64,r_min::Int,r_max::Int,r_ext::Int,intercept0::Bool,c_iipDyn_mat::Array{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)
+    JSkw_mat = 1.0*zeros(length(k_vec),length(w_vec))
+
+    for (k_pos,k) in enumerate(k_vec)
+        println(k_pos,"/",length(k_vec))
+        c_kDyn_mat = get_c_kDyn_mat([k],c_iipDyn_mat,lattice,center_sites)[1]
+        m_vec = get_moments_from_c_kDyn_mat(c_kDyn_mat)[1:7]
+
+        ###PADE
+        if method=="pade"
+            m_vec_extrapolated_pade = []
+            for m_idx=1:length(m_vec)
+                push!(m_vec_extrapolated_pade, get_pade(m_vec[m_idx],7-m_idx,7-m_idx))
+            end
+            δ_vec,r_vec = fromMomentsToδ([m(x) for m in m_vec_extrapolated_pade])
+        
+            #println("Delta_vec (pade) for "*string(k)*"is:",δ_vec)
+        end
+
+        ###IDA
+        if method =="ida"
+            int_step_size = 0.01
+            m_vec_extrapolated_ida = []
+            for m_idx=1:4
+                for idx=0:length(m_vec[m_idx])-1
+                    if abs(m_vec[m_idx][idx])< 0.0000000001
+                        m_vec[m_idx][idx] =0
+                    end
+                end
+                IDA_parameters=[2,4+1-m_idx,4+1-m_idx] 
+                IDA_approximant = get_intDiffApprox(m_vec[m_idx],collect(0:int_step_size:x+0.5),IDA_parameters[1],IDA_parameters[2],IDA_parameters[3])
+                push!(m_vec_extrapolated_ida, Float64(IDA_approximant[round(Integer,1+1/int_step_size*x)]))
+            end
+
+            
+            δ_vec,r_vec = fromMomentsToδ(Float64[float(m_vec_extrapolated_ida[i]) for i =1:length(m_vec_extrapolated_ida)])
+
+            #println("Delta_vec (ida) for "*string(k)*"is:",δ_vec)
+        end
+
+
+        ###DIRECT DELTA EXTRAPOLATION VIA IDA
+        if method=="directdelta"
+            δ_vec_raw = fromMomentsToδ(m_vec)
+
+            δ_vec = zeros(length(m_vec))
+
+            for m_idx=1:4
+                t = Taylor1(2*length(m_vec)-2)
+                taylor_exp = δ_vec_raw[m_idx](t)
+                taylor_coefficients = [taylor_exp[i] for i=0:length(taylor_exp)-1]
+
+                taylor_poly = Polynomial(taylor_coefficients)
+                
+                #IDA extrapolation
+                int_step_size = 0.01
+                IDA_parameters=[2,5-m_idx,5-m_idx] 
+                #println(taylor_poly)
+
+                #println("m=",m_idx)
+                IDA_approximant = get_intDiffApprox(taylor_poly,collect(0:int_step_size:x+0.5),IDA_parameters[1],IDA_parameters[2],IDA_parameters[3])
+
+                δ_vec[m_idx] = IDA_approximant[round(Integer,1+1/int_step_size*x)]
+
+                #pade extrapolation
+                #δ_vec[m_idx] = get_pade(taylor_poly,6,6)(x)
+
+            end
+
+            #println("Delta_vec (direct delta) for "*string(k)*"is:",δ_vec)
+        end
+
+        ###Now extrapolte deltas
+        δ_vec_ext = extrapolate_δvec(δ_vec,r_min,r_max,r_ext,intercept0)
+
+        JSkw_mat[k_pos,:] = [JS(δ_vec_ext ,x,w,η) for w in w_vec]
+
+        
+    end
+
+    return JSkw_mat
+end
+
+
+
+
 
 
 
