@@ -12,8 +12,8 @@ max_order = 12
 
 #LOAD FILES -------------------------
 #generate list of graphs
-graphs_vec = [load_object(path_DynHTSE*"GraphFiles_chain/graphs_"*string(nn)*".jld2") for nn in 0:max_order];
-gG_vec = getGraphsG(graphs_vec);
+graphs_vec = [load_object(path_DynHTSE*"GraphFiles_chain/graphs_"*string(nn)*".jld2") for nn in 0:max_order]
+gG_vec = getGraphsG(graphs_vec)
  
 #create vector of all lower order dictionaries
 C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) 
@@ -34,6 +34,8 @@ c_iipDyn_mat = get_c_iipDyn_mat_slow(LatGraph,lattice,center_sites,max_order,gG_
 cd("/home/bjoern/Dropbox/Desktop/39_KopietzSpinfRG/Num_DynHTE_results/")
 
 
+
+
 ###### load QMC data at m=0,1,2 (have x=βJ=[1,2,...,8]; but one can use less) 
 x_QMC_vec = collect(1:8)
 imax=20
@@ -50,13 +52,14 @@ for x_QMC_pos in eachindex(x_QMC_vec)
     end
 end
 
+
 ###### plot QMC data against Dyn-HTE (r-space)
 x_vec = collect(0:0.05:8.1)
 x_vec_bare = collect(0:0.05:2)
 
 
 ### PLOT m=0,1,2 Matsubara data against QMC
-if false
+if true
     di_vec = [0,1,2,4]
     
     ### prepare panels for m=0,1,2
@@ -91,7 +94,7 @@ if false
     end
 
     ### integrated-differential approximants
-    for di in di_vec, (m_pos,m) in enumerate(m_vec[1])
+    for di in di_vec, (m_pos,m) in enumerate(m_vec[2])
 
         p = get_TGiip_m_bare(c_iipDyn_mat,m,12)[center_sites[1]+di,1]
         
@@ -122,7 +125,7 @@ k_vec=[0.5*π] #0.8*pi
 
 
 #plt_m_x = [plot([0],[0],label="",xlabel=L"x",ylabel=L"m_r",xlim=(0,3.5),title="r="*string(i-1)) for i=1:6 ]
-plt_m_x = [plot([0],[0],label="",xlabel=L"x",ylabel=L"m_r",xlim=(0,3.5),title="r="*string(0),legend=:bottomleft),
+plt_m_x = [plot([0],[0],label="",xlabel=L"x",ylabel=L"m_r",xlim=(0,3.5),title="r="*string(0),legend=:bottomleft,size=(600,600)),
     plot([0],[0],label="",xlabel=L"x",ylabel=L"m_r",xlim=(0,3.5),title="r="*string(1),legend=:bottomleft),
     plot([0],[0],label="",xlabel=L"x",ylabel=L"m_r",xlim=(0,3.5),title="r="*string(2),legend=:topright),
     plot([0],[0],label="",xlabel=L"x",ylabel=L"m_r",xlim=(0,3.5),title="r="*string(3),legend=:topright),
@@ -165,11 +168,25 @@ for (k_pos,k) in enumerate(k_vec)
             pade_approximant = get_pade(m_vec[m_idx],6-m_idx,8-m_idx)
             plot!(plt_m_x[m_idx],x_range_pade,pade_approximant.(x_range_pade),label="Pade["*string(6-m_idx)*","*string(8-m_idx)*"]",alpha= 1,linestyle=linestyle_vec[3],color = color_vec[5])
         end
-        #now IDA 
-        #IDA_approximant = get_intDiffApprox(m_vec[m_idx],x_range,2,4,4)
-        #plot!(plt_m_x[m_idx],x_range,IDA_approximant.(x_range),label="IDA[2,4,4]",alpha= 1)
+        #now IDA
+        if m_idx<=4
+            size =3.5
+            #println(m_vec)
+            # println(m_vec[m_idx][1],m_vec[m_idx][2],m_vec[m_idx][3])
+            m_test = Polynomial([m_vec[m_idx][i] for i=0:length(m_vec[m_idx])-1])
+            # println(m_test)
+            for idx=0:length(m_test)-1
+                if abs(m_test[idx])< 0.000000001
+                    m_test[idx] =0
+                end
+            end
+            # IDA_approximant = get_intDiffApprox(m_vec[m_idx],collect(0:0.01:3),2,4,4)
+            #m_test[1]=0
+            IDA_parameters=[2,4+1-m_idx,4+1-m_idx] 
+            IDA_approximant = get_intDiffApprox(m_test,collect(0:0.01:size),IDA_parameters[1],IDA_parameters[2],IDA_parameters[3])
+            plot!(plt_m_x[m_idx],collect(0:0.01:size),IDA_approximant,label="IDA["*string(IDA_parameters[1])*","*string(IDA_parameters[2])*","*string(IDA_parameters[3])*"]",alpha= 0.5,color = color_vec[6])
+        end
     end
-
 end
 
 k_vec=[0.8*pi]
@@ -200,14 +217,30 @@ for (k_pos,k) in enumerate(k_vec)
             pade_approximant = get_pade(m_vec[m_idx],6-m_idx,8-m_idx)
             Plots.plot!(plt_m_x[m_idx],x_range_pade,pade_approximant.(x_range_pade),label=nothing,alpha= 1,linestyle=linestyle_vec[3],color = color_vec[5])
         end
-        #now IDA 
-        #IDA_approximant = get_intDiffApprox(m_vec[m_idx],x_range,2,4,4)
-        #plot!(plt_m_x[m_idx],x_range,IDA_approximant.(x_range),label="IDA[2,4,4]",alpha= 1)
+        #now IDA
+        if m_idx<=4
+            size =3.5
+            #println(m_vec)
+            # println(m_vec[m_idx][1],m_vec[m_idx][2],m_vec[m_idx][3])
+            m_test = Polynomial([m_vec[m_idx][i] for i=0:length(m_vec[m_idx])-1])
+            # println(m_test)
+            for idx=0:length(m_test)-1
+                if abs(m_test[idx])< 0.000000001
+                    m_test[idx] =0
+                end
+            end
+            # IDA_approximant = get_intDiffApprox(m_vec[m_idx],collect(0:0.01:3),2,4,4)
+            #m_test[1]=0
+            IDA_parameters=[2,4+1-m_idx,4+1-m_idx] 
+            IDA_approximant = get_intDiffApprox(m_test,collect(0:0.01:size),IDA_parameters[1],IDA_parameters[2],IDA_parameters[3])
+            plot!(plt_m_x[m_idx],collect(0:0.01:size),IDA_approximant,label=nothing,alpha= 0.5,color = color_vec[6])
+        end
     end
 
 end
 
-display(plot(plt_m_x...))
+moment_plot = plot(plt_m_x...)
+display(moment_plot)
 
 
 
@@ -274,16 +307,18 @@ display(plt_final)
 savefig(plt_final,"HeisenbergAFMSpinHalfChain_Tinf_Skw_various_k.svg")
 
 
-###### S(k,w) heatmap
+
+#NOW SPIN STRUCTURE FACTOR HEATMAPS
+###### S(k,w) heatmap (Dyn-HTE)
 using CairoMakie
 
-x = 2.048
+x = 1.024
 k_vec = [(k,0.0) for k in 0.01:0.0039*1.2:(2*π-0.01)]
 w_vec = collect(-3.0:0.0314*1.2:3.0)
-JSkw_mat = get_JSkw_mat_finitex(x,k_vec,w_vec,0.01,2,3,2000,false,c_iipDyn_mat,lattice,center_sites)
+JSkw_mat = get_JSkw_mat_finitex("pade",x,k_vec,w_vec,0.01,3,4,1000,false,c_iipDyn_mat,lattice,center_sites)
 
 
-fig = Figure(size=(aps_width*xPlots,0.8*aps_width*yPlots),fontsize=25)
+fig = Figure(size=(400,400),fontsize=25)
 ax=Axis(fig[1,1],limits=(0,2,-3,3),xlabel=L"k/ \pi",ylabel=L"\omega/J=w",title="X="*string(x),titlesize=25,xlabelsize=25,ylabelsize=25)
 hm=CairoMakie.heatmap!(ax,[k[1]/π for k in k_vec],w_vec,JSkw_mat,colormap=:viridis,colorrange=(0.0,0.25),highclip=:white)
 #CairoMakie.Colorbar(fig[:, end+1], hm,size=40)
@@ -305,7 +340,7 @@ save("plots/HTSE"*string(x)*"_hq.pdf",fig)
 
 ####### S(k,w) heatmap DMRG data
 using MAT
-beta = 0.128*0#0.128*16
+beta = 0.128*16#0.128*16
 data = matread("SF_beta_"*string(beta)*".mat")
 
 k_DMRG = data["kk"]
@@ -319,10 +354,10 @@ kernel = Kernel.gaussian(sigma)
 S_DMRG_blurred = imfilter(S_DMRG, kernel)
 
 
-fig = Figure(size = 2,fontsize=10)
+fig = Figure(fontsize=10)
 ax=Axis(fig[1,1] ,limits=(0,2,-3,3),xlabel=L"k/ \pi",ylabel=L"\omega/J=w",title=L"x=0.0,\:  \sigma=",titlesize=15,xlabelsize=12,ylabelsize=12)
 
-hm=CairoMakie.heatmap!(ax,k_DMRG,w_DMRG,S_DMRG_blurred,colormap=:viridis,colorrange=(0.0,0.25),ylim=(-3,3),highclip=:white)
+hm=CairoMakie.heatmap!(ax,[k_DMRG[i] for i=1:length(k_DMRG)],[w_DMRG[i] for i=1:length(w_DMRG)],S_DMRG_blurred,colormap=:viridis,colorrange=(0.0,0.25),highclip=:white)
 
 resize_to_layout!(fig)
 display(fig)
@@ -341,15 +376,22 @@ save("plots/DMRG1"*string(beta)*".pdf",fig)
 
 
 ######NOW THE COMPARISON OF Dyn-HTE and DMRG
+S_dyn_HTE= load_object("DSF_with_DynHTE_differnt_temperatures.jdl2")
 using MAT
 betas = [0.0,1.024,2.048]
 
-title_string =[L"x=0.0,\:  \sigma=0.4%",L"x=1.024,\:  \sigma=0.4%",L"x=2.048,\:  \sigma=0.5%"
-,L"x=0.0,\:  \sigma= 1.4%",L"x=1.024,\:  \sigma=0.9%",L"x=2.048,\:  \sigma= 0.7%"] 
+title_string =[L" \text{(DMRG)} \: x=0.0,\:  \Sigma=0.249",L"\text{(DMRG)} \: x=1.024,\:  \Sigma=0.249",L"\text{(DMRG)} \: x=2.048,\:  \Sigma=0.249"
+,L"\text{(Dyn-HTE)} \: x=0.0,\:  \Sigma= 0.247",L"\text{(Dyn-HTE)} \: x=1.024,\: \Sigma=0.248",L"\text{(Dyn-HTE)} \: x=2.048,\:  \Sigma=0.248"
+,L"\text{k-slices at }x=0.0",L"\text{k-slices at }x=1.024",L"\text{k-slices at }x=2.048"] 
 
 
-fig = CairoMakie.Figure(resolution = (900,500),fontsize=10)
+fig = CairoMakie.Figure(size = (900,750),fontsize=10)
 
+grid = fig[1,1]= GridLayout()
+
+plotsDMRG = []
+plotsDynHTE = []
+plotsKslices = []
 for (i,beta) in enumerate(betas)
     data = matread("SF_beta_"*string(beta)*".mat")
 
@@ -371,35 +413,77 @@ for (i,beta) in enumerate(betas)
 
 
 
-    ax=CairoMakie.Axis(fig[1,i],limits=(0,2,-3,3),xlabel=L"k/ \pi",ylabel=L"\omega/J=w",title=title_string[i],titlesize=15,xlabelsize=12,ylabelsize=12)
-    #dynHTE spot
-    ax_dynHTE=CairoMakie.Axis(fig[2,i],limits=(0,2,-3,3),xlabel=L"k/ \pi",ylabel=L"\omega/J=w",title=title_string[i+3],titlesize=15,xlabelsize=12,ylabelsize=12)
-
-    hm=CairoMakie.heatmap!(ax,vec(k_DMRG)[1:2:end],vec(w_DMRG)[1:2:end],S_DMRG_blurred[1:2:end,1:2:end],colormap=:viridis,colorrange=(0.0,0.25),ylim=(-3,3),highclip=:white)
+    ax=CairoMakie.Axis(grid[2,i],limits=(0,2,-3,3),xlabel=L"k/ \pi",ylabel=L"\omega/J=w",title=title_string[i],titlesize=15,xlabelsize=12,ylabelsize=12)
     
-    #insert Dyn-HTE ax_dynHTE[i]
-    # if i==2
-    #     i = 3
-    # elseif (i==3)
-    #     i=2
-    # end
-    CairoMakie.heatmap!(ax_dynHTE,vec([k/π for k in k_vec])[1:2:end],vec(w_vec)[1:2:end],S_dyn_HTE[i][1:2:end,1:2:end],colormap=:viridis,colorrange=(0.0,0.25),ylim=(-3,3),highclip=:white)
-end
+    
+
+    #DMRG
+    ax_dynHTE=CairoMakie.Axis(grid[1,i],limits=(0,2,-3,3),xlabel=L"k/ \pi",ylabel=L"\omega/J=w",title=title_string[i+3],titlesize=15,xlabelsize=12,ylabelsize=12)
+
+    hm=CairoMakie.heatmap!(ax,vec(k_DMRG)[1:2:end],vec(w_DMRG)[1:2:end],S_DMRG_blurred[1:2:end,1:2:end],colormap=:viridis,colorrange=(0.0,0.25),highclip=:white)
+    
+    push!(plotsDMRG, ax)
+    #dynHTE spot
+    CairoMakie.heatmap!(ax_dynHTE,vec([k/π for k in k_vec])[1:2:end],vec(w_vec)[1:2:end],S_dyn_HTE[i][1:2:end,1:2:end],colormap=:viridis,colorrange=(0.0,0.25),highclip=:white)
+    push!(plotsDynHTE, ax_dynHTE)
+
+
+    #k slices 
+    k_slice_values=[(0.2*π,0.0),(1*π,0.0)]
+    
+
+    if i==1
+        ax_k_sliced =CairoMakie.Axis(grid[3,i],xlabel=L"\omega/J=w",ylabel=L"JS(\mathbf{k},\omega)",title=title_string[i+6],titlesize=15,xlabelsize=12,ylabelsize=12 )
+
+        for (k_pos,k) in enumerate([k_slice_values[i][1] for i=1:length(k_slice_values)])
+            CairoMakie.scatter!(ax_k_sliced,w_DMRG[1:2:191],S_DMRG_blurred[round(Integer,k/(pi*0.00390625)),:][1:2:191],color = color_vec[k_pos],markersize =7, alpha =0.6,label=["DMRG \n (k=0.2π)","DMRG \n (k=π)"][k_pos])
+            CairoMakie.lines!(ax_k_sliced,w_vec,S_dyn_HTE[i][round(Int,k/(0.0039*1.2))-1,:],color = color_vec[k_pos],label=["Dyn-HTE \n (k=0.2π)","Dyn-HTE \n (k=π)"][k_pos])
+        end
+        subgrid = GridLayout(grid[3, 4], tellheight = false)
+        legend =Legend(subgrid[1,2],ax_k_sliced, position  = (0, 1),   tellwidth = false, backgroundcolor = :white, labelsize = 12  ,anchor = :TopRight          )
+    else
+        ax_k_sliced =CairoMakie.Axis(grid[3,i],xlabel=L"\omega/J=w",title=title_string[i+6],titlesize=15,xlabelsize=12,ylabelsize=12 )
+
+        for (k_pos,k) in enumerate([k_slice_values[i][1] for i=1:length(k_slice_values)])
+            CairoMakie.scatter!(ax_k_sliced,w_DMRG[1:2:191],S_DMRG_blurred[round(Integer,k/(pi*0.00390625)),:][1:2:191],color = color_vec[k_pos],markersize =7, alpha =0.6)
+            CairoMakie.lines!(ax_k_sliced,w_vec,S_dyn_HTE[i][round(Int,k/(0.0039*1.2))-1,:],color = color_vec[k_pos])
+        end
+    end
+    push!(plotsKslices, ax_k_sliced)
+end 
 
 
 
-subgrid = GridLayout(fig[1, 4], tellheight = false)
-subgrid2 = GridLayout(fig[2, 4], tellheight = false)
+subgrid = GridLayout(grid[1, 4], tellheight = false)
+subgrid2 = GridLayout(grid[2, 4], tellheight = false)
 
 Label(subgrid[1, 1], L"JS(\mathbf{k},\omega)",fontsize=14)
 Label(subgrid2[1, 1],L"JS(\mathbf{k},\omega)",fontsize=14)
 
-cb1=CairoMakie.Colorbar(subgrid[2, 1],hm,size=20,labelsize = 22)
+
+cb1=CairoMakie.Colorbar(subgrid[2, 1],hm,size=20,labelsize = 22) 
 cb2= CairoMakie.Colorbar(subgrid2[2, 1],hm,size=20,labelsize = 22)
 
+hideydecorations!(plotsDMRG[2])
+hideydecorations!(plotsDMRG[3])
+hidedecorations!(plotsDynHTE[2], grid = false)
+hidedecorations!(plotsDynHTE[3], grid = false)
+hidexdecorations!(plotsDynHTE[1])
+hidedecorations!(plotsDynHTE[3], grid = false)
+# hideydecorations!(plotsKslices[2])
+# hideydecorations!(plotsKslices[3])
+
+colgap!(subgrid, 0)
+rowgap!(subgrid, 0)
+
+colgap!(subgrid2, 0)
+rowgap!(subgrid2, 0)
+
+colgap!(grid, 18)
+rowgap!(grid, 10)
 
 
-#resize_to_layout!(fig)
+resize_to_layout!(fig)
 #Plots.savefig("testt.pdf")
 display(fig)
 
@@ -419,69 +503,233 @@ println("Deviation from 1/4: "*string(round(abs(1/4-equal_time_corr)*4*100,digit
 save("plots/DMRG1"*string(beta)*".pdf",fig)
 
 
-############Compare slices of heatmap in DMRG and Dyn-HTE
-x=0.128*16
-k_vec=[0.2*π,0.8*π]
-
-plt_S = plot(xlabel=L"w=\omega/J",ylabel=L"JS(k,\omega)",title="X="*string(x),titlesize=30)
-
-w_vec = collect(-3.0:0.01:3.0)
-η=0.01
-ext_vec = [[2,3,false]]
-
-#plt_m = plot([0],[0],label="",xlabel=L"r",ylabel=L"m_r",xlim=(-0.2,10.2))
-#load DMRG 
-using MAT
-data = matread("SF_beta_"*string(x)*".mat")
-k_DMRG = data["kk"]
-w_DMRG = data["om"]
-S_DMRG = data["Skw"]
-
-#blur data
-using ImageFiltering
-sigma = 2.1
-kernel = Kernel.gaussian(sigma)
-S_DMRG_blurred = imfilter(S_DMRG, kernel)
-
-for (k_pos,k) in enumerate(k_vec)
-    k_slice =  S_DMRG_blurred[round(Int,k/(pi*0.00390625)),:][1:191]
-    if k_pos == 1
-        Plots.scatter!(plt_S,w_DMRG[1:191],k_slice,color=color_vec[k_pos],label=L"DMRG, \ \  k= 0.2 \pi",alpha=0.1)
+############Compare slices of heatmap in DMRG and Dyn-HTE 
+betas = [0.0,1.024,2.048]
+moments = [(5,6),(3,4),(2,3)]
+plot_lst = []
+for (x_index,x) in enumerate(betas)
+    k_slice_values=[(0.2*π,0.0),(0.8*π,0.0)]
+    k_vec = [(k,0.0) for k in 0.01:0.0039*2.2:(2*π-0.01)]
+    if x_index !=3
+        plt_S = plot(xlabel="",xticks=false,ylabel=L"JS(k,\omega)",title=L"x="*string(x),titlefont=13,size=(400,600),legend=:topleft,fontsize=14)
     else
-        Plots.scatter!(plt_S,w_DMRG[1:191],k_slice,color=color_vec[k_pos],label=L"DMRG,\ \  k= 0.8 \pi",alpha=0.1)
+        plt_S = plot(xlabel=L"w=\omega/J",ylabel=L"JS(k,\omega)",title=L"x="*string(x),titlefont=13,size=(400,600),legend=:topleft,fontsize=14)
     end
-end
+    w_vec = collect(-3.0:0.01:3.0)
+    η=0.01
+    ext_vec = [[2,3,false]]
 
+    #plt_m = plot([0],[0],label="",xlabel=L"r",ylabel=L"m_r",xlim=(-0.2,10.2))
+    #load DMRG 
+    using MAT
+    data = matread("SF_beta_"*string(x)*".mat")
+    k_DMRG = data["kk"]
+    w_DMRG = data["om"]
+    S_DMRG = data["Skw"]
 
-for (k_pos,k) in enumerate(k_vec)
-
-    c_kDyn_mat = get_c_kDyn_mat([(k,0)],c_iipDyn_mat,lattice,center_sites)[1]
-    m_vec = get_moments_from_c_kDyn_mat(c_kDyn_mat)[1:7]
-    m_vec_extrapolated = [get_pade(m_vec[m_idx],7-m_idx,7-m_idx) for m_idx=1:7]
-    δ_vec,r_vec = fromMomentsToδ([m(x) for m in m_vec_extrapolated])
-
-    #scatter!(plt_δ,0:(length(δ_vec)-1),δ_vec,color=color_vec[k_pos],label=L"k/\pi="*string(k/π),markersize=7.0,markeralpha=0.6)
+    #blur data
+    using ImageFiltering
+    sigma = 2.1
+    kernel = Kernel.gaussian(sigma)
+    S_DMRG_blurred = imfilter(S_DMRG, kernel)
     
-    #scatter!(plt_m,0:(length(δ_vec)-1),[m(x) for m in m_vec],color=color_vec[k_pos],label=L"k/\pi="*string(k/π),markersize=7.0,markeralpha=0.6)
-
-    for (ext_pos,ext) in enumerate(ext_vec)
-        δ_vec_ext =  extrapolate_δvec(δ_vec,ext[1],ext[2],6000,Bool(ext[3]))
-        #scatter!(plt_δ,0:length(δ_vec_ext)-1,δ_vec_ext,markersize=3,label="",marker=marker_vec[ext_pos],color=color_vec[k_pos])
-        if ext_pos ==1
-            if k_pos ==1
-                Plots.plot!(plt_S,w_vec,[JS(δ_vec_ext ,x,w,η) for w in w_vec],color=color_vec[k_pos+2],linestyle=linestyle_vec[ext_pos],alpha=1,label=L"Dyn-HTE, \ \ k= 0.2 \pi")
-            else 
-                Plots.plot!(plt_S,w_vec,[JS(δ_vec_ext ,x,w,η) for w in w_vec],color=color_vec[k_pos+2],linestyle=linestyle_vec[ext_pos],alpha=1,label=L"Dyn-HTE, \ \  k=0.8 \pi ")
-            end
-        else 
-            Plots.plot!(plt_S,w_vec,[JS(δ_vec_ext ,x,w,η) for w in w_vec],color=color_vec[k_pos+2],linestyle=linestyle_vec[ext_pos],alpha=1,label=nothing)
+    for (k_pos,k) in enumerate([k_slice_values[i][1] for i=1:length(k_slice_values)])
+        k_slice =  S_DMRG_blurred[round(Integer,k/(pi*0.00390625)),:][1:191]
+        if k_pos == 1
+            Plots.scatter!(plt_S,w_DMRG[1:191],k_slice,color=color_vec[k_pos],label=[L"DMRG, \ \  k= 0.2 \pi",nothing,nothing][x_index],alpha=0.1)
+        else
+            Plots.scatter!(plt_S,w_DMRG[1:191],k_slice,color=color_vec[k_pos],label=[L"DMRG,\ \  k= 0.8 \pi",nothing,nothing][x_index],alpha=0.1)
         end
     end
+
+
+    JSkw_mat_pade = get_JSkw_mat_finitex("pade",x,k_slice_values,w_vec,0.01,moments[x_index][1],moments[x_index][2],3000,false,c_iipDyn_mat,lattice,center_sites)
+
+    #JSkw_mat_ida = get_JSkw_mat_finitex("ida",x,k_slice_values,w_vec,0.01,2,3,2000,false,c_iipDyn_mat,lattice,center_sites)
+
+    #JSkw_mat_directdelta = get_JSkw_mat_finitex("directdelta",x,k_slice_values,w_vec,0.01,2,3,2000,false,c_iipDyn_mat,lattice,center_sites)
+
+
+
+    for (k_pos,k) in enumerate(k_slice_values)
+
+        if k_pos ==1
+            Plots.plot!(plt_S,w_vec,JSkw_mat_pade[k_pos,:],color=color_vec[3],linestyle=linestyle_vec[1],alpha=1,label=[L"Dyn-HTE, \ \ k= 0.2 \pi",nothing,nothing][x_index],fontsize=20)
+            #Plots.plot!(plt_S,w_vec,JSkw_mat_ida[k_pos,:],color=color_vec[4],linestyle=linestyle_vec[2],alpha=1,label=L"Dyn-HTE (IDA), \ \ k= 0.2 \pi")
+            #Plots.plot!(plt_S,w_vec,JSkw_mat_directdelta[k_pos,:],color=color_vec[5],linestyle=linestyle_vec[3],alpha=1,label=L"Dyn-HTE (directly \delta), \ \ k= 0.2 \pi")
+        else 
+            Plots.plot!(plt_S,w_vec,JSkw_mat_pade[k_pos,:],color=color_vec[4],linestyle=linestyle_vec[1],alpha=1,label=[L"Dyn-HTE, \ \ k= 0.8 \pi",nothing,nothing][x_index],fontsize=20)
+            #Plots.plot!(plt_S,w_vec,JSkw_mat_ida[k_pos,:],color=color_vec[4],linestyle=linestyle_vec[2],alpha=1,label=nothing)
+            #Plots.plot!(plt_S,w_vec,JSkw_mat_directdelta[k_pos,:],color=color_vec[5],linestyle=linestyle_vec[3],alpha=1,label=nothing)
+        end
+
+
+    end
+
+    push!(plot_lst,plt_S)
+end
+
+plot_total = plot(plot_lst...,layout = (3,1))
+
+display(plot_total) 
+#savefig(plot_total, "plots/k_slice_comparison.pdf")
+
+
+
+
+#######Compare delta extraploation Schemes
+x_range_raw = collect(0:0.01:1.5)
+x_range_moment_pade =collect(0:0.01:2)
+k_vec=[0.1*pi]#[0.5*π,0.8*pi] #0.8*pi
+
+bare_range_vec=[1.7,1.5,1.5,1.4,1.2,0.7]
+pade_on_moments_range_vec=[3.5,3.5,3.5,3,2,1.1]
+ida_on_moments_range_vec=[3.5,3.5,3.5,3.5,3,2.1]
+ida_on_deltas_range_vec=[3.5,3.5,3.5,3.5,3,2.1]
+
+#import DMRG data and calculate deltas 
+using MAT
+betas = [0.0,0.128*8,0.128*16]
+DMRG_deltas = [[zeros(3) for i=1:6] for j=1:length(k_vec) ]
+for (beta_idx,beta) in enumerate(betas)
+    data = matread("SF_beta_"*string(beta)*".mat")
+    k_DMRG = data["kk"]
+    w_DMRG = data["om"]
+    S_DMRG = data["Skw"]
+    #blur data
+    using ImageFiltering
+    sigma = 2#2.1
+    kernel = Kernel.gaussian(sigma)
+    S_DMRG_blurred = imfilter(S_DMRG, kernel)
+
+    #calculate moments for specific k
+    moments = zeros(7)
+
+    for (k_pos,k) in enumerate(k_vec)
+        for m_idx=1:6
+            res = 0.0
+            for (w_idx,w) in enumerate(w_DMRG)
+                if beta*w!=0
+                    res += (1-exp(-beta*w))/(beta*w)*(S_DMRG_blurred[round(Integer,k/(pi*0.00390625)),w_idx])*w^((m_idx-1)*2)
+                else
+                    res += (S_DMRG_blurred[round(Integer,k/(pi*0.00390625)),w_idx])*w^((m_idx-1)*2)
+                end
+            end
+            moments[m_idx] = res*9/length(w_DMRG)
+        end
+
+        δ_vec,r_vec = fromMomentsToδ(moments)
+
+        for m_idx=1:6
+            DMRG_deltas[k_pos][m_idx][beta_idx] = δ_vec[m_idx]
+        end
+
+    end
+
+
 end
 
 
 
-display(plt_S)
+
+#plt_m_x = [plot([0],[0],label="",xlabel=L"x",ylabel=L"m_r",xlim=(0,3.5),title="r="*string(i-1)) for i=1:6 ]
+plt_m_x = [plot([0],[0],label="",xlabel=L"x",ylabel=L"\delta_r",xlim=(-0.03,3.5),title="r="*string(0),legend=:bottomleft,size=(600,600)),
+    plot([0],[0],label="",xlabel=L"x",ylabel=L"\delta_r",xlim=(-0.03,3.5),title="r="*string(1),legend=:bottomleft),
+    plot([0],[0],label="",xlabel=L"x",ylabel=L"\delta_r",xlim=(-0.03,3.5),title="r="*string(2),legend=:bottomleft),
+    plot([0],[0],label="",xlabel=L"x",ylabel=L"\delta_r",xlim=(-0.03,3.5),title="r="*string(3),legend=:bottomleft),
+    plot([0],[0],label="",xlabel=L"x",ylabel=L"\delta_r",xlim=(-0.03,3.5),title="r="*string(4),legend=:bottomleft),
+    plot([0],[0],label="",xlabel=L"x",ylabel=L"\delta_r",xlim=(-0.03,3.5),title="r="*string(5),legend=:topright) ]
+
+for (k_pos,k) in enumerate(k_vec)
+    c_kDyn_mat = get_c_kDyn_mat([(k,0)],c_iipDyn_mat,lattice,center_sites)[1]
+    m_vec = get_moments_from_c_kDyn_mat(c_kDyn_mat)
+
+    δ_vec_raw = fromMomentsToδ(m_vec)
+
+    #extrapolate moments with pade 
+    m_vec_extrapolated_pade = []
+    for m_idx=1:length(m_vec)
+        push!(m_vec_extrapolated_pade, get_pade(m_vec[m_idx],7-m_idx,7-m_idx))
+    end
+
+    #extrapolate moments with IDA 
+    m_vec_extrapolated_ida = []
+    for m_idx=1:length(m_vec)
+        for idx=0:length(m_vec[m_idx])-1
+            if abs(m_vec[m_idx][idx])< 0.00000000000000001
+                m_vec[m_idx][idx] =0
+            end
+        end
+        if m_idx <5
+            push!(m_vec_extrapolated_ida, get_intDiffApprox(m_vec[m_idx],collect(0:0.01:ida_on_moments_range_vec[m_idx]),2,5-m_idx,5-m_idx))
+        end
+    end
+
+
+
+    #now iterate over deltas
+    for m_idx=1:length(m_vec)-1
+
+        #plot the raw delta
+        x_range =collect(0:0.01:bare_range_vec[m_idx])
+        plot!(plt_m_x[m_idx],x_range,δ_vec_raw[m_idx].(x_range),label=["bare series",nothing][2],alpha= 0.5,color = color_vec[1], order=1)
+
+        #plot moment extrapolation (pade)
+        x_range = collect(0:0.01:pade_on_moments_range_vec[m_idx])
+        delta_ext_moment_pade = zeros(length(x_range))
+        for (x_pos,x_val) in enumerate(x_range)
+            δ_vec,r_vec = fromMomentsToδ([m(x_val) for m in m_vec_extrapolated_pade])
+            delta_ext_moment_pade[x_pos] = δ_vec[m_idx]
+        end
+        plot!(plt_m_x[m_idx],x_range,delta_ext_moment_pade,label=["pade on moments",nothing][2],alpha= 0.5,linestyle=linestyle_vec[2],color = color_vec[2], order=1)
+
+        #plot moment extrapolation (ida)
+        if m_idx<5
+            x_range = collect(0:0.01:ida_on_moments_range_vec[m_idx])
+            delta_ext_moment_ida = zeros(length(x_range))
+            for (x_pos,x_val) in enumerate(x_range)
+                δ_vec,r_vec = fromMomentsToδ([m[round(Integer,1+1/0.01*x_val)] for m in m_vec_extrapolated_ida])
+                delta_ext_moment_ida[x_pos] = δ_vec[m_idx]
+            end
+            plot!(plt_m_x[m_idx],x_range,delta_ext_moment_ida,label=["IDA on moments",nothing][2],alpha= 0.5,linestyle=linestyle_vec[3],color = color_vec[3], order=1)
+        end
+
+        #plot delta extrapolation (ida)
+        if m_idx<5
+            x_range = collect(0:0.01:ida_on_deltas_range_vec[m_idx])
+
+            t = Taylor1(14-2*m_idx)
+
+            taylor_exp = δ_vec_raw[m_idx](t)
+            taylor_coefficients=[taylor_exp[i]  for i=0:length(taylor_exp)-1]
+
+            for tay_idx =1:length(taylor_coefficients)
+                if abs(taylor_coefficients[tay_idx]) < 0.0000000001
+                    taylor_coefficients[tay_idx] = 0.0
+                end
+            end
+
+            taylor_poly = Polynomial(taylor_coefficients)
+
+            IDA_parameters=[2,5-m_idx,5-m_idx]
+
+            IDA_approximant = get_intDiffApprox(taylor_poly,x_range,IDA_parameters[1],IDA_parameters[2],IDA_parameters[3])
+
+            plot!(plt_m_x[m_idx],x_range,IDA_approximant,label=["IDA on deltas",nothing][2],alpha= 0.5,linestyle=linestyle_vec[4],color = color_vec[4], order=1)
+        end
+
+        #plot DMRG reference data 
+        scatter!(plt_m_x[m_idx],betas,DMRG_deltas[k_pos][m_idx],label=["DMRG data",nothing][2],alpha= 0.5,color = color_vec[5], order=1)
+
+    end
+end
+
+display(plot(plt_m_x...))
+
+
+
+
+
 
 
 
