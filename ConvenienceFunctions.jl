@@ -369,6 +369,19 @@ end
 ################################# BJÖRN STOPPED HERE ##################################
 
 ###### Brillouin Zone functions
+
+function compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int64}}}
+    """compute all correlations from the center_sites to all other sites of the lattice"""
+    Correlators = Array{Matrix{Rational{Int64}}}(undef, lattice.length,length(lattice.unitcell.basis));
+    Threads.@threads for jp = 1:lattice.length
+        for b = 1:length(lattice.unitcell.basis)
+        Correlators[jp,b] = mapreduce(permutedims, vcat, Calculate_Correlator_fast(LatGraph,center_sites[b],jp,max_order,gG_vec_unique,C_Dict_vec))
+        end
+    end
+    return Correlators
+end
+
+
 function brillouin_zone_cut(kmat::Union{Matrix{Tuple{Float64,Float64}},Matrix{Tuple{Float64,Float64,Float64}}},Correlators::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Matrix{Matrix{Float64}}
     """computes the fourier transform along a 2D cut through the 2D or 3D k-space
         given the Correlation Matrix computet from compute_lattice_correlations """
