@@ -2,10 +2,10 @@ using JLD2
 #using RobustPad
 #activates the environment in the folder of the current file
 
-include("../Embedding.jl")
-include("../GraphGeneration.jl")
-include("../LatticeGraphs.jl")
-include("../ConvenienceFunctions.jl") 
+include("../../Embedding.jl")
+include("../../GraphGeneration.jl")
+include("../../LatticeGraphs.jl")
+include("../../ConvenienceFunctions.jl") 
 #specify max order
 max_order = 8
 
@@ -58,17 +58,10 @@ p = Plots.heatmap(kx,ky,struc)
 
 ############# Brillouin zone path
 #1. Define a high symmetry path through the brillouin zone
+
 #---triangular
 path = [(0,0),(0,2pi/(sqrt(3))),(2pi/(3),2pi/(sqrt(3))),(0.,0.)]
 pathticks = ["Γ","M","K","Γ"]
-
-#---triangular Sherman 1
-path = [(0,2pi/(sqrt(3))),(0.001,0.001),(4pi/(3),0),(1.0*pi,pi/sqrt(3)),(2pi/(3),0),(pi/2,pi/(2*sqrt(3)))]
-pathticks = ["M","Γ","K","M","Y1","Y"]
-
-#---triangular Sherman 2
-path = [(0.1,0),(4pi/(3),0),(1.0*pi,pi/sqrt(3)),(4pi/(3),0),(0.1,0)]
-pathticks = ["Γ","K","M","K","Γ"]
 
 
 #Generate the path 
@@ -77,14 +70,14 @@ kvec,kticks_positioins = create_brillouin_zone_path(path, Nk)
 BrillPath = brillouin_zone_path(kvec,Correlators,lattice,center_sites);
 #TotalCorrelators=sum(Correlators, dims=2)
 
-Correlators[1]
 ###### S(k,w) heatmap
 using CairoMakie
 
-x = 1.6
+x = 1.4
 w_vec = collect(0.01:0.0314/2:4.0)
 JSkw_mat_total = get_JSkw_mat_finitex("total","pade",x,kvec,w_vec,0.02,2,3,200,false,Correlators,lattice,center_sites)
 
+#plotting
 fig = Figure(fontsize=25,resolution = (900,500));
 ax=Axis(fig[1,1],limits=(0,Nk+1,0,4),ylabel=L"\omega/J=w",title="Honeycomb: x="*string(x),titlesize=25,xlabelsize=25,ylabelsize=25);
 hm=CairoMakie.heatmap!(ax,[k for k in 1:Nk+1],w_vec, JSkw_mat_total,colormap=:viridis,colorrange=(0.001,0.6),highclip=:white);
@@ -99,6 +92,6 @@ CairoMakie.plot!(ax,[k for k in 1:Nk+1],sqrt(3)*disp, color = :orange, alpha = 0
 
 axislegend(ax)
 display(fig)
-lattice.unitcell.basis
+
 save("HoneycombX"*string(x)*".pdf",fig)
 

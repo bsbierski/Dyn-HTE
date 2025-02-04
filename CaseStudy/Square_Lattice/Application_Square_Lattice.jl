@@ -1,11 +1,10 @@
 using JLD2
 #using RobustPad
-#activates the environment in the folder of the current file
 
-include("../Embedding.jl")
-include("../GraphGeneration.jl")
-include("../LatticeGraphs.jl")
-include("../ConvenienceFunctions.jl") 
+include("../../Embedding.jl")
+include("../../GraphGeneration.jl")
+include("../../LatticeGraphs.jl")
+include("../../ConvenienceFunctions.jl") 
 #specify max order
 max_order = 8
 
@@ -72,21 +71,21 @@ BrillPath = brillouin_zone_path(kvec,Correlators,lattice,center_sites);
 ###### S(k,w) heatmap
 using CairoMakie
 
-x = 1.4
+x = 2.0
 w_vec = collect(0.01:0.0314/2:5.0)
-JSkw_mat = get_JSkw_mat_finitex("pade",x,kvec,w_vec,0.02,0,2,200,false,Correlators,lattice,center_sites)
+JSkw_mat = get_JSkw_mat_finitex("total","pade",x,kvec,w_vec,0.02,0,3,200,false,Correlators,lattice,center_sites)
 
 
 fig = Figure(fontsize=25,resolution = (900,500));
 ax=Axis(fig[1,1],limits=(0,Nk+1,0,5),ylabel=L"\omega/J=w",title="Square Lattice: x="*string(x),titlesize=25,xlabelsize=25,ylabelsize=25);
-hm=CairoMakie.heatmap!(ax,[k for k in 1:Nk+1],w_vec, JSkw_mat,colormap=:viridis,colorrange=(0.001,2.1),highclip=:white);
+hm=CairoMakie.heatmap!(ax,[k for k in 1:Nk+1],w_vec, JSkw_mat,colormap=:viridis,colorrange=(0.001,1.0),highclip=:white);
 ax.xticks = (kticks_positioins,pathticks)
 CairoMakie.Colorbar(fig[:, end+1], hm,size=40, label = L"J S(k,w)")
 resize_to_layout!(fig);
 display(fig)
 
 #Add T=0 QMC Data and Linear Spin Wave Theory
-@load "CaseStudy/QMC_square_T0_data.jld2" QMC_axis QMC_data
+@load "CaseStudy/Square_Lattice/QMC_square_T0_data.jld2" QMC_axis QMC_data
 disp = [sqrt(1-1/4*(cos(k[1])+cos(k[2]))^2)  for k in kvec]
 
 CairoMakie.plot!(ax,QMC_axis*(Nk+0.5),1*QMC_data, color = :pink, alpha = 0.45,label = L"T=0 \text{QMC-Gap}")
