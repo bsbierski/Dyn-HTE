@@ -87,10 +87,10 @@ function vf2(
     problemtype::GraphMorphismProblem;
     vertex_relation::F1 = identity_relation,
     edge_relation::F2 = identity_relation,
-    jL1::Int8 = Int8(0),
-    jL2::Int8 = Int8(0),
-    jG1::Int8 = Int8(0),
-    jG2::Int8 = Int8(0) 
+    jL1::Int = Int(0),
+    jL2::Int = Int(0),
+    jG1::Int = Int(0),
+    jG2::Int = Int(0) 
     ) where {F1,F2,G<:AbstractSimpleGraph}
     if nv(g1) < nv(g2) || (problemtype == IsomorphismProblem() && nv(g1) != nv(g2))
         return nothing
@@ -345,7 +345,7 @@ end
 
 Update state before recursing. Helper function for [`vf2match!`](@ref).
 """
-function vf2update_state!(state::VF2State, u::Int8, v::Int8, depth)::Nothing
+function vf2update_state!(state::VF2State, u::Int, v::Int, depth)::Nothing
     @inbounds begin
         state.core_1[u] = v
         state.core_2[v] = u
@@ -377,7 +377,7 @@ end
 
 Reset state after returning from recursion. Helper function for [`vf2match!`](@ref).
 """
-function vf2reset_state!(state::VF2State, u::Int8, v::Int8, depth)::Nothing
+function vf2reset_state!(state::VF2State, u::Int, v::Int, depth)::Nothing
     @inbounds begin
         state.core_1[u] = 0
         state.core_2[v] = 0
@@ -417,8 +417,8 @@ function vf2match!(
     vertex_relation::F1,
     edge_relation::F2,
     ) where {F1,F2}
-    n1 = Int8(nv(state.g1))
-    n2 = Int8(nv(state.g2))
+    n1 = Int(nv(state.g1))
+    n2 = Int(nv(state.g2))
     # if all vertices of G₂ are matched we call the callback function. If the
     # algorithm should look for another isomorphism then callback has to return true
     if depth > n2
@@ -429,14 +429,14 @@ function vf2match!(
     # by an edge going out of the set M(s) of already matched vertices
     found_pair = false
     v = 0
-    @inbounds for j in Int8.(1:n2)
+    @inbounds for j in Int.(1:n2)
         if state.out_2[j] != 0 && state.core_2[j] == 0
             v = j
             break
         end
     end
     if v != 0
-        @inbounds for u in Int8.(1:n1)
+        @inbounds for u in Int.(1:n1)
             if state.out_1[u] != 0 && state.core_1[u] == 0
                 found_pair = true
                 if vf2check_feasibility(
@@ -461,14 +461,14 @@ function vf2match!(
     # If that is not the case we try if there is a pair of unmatched vertices u∈G₁ v∈G₂ that
     # are connected  by an edge coming in from the set M(s) of already matched vertices
     v = 0
-    @inbounds for j in Int8.(1:n2)
+    @inbounds for j in Int.(1:n2)
         if state.in_2[j] != 0 && state.core_2[j] == 0
             v = j
             break
         end
     end
     if v != 0
-        @inbounds for u in Int8.(1:n1)
+        @inbounds for u in Int.(1:n1)
             if state.in_1[u] != 0 && state.core_1[u] == 0
                 found_pair = true
                 if vf2check_feasibility(
@@ -493,14 +493,14 @@ function vf2match!(
     # If this is also not the case, we try all pairs of vertices u∈G₁ v∈G₂ that are not
     # yet matched
     v = 0
-    @inbounds for j in Int8.(1:n2)
+    @inbounds for j in Int.(1:n2)
         if state.core_2[j] == 0
             v = j
             break
         end
     end
     if v != 0
-        @inbounds for u in Int8.(1:n1)
+        @inbounds for u in Int.(1:n1)
             if state.core_1[u] == 0
                 if vf2check_feasibility(
                     u, v, state, problemtype, vertex_relation, edge_relation
@@ -528,10 +528,10 @@ function count_subgraphisomorph(
     g2::AbstractGraph;
     vertex_relation::F1=identity_relation,
     edge_relation::F2=identity_relation,
-    jL1::Int8,
-    jL2::Int8,
-    jG1::Int8,
-    jG2::Int8
+    jL1::Int,
+    jL2::Int,
+    jG1::Int,
+    jG2::Int
     )::Int where {F1,F2}
     
 

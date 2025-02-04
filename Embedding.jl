@@ -103,7 +103,7 @@ function give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}})
             for (index,gg) in enumerate(gG_vec_order)
 
                 # find first isomorphic graph to gg that is already in the unique list. There is at most one. 
-                unique_index = findfirst(x->is_simple_isomorphic(gg,x[1]), unique_gG_vec[2])
+                unique_index = findfirst(x->is_isomorphic(gg,x[1]), unique_gG_vec[2])
                 # if there is no matching graph: add gg to list of unique graphs
                 if unique_index === nothing
                     dist = dijkstra_shortest_paths(gg.g,gg.jjp[1]).dists[gg.jjp[2]]
@@ -123,7 +123,7 @@ function give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}})
 
 end
 
-function e_fast(LL::SimpleGraph{Int64},j::Int,jp::Int,gG::GraphG,issymmetric::Bool)::Int
+function e_fast(LL::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG,issymmetric::Bool)::Int
     """
     find embedding factor e 
     - lattice L (needs to be chosen large enough to avoid boundary effects!)
