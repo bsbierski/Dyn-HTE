@@ -231,3 +231,25 @@ end
 #lattice,LatGraph,center_sites = getLattice_Ball(6,"honeycomb");
 #display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
 
+
+# Function to determine which basis site a given point corresponds to
+function find_site_basis_label(lattice)
+    function is_int_vec(vec)
+        return all(isinteger,(x->round(x; digits = 10)).(vec))
+        end
+    
+        site_basis_label = zeros(Int,lattice.length)
+        basis = collect.(lattice.unitcell.basis)
+        lattice_vectors = reduce(hcat,(collect.(lattice.unitcell.primitive)))
+
+        for (site_index,site) in enumerate(collect.(lattice.sitePositions))
+        for (i,b) in enumerate(basis)
+            fractional_coords = lattice_vectors \ (site - b)
+            if is_int_vec(fractional_coords)
+                site_basis_label[site_index] = Int(i)
+            end
+        end
+        end
+
+    return site_basis_label
+end
