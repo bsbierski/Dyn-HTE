@@ -1,4 +1,4 @@
-using Symbolics, RobustPade, Polynomials, DifferentialEquations, LsqFit
+using Symbolics, RobustPade, Polynomials, DifferentialEquations, LsqFit, TaylorSeries
 
 ###### get expansion coefficients for correlators G_ii' in real-space (dynamic-Matsubara and equal-time) 
 function get_c_iipDyn_mat(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int64}}}
@@ -32,6 +32,7 @@ function get_c_iipEqualTime_mat(GiipDyn_mat::Matrix{Matrix{Rational{Int64}}},max
 end
 
 
+
 ###### bare series polynomial in Gii'(x,m) at Matsubara integer m truncated at n 
 function get_TGiip_m_bare(c_iipDyn_mat::Matrix{Matrix{Rational{Int64}}},m::Int,n::Int)::Matrix{Polynomial}
     TGiip_bare = Array{Polynomial}(undef, lattice.length,length(lattice.unitcell.basis));
@@ -62,11 +63,11 @@ end
 function get_intDiffApprox(p::Polynomial,x_vec::Vector{Float64},M::Int,L::Int,N::Int)
     """ Integrated differential approximant, setup of the ODE and return solution at x_vec """
     @assert M+L+N+2 <= Polynomials.degree(p)
-    pp= derivative(p)
+    pp= Polynomials.derivative(p)
     @variables x
 
     f = Symbolics.series(p.coeffs,x)
-    fp = Symbolics.series(pp.coeffs,x)
+    fp =Symbolics.series(pp.coeffs,x)
 
     cs, = @variables c[1:(M+L+N+2)]
     Q = Symbolics.series([c[k] for k in 1:M+1],x)
@@ -145,6 +146,8 @@ function get_c_kDyn_mat(kvec,c_iipDyn_mat::Array{Matrix{Rational{Int64}}},lattic
     return BrillPath
 end
 
+
+
 ###### moments, continued fractions and dynamical spin structure factors
 function get_moments_from_c_kDyn_mat(c_kDyn_mat::Matrix{Float64})
     """ get the moments m(0),m(2)),m(4),...,m(2r_max) from the coefficients c_kDyn
@@ -215,10 +218,43 @@ function fromMomentsToδ(m_vec::Vector{Float64})
     return δ_vec , 1.0*collect(0:length(δ_vec)-1)
 end
 
+
+function fromMomentsToδ(m_vec::Vector{Polynomial{Float64, :x}})
+    @assert length(m_vec)<=7
+
+    m_vec_pad = 1*m_vec
+    while length(m_vec_pad)<7
+        append!(m_vec_pad,0.0)
+    end
+    m0,m2,m4,m6,m8,m10,m12 =m_vec_pad
+
+    δ0 = m0
+    
+    δ1 = (m2//m0)
+    
+    δ2 = m4//m2-m2//m0
+    
+    δ3 = -(m0*(-m4^2 + m2*m6))//(m2^3 - m0*m2*m4)
+    
+    δ4 = ((m2*(m4^3 + m0*m6^2 + m2^2*m8 - m4*(2*m2*m6 + m0*m8)))//((m2^2 - m0*m4)*(-m4^2 + m2*m6)))
+    
+    δ5 = -(((m2^2 - m0*m4)*(-m6^3 + 2*m4*m6*m8 - m2*m8^2 + (-m4^2 + m2*m6)*m10))
+    //((m4^2 - m2*m6)*(m4^3 + m0*m6^2 + m2^2*m8 - m4*(2*m2*m6 + m0*m8))))
+    
+    δ6 = (((m4^2 - m2*m6)*(-m6^4 - m4^2*m8^2 + m0*m8^3 + 2*m2*m4*m8*m10 - m2^2*m10^2 + m0*m4*m10^2 + (m4^3 + (m2^2 - m0*m4)*m8)*m12 + m6^2*(3*m4*m8 + 2*m2*m10 + m0*m12) 
+    - 2*m6*((m4^2 + m0*m8)*m10 + m2*(m8^2 + m4*m12))))
+    //((m4^3 + m0*m6^2 + m2^2*m8 - m4*(2*m2*m6 + m0*m8))*(m6^3 - 2*m4*m6*m8 + m2*m8^2 + (m4^2 - m2*m6)*m10)))
+    
+
+    δ_vec = [δ0,δ1,δ2,δ3,δ4,δ5,δ6][1:length(m_vec)]
+    return δ_vec
+end
+
+
 function contFrac(s::Number,δ_vec::Vector{Float64})::Number
     """ continued fraction in variable s using δ_vec=[δ0,δ1,...,δr] and r-pole termination time τ"""
     if length(δ_vec)==1
-        return δ_vec[1]^0.5
+        return  δ_vec[1]^0.5
     else
         return δ_vec[1]/(s+contFrac(s,δ_vec[2:end]))
     end
@@ -251,7 +287,7 @@ function JS(δ_vec::Vector{Float64},x::Float64,w::Float64,η::Float64)::Float64
     if x==0.0 || w==0.0
         return res
     else
-        return x * w / (1 - exp(-x * w)) * res
+        return  x * w * 1/ (1 - exp(-x * w)) * res
     end
 end 
 
@@ -275,24 +311,24 @@ function get_JSkw_mat_x0(k_vec::Vector,w_vec::Vector{Float64},η::Float64,r_min:
 end
 
 
-
-function get_JSkw_mat_finitex(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},η::Float64,r_min::Int,r_max::Int,r_ext::Int,intercept0::Bool,c_iipDyn_mat::Array{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)
+function get_JSkw_mat_finitex(diag_off_diag_flag,method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},η::Float64,r_min::Int,r_max::Int,r_ext::Int,intercept0::Bool,c_iipDyn_mat::Array{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)
     JSkw_mat = 1.0*zeros(length(k_vec),length(w_vec))
+    max_order = Int((size(c_iipDyn_mat[1])[1]-1))
 
     for (k_pos,k) in enumerate(k_vec)
         println(k_pos,"/",length(k_vec))
-        c_kDyn_mat = get_c_kDyn_mat([k],c_iipDyn_mat,lattice,center_sites)[1]
-        m_vec = get_moments_from_c_kDyn_mat(c_kDyn_mat)[1:7]
+        c_kDyn_mat = get_c_kDyn_mat([k],c_iipDyn_mat,lattice,center_sites,diag_off_diag_flag)[1]
+        m_vec = get_moments_from_c_kDyn_mat(c_kDyn_mat)[1:1+Int(max_order/2)]
 
         ###PADE
         if method=="pade"
             m_vec_extrapolated_pade = []
             for m_idx=1:length(m_vec)
-                push!(m_vec_extrapolated_pade, get_pade(m_vec[m_idx],7-m_idx,7-m_idx))
+                push!(m_vec_extrapolated_pade, get_pade(m_vec[m_idx],1+Int(max_order/2)-m_idx,1+Int(max_order/2)-m_idx))
             end
             δ_vec,r_vec = fromMomentsToδ([m(x) for m in m_vec_extrapolated_pade])
         
-            #println("Delta_vec (pade) for "*string(k)*"is:",δ_vec)
+            println("Delta_vec (pade) for "*string(k)*"is:",δ_vec)
         end
 
         ###IDA
@@ -360,12 +396,6 @@ function get_JSkw_mat_finitex(method::String,x::Float64,k_vec::Vector,w_vec::Vec
 end
 
 
-
-
-
-
-
-
 ################################# BJÖRN STOPPED HERE ##################################
 
 ###### Brillouin Zone functions
@@ -419,92 +449,78 @@ function brillouin_zone_path(kvec,Correlators::Matrix{Matrix{Rational{Int64}}},l
     return BrillPath
 end
 
-#### evaluation functions
-function eval_correlator_LR_continuous_pad(Correlator,ω,JoverT,pade_order)
-    """evaluate the correlator for real frequencies by first fitting it to a continued fraction that preserves the continuity relation """
-    orderJ,orderω = size(Correlator)
-
-    @variables x
-    δ = 0.1
-    cs = [ x-> sum([Correlator[i,n]*x^(i-1) for i =  1:orderJ#= (1+max_order) =#]) for n = 2:orderω]
-    Gs = x-> sum(Correlator[i,1]*x^(i-1) for i =  1:orderJ) #static correlator
- 
-    #pade aprpox
-
-    cs_pad = [robustpade(c,8,0) for c in cs]
-    Gs_pad = robustpade(Gs,pade_order[1],pade_order[2])
-
-    c = [cf(JoverT) for cf in cs_pad]
-    G = Gs_pad(JoverT)
-    return  c[1] / (-(JoverT*(ω + 1im*δ))^2 - c[2]/c[1] - (-c[2]^2 + c[1]*c[3]) /
-            (c[1]^2 * (-(JoverT*(ω + 1im*δ))^2 + (G * (c[2]^2 - c[1]*c[3])) /
-            (c[1]^3 + G*c[1]*c[2]))))
-end
-
-
-
-#= 
-### this function is unstable
- function eval_correlator_LR_continuous_pad(Correlator,ω,JoverT,pade_order)
-    orderJ,orderω = size(Correlator)
-
-    @variables x
-    δ = 0.3
-    cs = [ x-> sum([Correlator[i,n]*x^(i-1) for i =  1:orderJ#= (1+max_order) =#]) for n = 2:orderω]
-    Gs = x-> sum(Correlator[i,1]*x^(i-1) for i =  1:orderJ) #static correlator
-
-    #pade aprpox
-
-    cs_pad = [robustpade(c,pade_order[1],pade_order[2]) for c in cs]
-    Gs_pad = robustpade(Gs,pade_order[1],pade_order[2])
-
-    c = [cf(JoverT) for cf in cs]
-    G = Gs_pad(JoverT)
-    numerator = c[1]
-    denominator = (1im*JoverT*(ω + 1im*δ))^2 - c[2]/c[1] - (-c[2]^2 + c[1]*c[3]) / 
-    (c[1]^2 * ((1im*JoverT*(ω + 1im*δ))^2 + (-c[2]^3 + 2*c[1]*c[2]*c[3] - c[1]^2*c[4]) / 
-    (c[1]*(-c[2]^2 + c[1]*c[3])) - 
-    (c[1] * (-c[3]^3 + 2*c[2]*c[3]*c[4] - c[1]*c[4]^2 - c[2]^2*c[5] + 
-    c[1]*c[3]*c[5])) / 
-    ((c[2]^2 - c[1]*c[3])^2 * ((1im*JoverT*(ω + 1im*δ))^2 + 
-    (c[1]*(c[1] + (G*c[2])/c[1]) * 
-    (-c[3]^3 + 2*c[2]*c[3]*c[4] - c[1]*c[4]^2 - c[2]^2*c[5] + c[1]*c[3]*c[5])) / 
-    ((c[2]^2 - c[1]*c[3])^2 * 
-    ((G*(-c[2]^2 + c[1]*c[3]))/c[1]^2 + 
-    (-c[2]^3 + 2*c[1]*c[2]*c[3] - c[1]^2*c[4])/(-c[2]^2 + c[1]*c[3]) + 
-    (G*c[2]*(-c[2]^3 + 2*c[1]*c[2]*c[3] - c[1]^2*c[4])) / 
-    (c[1]^2*(-c[2]^2 + c[1]*c[3]))))))))
-
-    return numerator / denominator
-
-end
-=#
- 
- 
-function eval_correlator_LR_continuous_pad_Mats(Correlator,ω,X,pade_order)
+function eval_correlator_LR_continuous_pad(Correlator,X,pade_order)
     """evaluate the correlator for imaginary frequencies by first fitting it to a continued fraction that preserves the continuity relation"""
     orderJ,orderω = size(Correlator)
-
     @variables x
-    cs = [ x-> sum([Correlator[i,n]*x^(i-1) for i =  1:orderJ#= (1+max_order) =#]) for n = 2:orderω]
     Gs = x-> sum(Correlator[i,1]*x^(i-1) for i =  1:orderJ) #static correlator
  
-    #pade aprpox
-
-    cs_pad = [robustpade(c,orderJ-1,0) for c in cs]
     Gs_pad = robustpade(Gs,pade_order[1],pade_order[2])
 
-    c = [cf(X) for cf in cs_pad]
     G = Gs_pad(X)
 
-    if ω ==0 
-        return G
-    end
-    
-    return  c[1] / (-(1im*ω)^2 - c[2]/c[1] - (-c[2]^2 + c[1]*c[3]) /
-            (c[1]^2 * (-(1im*ω)^2 + (G * (c[2]^2 - c[1]*c[3])) /
-            (c[1]^3 + G*c[1]*c[2]))))
+    return G
+   
 end
  
 
 
+function fourier_transform(k,Correlators::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Matrix{Matrix{ComplexF64}}
+    """computes the fourier transform along a 2D cut through the 2D or 3D k-space
+        given the Correlation Matrix computet from compute_lattice_correlations """
+   
+    basis_size = length(lattice.unitcell.basis)
+    label = find_site_basis_label(lattice)
+
+
+    structurefactor = Array{Matrix{ComplexF64}}(undef, basis_size,basis_size);
+            
+            # Compute Fourier transformation at momentum (kx, ky). The real-space position of the i-th spin is obtained via getSitePosition(lattice,i). 
+            for b1 in 1:basis_size
+                for b2 in 1:basis_size
+                
+                    z = zeros(size(Correlators[1]))
+
+                #find all indices that correspond to basis b2
+                indexlist = findall(x->x==b2,label)
+
+                # calculate correlator between the center site of b1 and all sites of b2 
+                for index in indexlist
+                    z += exp(1im*dot(k, getSitePosition(lattice,index).-getSitePosition(lattice,center_sites[b1]))) *  Correlators[index,b1]
+                end
+                structurefactor[b1,b2] = z
+                end
+
+             end
+
+    return structurefactor
+end
+
+function get_c_kDyn_mat(kvec,c_iipDyn_mat::Array{Matrix{Rational{Int64}}},lattice::Lattice,center_sites,diag_off_diag_flag::String)::Vector{Matrix{Float64}}
+    """computes the expansion coefficients c_k for the k-points in k_vec """
+    BrillPath = Array{Matrix{Float64}}(undef,length(kvec));
+
+    label = find_site_basis_label(lattice)
+
+    for i in eachindex(kvec)
+        z = zeros(size(c_iipDyn_mat[1]))
+        # Compute Fourier transformation at momentum k. The real-space position of the i-th spin is obtained via getSitePosition(lattice,i). 
+        for b in 1:length(lattice.unitcell.basis)
+
+            if diag_off_diag_flag == "total"
+                indexlist = 1:length(lattice)
+            elseif diag_off_diag_flag == "diag"
+                indexlist = findall(x->x ==b,label)
+            elseif diag_off_diag_flag == "off"
+                indexlist = findall(x->x !=b,label)
+   
+            end
+
+            for k in indexlist
+                z += cos(dot(kvec[i],getSitePosition(lattice,k).-getSitePosition(lattice,center_sites[b]))) *  c_iipDyn_mat[k,b]
+            end
+        end
+        BrillPath[i] = z 
+    end
+    return BrillPath
+end

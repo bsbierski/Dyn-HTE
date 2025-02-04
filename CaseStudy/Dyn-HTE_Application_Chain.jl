@@ -315,7 +315,7 @@ using CairoMakie
 x = 1.024
 k_vec = [(k,0.0) for k in 0.01:0.0039*1.2:(2*π-0.01)]
 w_vec = collect(-3.0:0.0314*1.2:3.0)
-JSkw_mat = get_JSkw_mat_finitex("pade",x,k_vec,w_vec,0.01,3,4,1000,false,c_iipDyn_mat,lattice,center_sites)
+JSkw_mat = get_JSkw_mat_finitex("total","pade",x,k_vec,w_vec,0.01,3,4,1000,false,c_iipDyn_mat,lattice,center_sites)
 
 
 fig = Figure(size=(400,400),fontsize=25)
@@ -543,11 +543,11 @@ for (x_index,x) in enumerate(betas)
     end
 
 
-    JSkw_mat_pade = get_JSkw_mat_finitex("pade",x,k_slice_values,w_vec,0.01,moments[x_index][1],moments[x_index][2],3000,false,c_iipDyn_mat,lattice,center_sites)
+    JSkw_mat_pade = get_JSkw_mat_finitex("total","pade",x,k_slice_values,w_vec,0.01,moments[x_index][1],moments[x_index][2],3000,false,c_iipDyn_mat,lattice,center_sites)
 
-    #JSkw_mat_ida = get_JSkw_mat_finitex("ida",x,k_slice_values,w_vec,0.01,2,3,2000,false,c_iipDyn_mat,lattice,center_sites)
+    #JSkw_mat_ida = get_JSkw_mat_finitex("total","ida",x,k_slice_values,w_vec,0.01,2,3,2000,false,c_iipDyn_mat,lattice,center_sites)
 
-    #JSkw_mat_directdelta = get_JSkw_mat_finitex("directdelta",x,k_slice_values,w_vec,0.01,2,3,2000,false,c_iipDyn_mat,lattice,center_sites)
+    #JSkw_mat_directdelta = get_JSkw_mat_finitex("total","directdelta",x,k_slice_values,w_vec,0.01,2,3,2000,false,c_iipDyn_mat,lattice,center_sites)
 
 
 
