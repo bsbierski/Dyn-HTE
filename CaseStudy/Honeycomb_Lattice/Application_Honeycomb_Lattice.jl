@@ -23,7 +23,7 @@ C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1)
    
 #load dictionaries of all lower orders C_Dict_vec 
 for ord = 0:max_order
-    C_Dict_vec[ord+1]  = load_object("GraphFiles/GraphG_Lists/C_"*string(ord)*".jld2")
+    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
 end 
 #-----------------------------------
 

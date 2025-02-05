@@ -10,7 +10,7 @@ include("GraphGeneration.jl")
 include("LatticeGraphs.jl")
 include("ConvenienceFunctions.jl") 
 #specify max order
-max_order = 10
+max_order = 4
 
 #LOAD FILES 
 #-------------------------------------------------------------------------------------
@@ -26,19 +26,18 @@ C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1)
    
 #load dictionaries of all lower orders C_Dict_vec 
 for ord = 0:max_order
-    C_Dict_vec[ord+1]  = load_object("GraphFiles/GraphG_Lists/C_"*string(ord)*".jld2")
+    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
 end 
 #-----------------------------------
 
 #1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
 L = 4
-lattice,LatGraph,center_sites = getLattice_Ball(L,"honeycomb");
-#display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
+lattice,LatGraph,center_sites = getLattice_Ball(L,"kagome");
+display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
 
 #2.Compute all correlations in the lattice
 Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
 
-fourier_transform((1.0*pi,1pi),Correlators,lattice,center_sites)[2,1]
 #3. Fourier Transform
 
 
