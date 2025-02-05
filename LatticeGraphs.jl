@@ -26,6 +26,7 @@ function getLattice(L::Int,geometry::String; PBC::Bool = true)
         - triang
         - honeycomb
         - pyrochlore
+        - kagome
     """
     if geometry == "chain" ### chain lattice
         a1 = (1, 0)
@@ -74,6 +75,27 @@ function getLattice(L::Int,geometry::String; PBC::Bool = true)
         addInteraction!(uc, b1, b2, (0, 0))
         addInteraction!(uc, b1, b2, (0, -1))
         addInteraction!(uc, b1, b2, (-1, 0))
+
+        l = (L, L)
+        
+    elseif geometry == "kagome" ### Honeycomb lattice
+        a1 = (1, sqrt(3))
+        a2 = (1, -sqrt(3))
+        uc = UnitCell(a1,a2)
+
+        b1 = addBasisSite!(uc, (0.0, 0.0))
+        b2 = addBasisSite!(uc, -1/2 .* a1)
+        b3 = addBasisSite!(uc, 1/2 .* a2)
+
+        addInteraction!(uc, b1, b2, (0, 0))
+        addInteraction!(uc, b1, b3, (0, 0))
+        addInteraction!(uc, b1, b2, (1, 0))
+        addInteraction!(uc, b1, b3, (0, -1))
+
+        addInteraction!(uc, b3, b2, (0, 0))
+        addInteraction!(uc, b3, b2, (1, 1))
+
+        
 
         l = (L, L)
 
