@@ -123,7 +123,7 @@ function give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}})
 
 end
 
-function e_fast(LL::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG,issymmetric::Bool)::Int
+function e_fast(LL::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
     """
     find embedding factor e 
     - lattice L (needs to be chosen large enough to avoid boundary effects!)
@@ -132,13 +132,9 @@ function e_fast(LL::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG,issymmetric::Bool
 
     assumes that the distance j-jp is smaller or equal to the distance of external vertices of gG
     """
-    fac = 2
-    if  issymmetric
-        fac = 1
-    end
 
     numSubIsos = count_subgraphisomorph(LL,gG.g,jL1 = j,jL2 = jp,jG1 = gG.jjp[1],jG2 = gG.jjp[2])
-    return numSubIsos*fac 
+    return numSubIsos 
 end
 
 function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order::Int,gG_vec_unique::Vector{Any},C_Dict_vec::Vector{Vector{Vector{Rational{Int64}}}})::Vector{Vector{Rational{Int64}}}
@@ -157,45 +153,53 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
 
     # only iterate over the unique simple graphs in unique_Gg
     for unique_Gg in gG_vec_unique[2]
+        gg = unique_Gg[1]   #Graph
+        gg_dist = unique_Gg[3] #edge distance between the external vertices
+          # if the graph is long enough
+          if gg_dist < ext_dist 
+            continue
+        end
 
+        #if its the onsite correlator we only need on-site graphs 
+        if ext_dist == 0
+            if gg_dist > ext_dist 
+                continue
+            end
+        else #if not, we dont need any on site graphs
+            if gg_dist == 0 
+                continue
+            end
+        end
+
+        #calculate the embedding factor
+        emb_fac = e_fast(L,ext_j1,ext_j2,gg)
+
+        
+
+        #### now we sum overall graphG eqivalent to the unique Gg
         for gG_idx in eachindex(unique_Gg[2])
-            gg = unique_Gg[1]   #Graph
             g_order = unique_Gg[2][gG_idx][1] #order
             gG_vec_index = unique_Gg[2][gG_idx][2] #index
             symmetry_factor = unique_Gg[2][gG_idx][3] #symmetry factor
             issymmetric = Bool(unique_Gg[2][gG_idx][4])  #bool if the graph is symmetric
-            gg_dist = unique_Gg[3] #edge distance between the external vertices
-
-            #### now we sum over all graphG
-            
-            # if the graph is long enough
-            if gg_dist < ext_dist 
-                continue
-            end
-
-            #if its the onsite correlator we only need on-site graphs 
-            if ext_dist == 0
-                if gg_dist > ext_dist 
-                    continue
-                end
-            else #if not, we dont need any on site graphs
-                if gg_dist == 0 
-                    continue
-                end
-            end
+           
+            fac = 2
+        if  issymmetric
+            fac = 1
+        end
 
             #look up the value of the graph from C_Dict_vec
             look_up_dict =C_Dict_vec[g_order+1][gG_vec_index]
 
-            #calculate the embedding factor
-            emb_fac = e_fast(L,ext_j1,ext_j2,gg,issymmetric)
             
-            result_array[g_order+1] .+= look_up_dict*emb_fac/symmetry_factor
+            
+            result_array[g_order+1] .+= look_up_dict*emb_fac/symmetry_factor*fac
         end
     end
 
     return result_array
 end
+
 
 
 ###### LEGACY FUNCTIONS
