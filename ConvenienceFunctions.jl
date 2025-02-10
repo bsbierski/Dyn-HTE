@@ -141,8 +141,11 @@ function get_c_kDyn_mat(kvec,c_iipDyn_mat::Array{Matrix{Rational{Int64}}},lattic
                 z += cos(dot(kvec[i],getSitePosition(lattice,k).-getSitePosition(lattice,center_sites[b]))) *  c_iipDyn_mat[k,b]
             end
         end
+        z[z< 10^(-14)] .= 0
         BrillPath[i] = z 
     end
+    
+
     return BrillPath
 end
 
@@ -254,7 +257,7 @@ end
 function contFrac(s::Number,δ_vec::Vector{Float64})::Number
     """ continued fraction in variable s using δ_vec=[δ0,δ1,...,δr] and r-pole termination time τ"""
     if length(δ_vec)==1
-        return  δ_vec[1]^0.5
+        return  abs(δ_vec[1])^0.5
     else
         return δ_vec[1]/(s+contFrac(s,δ_vec[2:end]))
     end
@@ -316,32 +319,31 @@ function get_JSkw_mat_finitex(diag_off_diag_flag,method::String,x::Float64,k_vec
     max_order = Int((size(c_iipDyn_mat[1])[1]-1))
 
     for (k_pos,k) in enumerate(k_vec)
-        println(k_pos,"/",length(k_vec))
+        #println(k_pos,"/",length(k_vec))
         c_kDyn_mat = get_c_kDyn_mat([k],c_iipDyn_mat,lattice,center_sites,diag_off_diag_flag)[1]
-        m_vec = get_moments_from_c_kDyn_mat(c_kDyn_mat)[1:1+Int(max_order/2)]
+        m_vec = get_moments_from_c_kDyn_mat(c_kDyn_mat)[1:1+Int(floor(max_order/2))]
 
         ###PADE
         if method=="pade"
-            m_vec_extrapolated_pade = []
+            m_vec_extrapolated_pade = Array{Any}(undef,length(m_vec))
             for m_idx=1:length(m_vec)
-                push!(m_vec_extrapolated_pade, get_pade(m_vec[m_idx],1+Int(max_order/2)-m_idx,1+Int(max_order/2)-m_idx))
+                m_vec_extrapolated_pade[m_idx] = get_pade(m_vec[m_idx],1+Int(floor(max_order/2))-m_idx,1+Int(floor(max_order/2))-m_idx)
             end
             δ_vec,r_vec = fromMomentsToδ([m(x) for m in m_vec_extrapolated_pade])
-        
-            println("Delta_vec (pade) for "*string(k)*"is:",δ_vec)
+          # println("Delta_vec (pade) for "*string(k)*"is:",δ_vec)
         end
 
         ###IDA
         if method =="ida"
             int_step_size = 0.01
             m_vec_extrapolated_ida = []
-            for m_idx=1:4
+            for m_idx=1:2
                 for idx=0:length(m_vec[m_idx])-1
                     if abs(m_vec[m_idx][idx])< 0.0000000001
                         m_vec[m_idx][idx] =0
                     end
                 end
-                IDA_parameters=[2,4+1-m_idx,4+1-m_idx] 
+                IDA_parameters=[2,3-m_idx,3-m_idx] 
                 IDA_approximant = get_intDiffApprox(m_vec[m_idx],collect(0:int_step_size:x+0.5),IDA_parameters[1],IDA_parameters[2],IDA_parameters[3])
                 push!(m_vec_extrapolated_ida, Float64(IDA_approximant[round(Integer,1+1/int_step_size*x)]))
             end
@@ -359,7 +361,7 @@ function get_JSkw_mat_finitex(diag_off_diag_flag,method::String,x::Float64,k_vec
 
             δ_vec = zeros(length(m_vec))
 
-            for m_idx=1:4
+            for m_idx=1:2
                 t = Taylor1(2*length(m_vec)-2)
                 taylor_exp = δ_vec_raw[m_idx](t)
                 taylor_coefficients = [taylor_exp[i] for i=0:length(taylor_exp)-1]
@@ -368,7 +370,7 @@ function get_JSkw_mat_finitex(diag_off_diag_flag,method::String,x::Float64,k_vec
                 
                 #IDA extrapolation
                 int_step_size = 0.01
-                IDA_parameters=[2,5-m_idx,5-m_idx] 
+                IDA_parameters=[2,3-m_idx,3-m_idx] 
                 #println(taylor_poly)
 
                 #println("m=",m_idx)
@@ -387,7 +389,7 @@ function get_JSkw_mat_finitex(diag_off_diag_flag,method::String,x::Float64,k_vec
         ###Now extrapolte deltas
         δ_vec_ext = extrapolate_δvec(δ_vec,r_min,r_max,r_ext,intercept0)
 
-        JSkw_mat[k_pos,:] = [JS(δ_vec_ext ,x,w,η) for w in w_vec]
+        JSkw_mat[k_pos,:] .= [JS(δ_vec_ext ,x,w,η) for w in w_vec]
 
         
     end
@@ -462,7 +464,6 @@ function eval_correlator_LR_continuous_pad(Correlator,X,pade_order)
     return G
    
 end
- 
 
 
 function fourier_transform(k,Correlators::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Matrix{Matrix{ComplexF64}}
@@ -520,6 +521,7 @@ function get_c_kDyn_mat(kvec,c_iipDyn_mat::Array{Matrix{Rational{Int64}}},lattic
                 z += cos(dot(kvec[i],getSitePosition(lattice,k).-getSitePosition(lattice,center_sites[b]))) *  c_iipDyn_mat[k,b]
             end
         end
+        z[abs.(z) .< 10^(-14)] .= 0
         BrillPath[i] = z 
     end
     return BrillPath

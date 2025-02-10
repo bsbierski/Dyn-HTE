@@ -7,14 +7,14 @@ include("../../GraphGeneration.jl")
 include("../../LatticeGraphs.jl")
 include("../../ConvenienceFunctions.jl") 
 #specify max order
-max_order = 8
+max_order = 11
 
 #LOAD FILES 
 #-------------------------------------------------------------------------------------
 
 #generate list of graphs
 graphs_vec = [load_object("GraphFiles/graphs_"*string(nn)*".jld2") for nn in 0:max_order];
-gG_vec = getGraphsG(graphs_vec);
+gG_vec = vcat(getGraphsG([graphs_vec[1]]), [load_object("GraphFiles/graphsG_"*string(nn)*".jld2") for nn in 1:max_order]);
 ## identify which gG have the same underlying simple-graph structure. Precalculate Symmetry factors. 
 gG_vec_unique = give_unique_gG_vec(gG_vec);
 
@@ -33,7 +33,8 @@ lattice,LatGraph,center_sites = getLattice_Ball(L,"honeycomb");
 display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
 
 #2.Compute all correlations in the lattice
-Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
+#@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
+@load "CaseStudy/Honeycomb_Lattice/Correlation_Data_L11.jld2" Correlators
 
 
 
@@ -48,8 +49,8 @@ kmat = [(y,x) for x in kx, y in ky ]
 structurefactor =  brillouin_zone_cut(kmat,Correlators,lattice,center_sites);
 
 ### Evaluate the correlators at a frequency and plot the 2D Brillouin zone cut
-x = -1.5
-padetype = [4,4]
+x = -2.5
+padetype = [5,6]
 evaluate(y) = eval_correlator_LR_continuous_pad(y, x, padetype); #define evaluation function
 struc = real.(evaluate.(structurefactor));
 p = Plots.heatmap(kx,ky,struc)
@@ -60,7 +61,7 @@ p = Plots.heatmap(kx,ky,struc)
 #1. Define a high symmetry path through the brillouin zone
 
 #---triangular
-path = [(0,0),(0,2pi/(sqrt(3))),(2pi/(3),2pi/(sqrt(3))),(0.,0.)]
+path = [(0.01,0.01),(0,2pi/(sqrt(3))),(2pi/(3),2pi/(sqrt(3))),(0.01,0.01)]
 pathticks = ["Γ","M","K","Γ"]
 
 
@@ -73,9 +74,9 @@ BrillPath = brillouin_zone_path(kvec,Correlators,lattice,center_sites);
 ###### S(k,w) heatmap
 using CairoMakie
 
-x = 1.4
+x = 2.0
 w_vec = collect(0.01:0.0314/2:4.0)
-JSkw_mat_total = get_JSkw_mat_finitex("total","pade",x,kvec,w_vec,0.02,2,3,200,false,Correlators,lattice,center_sites)
+JSkw_mat_total = get_JSkw_mat_finitex("total","pade",x,kvec,w_vec,0.02,1,3,200,false,Correlators,lattice,center_sites)
 
 #plotting
 fig = Figure(fontsize=25,resolution = (900,500));
@@ -94,4 +95,4 @@ axislegend(ax)
 display(fig)
 
 save("HoneycombX"*string(x)*".pdf",fig)
-
+get_pade(m_vec[m_idx],1+Int(floor(max_order/2))-m_idx,1+Int(floor(max_order/2))-m_idx)
