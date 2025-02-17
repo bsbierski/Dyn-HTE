@@ -6,20 +6,15 @@ include("../../GraphGeneration.jl")
 include("../../LatticeGraphs.jl")
 include("../../ConvenienceFunctions.jl") 
 #specify max order
-max_order = 11
+max_order = 10
 
 #LOAD FILES 
 #-------------------------------------------------------------------------------------
-
-#generate list of graphs
-graphs_vec = [load_object("GraphFiles/graphs_"*string(nn)*".jld2") for nn in 0:max_order];
-gG_vec = vcat(getGraphsG([graphs_vec[1]]), [load_object("GraphFiles/graphsG_"*string(nn)*".jld2") for nn in 1:max_order]);
-## identify which gG have the same underlying simple-graph structure. Precalculate Symmetry factors. 
-gG_vec_unique = give_unique_gG_vec(gG_vec);
+#load list of unique graphs
+gG_vec_unique = give_unique_gG_vec(max_order);
 
 #create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) 
-   
+C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) ;
 #load dictionaries of all lower orders C_Dict_vec 
 for ord = 0:max_order
     C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
@@ -32,7 +27,7 @@ lattice,LatGraph,center_sites = getLattice_Ball(L,"triang");
 display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
 
 #2.Compute all correlations in the lattice
-#@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
+@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
 @load "CaseStudy/Triang_Lattice/Correlation_Data_L11.jld2" Correlators
 
 #check the susceptibility with 10.1103/PhysRevB.53.14228
@@ -98,6 +93,8 @@ Nk = 100
 kvec,kticks_positioins = create_brillouin_zone_path(path, Nk)
 BrillPath = brillouin_zone_path(kvec,Correlators,lattice,center_sites);
 
+
+
 ###### S(k,w) heatmap
 using CairoMakie
 
@@ -148,12 +145,12 @@ path = [(0,0),(2pi/(3),2pi/(sqrt(3))),(0,2pi/(sqrt(3))),(0.,0.)]
 pathticks = ["Γ","K","M","Γ"]
 
 BrillPath[60][:,1]
-
+Correlators[199][:,1]
 #Generate the path 
 Nk = 100;
 kvec,kticks_positioins = create_brillouin_zone_path(path, Nk);
 BrillPath = brillouin_zone_path(kvec,Correlators,lattice,center_sites);
-
+BrillPath[38][:,1]
 #Plot the path
 Tvec = [2.0,1.0,0.5,0.375];
 padetypes = [[5,6],[6,4],[4,6],[5,5]];

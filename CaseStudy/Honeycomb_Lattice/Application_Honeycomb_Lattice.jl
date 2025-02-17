@@ -11,16 +11,11 @@ max_order = 11
 
 #LOAD FILES 
 #-------------------------------------------------------------------------------------
-
-#generate list of graphs
-graphs_vec = [load_object("GraphFiles/graphs_"*string(nn)*".jld2") for nn in 0:max_order];
-gG_vec = vcat(getGraphsG([graphs_vec[1]]), [load_object("GraphFiles/graphsG_"*string(nn)*".jld2") for nn in 1:max_order]);
-## identify which gG have the same underlying simple-graph structure. Precalculate Symmetry factors. 
-gG_vec_unique = give_unique_gG_vec(gG_vec);
+#load list of unique graphs
+gG_vec_unique = give_unique_gG_vec(max_order);
 
 #create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) 
-   
+C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) ;
 #load dictionaries of all lower orders C_Dict_vec 
 for ord = 0:max_order
     C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")

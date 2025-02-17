@@ -2,7 +2,6 @@ using JLD2
 #using RobustPad
 
 include("../../Embedding.jl")
-include("../../GraphGeneration.jl")
 include("../../LatticeGraphs.jl")
 include("../../ConvenienceFunctions.jl") 
 #specify max order
@@ -10,16 +9,11 @@ max_order = 11
 
 #LOAD FILES 
 #-------------------------------------------------------------------------------------
-
-#generate list of graphs
-graphs_vec = [load_object("GraphFiles/graphs_"*string(nn)*".jld2") for nn in 0:max_order];
-gG_vec = vcat(getGraphsG([graphs_vec[1]]), [load_object("GraphFiles/graphsG_"*string(nn)*".jld2") for nn in 1:max_order]);
-## identify which gG have the same underlying simple-graph structure. Precalculate Symmetry factors. 
-gG_vec_unique = give_unique_gG_vec(gG_vec);
+#load list of unique graphs
+gG_vec_unique = give_unique_gG_vec(max_order);
 
 #create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) 
-   
+C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) ;
 #load dictionaries of all lower orders C_Dict_vec 
 for ord = 0:max_order
     C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
@@ -33,7 +27,7 @@ display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodesh
 
 #2.Compute or load all correlations in the lattice
 #@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
-@load "CaseStudy/Square_Lattice/Correlation_Data_L11.jld2" Correlators
+@load "CaseStudy/Square_Lattice/Correlation_Data_L12.jld2" Correlators
 
 #check the susceptibility with 10.1103/PhysRevB.53.14228
 (brillouin_zone_cut([(0.0,0.0) (0.0,0.0) ;(0.0,0.0)  (0.0,0.0)],Correlators,lattice,center_sites)[1]*4)[:,1].*[factorial(n)*4^n for n in 0:max_order]
@@ -50,9 +44,9 @@ kmat = [(y,x) for x in kx, y in ky ]
 structurefactor =  brillouin_zone_cut(kmat,Correlators,lattice,center_sites);
 
 ### Evaluate the correlators at a frequency and plot the 2D Brillouin zone cut
-x = 2.2
-padetype = [4,4]
-evaluate(y) = eval_correlator_LR_continuous_pad_Tanh(y, x, padetype); #define evaluation function
+x = 4.2
+padetype = [5,6]
+evaluate(y) = eval_correlator_LR_continuous_pad(y, x, padetype); #define evaluation function
 struc = real.(evaluate.(structurefactor));
 p = Plots.heatmap(kx,ky,struc,clims=(0,1.))
 
@@ -70,6 +64,7 @@ for  j = 1:N
     struc[i,j,:] .=  get_JSkw_mat_finitex("total","pade",x,[[kx[i],kx[j]]],w_vec,0.02,1,3,200,false,Correlators,lattice,center_sites)[1,:]
 end
 end
+#calculate the integral identity
 4*sum(struc)*((maximum(w_vec)-minimum(w_vec))/length(w_vec))*(4*pi^2/N^2)/(4*pi^2)
 
 ### Evaluate the correlators at a frequency and plot the 2D Brillouin zone cut
@@ -109,13 +104,14 @@ pathticks = ["K","X","M","K","Γ","X"]
 Nk = 100
 kvec,kticks_positioins = create_brillouin_zone_path(path, Nk)
 BrillPath = brillouin_zone_path(kvec,Correlators,lattice,center_sites);
-
+kticks_positioins
+BrillPath[30][:,1]
 ###### S(k,w) heatmap
 using CairoMakie
 
-x = 2.0
+x = 2.5
 w_vec = collect(0.01:0.0314/2:5.0)
-JSkw_mat = get_JSkw_mat_finitex("total","pade",x,kvec,w_vec,0.02,1,3,200,false,Correlators,lattice,center_sites)
+JSkw_mat = get_JSkw_mat_finitex("total","pade",x,kvec,w_vec,0.00,1,2,200,false,Correlators,lattice,center_sites)
 
 
 fig = Figure(fontsize=25,resolution = (900,500));

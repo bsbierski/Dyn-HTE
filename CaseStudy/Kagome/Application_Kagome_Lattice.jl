@@ -3,23 +3,18 @@ using JLD2
 #activates the environment in the folder of the current file
 
 include("../../Embedding.jl")
-include("../../GraphGeneration.jl")
 include("../../LatticeGraphs.jl")
 include("../../ConvenienceFunctions.jl") 
 #specify max order
-max_order = 8
+max_order = 12
 
 #LOAD FILES 
 #-------------------------------------------------------------------------------------
-
-#generate list of graphs
-graphs_vec = [load_object("GraphFiles/graphs_"*string(nn)*".jld2") for nn in 0:max_order];
-gG_vec = vcat(getGraphsG([graphs_vec[1]]), [load_object("GraphFiles/graphsG_"*string(nn)*".jld2") for nn in 1:max_order]);
-## identify which gG have the same underlying simple-graph structure. Precalculate Symmetry factors. 
-gG_vec_unique = give_unique_gG_vec(gG_vec);
+#load list of unique graphs
+gG_vec_unique = give_unique_gG_vec(max_order);
 
 #create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) 
+C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) ;
 #load dictionaries of all lower orders C_Dict_vec 
 for ord = 0:max_order
     C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
@@ -27,37 +22,39 @@ end
 #-----------------------------------
 
 #1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
-L = max_order
+L = 12
 lattice,LatGraph,center_sites = getLattice_Ball(L,"kagome");
 display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
 
 #2.Compute all correlations in the lattice
 
-@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
-#@load "CaseStudy/Kagome/Correlation_Data_L11.jld2" Correlators
+#@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
+@load "CaseStudy/Kagome/Correlation_Data_L12.jld2" Correlators
 
 #test uniform susceptibility with /10.1103/PhysRevB.89.014415 
 (brillouin_zone_cut([(0.0,0.0) (0.0,0.0) ;(0.0,0.0)  (0.0,0.0)],Correlators,lattice,center_sites)[1]*4/3)[:,1].*[factorial(n)*4^n for n in 0:max_order]
+Correlators[center_sites[1]][:,1]
+center_sites[2]
 
+Correlators[center_sites[1],:][2][:,1]
 #3. Fourier Transform
 ### Compute A 2D Brillouin zone cut: }
-N = 100
+N = 40
 kx = range(-2pi,2pi,length=N)
 ky = range(-2pi,2pi,length=N) #[0.] #for chains
 kmat = [(y,x) for x in kx, y in ky ]
 structurefactor =  brillouin_zone_cut(kmat,Correlators,lattice,center_sites);
 ### Evaluate the correlators at a frequency and plot the 2D Brillouin zone cut
-x = -1
+x = -4
 padetype = [4,4]
 evaluate(y) = eval_correlator_LR_continuous_pad(y, x, padetype); #define evaluation function
-evaluate(y) = eval_correlator_LR_continuous_pad_Tanh(y, x, padetype); #define evaluation function
 struc = ( evaluate.(structurefactor));
 p = Plots.heatmap(kx,ky,struc, clims=(0,1.0))
 
 
 ### Calculate the full S(ω,k)
 x = 2.0
-N = 50
+N = 20
 kx = range(-0+0.001,2pi+0.001,length=N)
 ky = range(-0+0.001,2pi+0.001,length=N) 
 w_vec = collect(-5:10/10:5.0)
@@ -90,19 +87,20 @@ pathticks = ["Γ","M","K","Γ"]
 Nk = 100
 kvec,kticks_positioins = create_brillouin_zone_path(path, Nk)
 BrillPath = brillouin_zone_path(kvec,Correlators,lattice,center_sites);
-
+BrillPath[37][:,1]
+ 
 
 ###### S(k,w) heatmap
 using CairoMakie
 
 x = 1.5
 w_vec = collect(0.01:0.0314/2:4.0)
-JSkw_mat_total = get_JSkw_mat_finitex("total","pade",x,kvec,w_vec,0.02,1,3,200,false,Correlators,lattice,center_sites)
+JSkw_mat_total = get_JSkw_mat_finitex("total","padedelta",x,kvec,w_vec,0.02,1,3,200,false,Correlators,lattice,center_sites)
 
 #plotting
 fig = Figure(fontsize=25,resolution = (900,500));
 ax=Axis(fig[1,1],limits=(0,Nk+1,0,4),ylabel=L"\omega/J=w",title="Kagome: x="*string(x),titlesize=25,xlabelsize=25,ylabelsize=25);
-hm=CairoMakie.heatmap!(ax,[k for k in 1:Nk+1],w_vec, JSkw_mat_total,colormap=:viridis,highclip=:white);
+hm=CairoMakie.heatmap!(ax,[k for k in 1:Nk+1],w_vec, JSkw_mat_total,colormap=:viridis,colorrange=(0.001,1.0),highclip=:white);
 ax.xticks = (kticks_positioins,pathticks)
 CairoMakie.Colorbar(fig[:, end+1], hm,size=40, label = L"J S(k,w)")
 resize_to_layout!(fig);
@@ -110,7 +108,7 @@ display(fig)
 
 save("./KagomeX"*string(x)*".pdf",fig)
 
-
+taylor(::Polynomial, ::Any...; kwargs...)
 
 
 function c_n(n, r)
@@ -141,3 +139,45 @@ end
 
 
 [c_n(n, 1/2*(1/2+1)) for n = 1:8]
+
+
+
+
+
+#3. Fourier Transform
+### Compute A 2D Brillouin zone cut by calculating the pade for the inverse matrix}
+function calc_taylorinvmat_fun(corr)
+    orderJ,orderω = size(corr[1])
+    @variables x
+    taylormat = y -> sum(y[i,1]*x^(i-1) for i =  1:orderJ)
+    invtaylormat = inv(taylormat.(corr));
+    t = Taylor1(Float64,orderJ)
+    return taylorinvmat_fun = substitute(invtaylormat, Dict(x=>t)) 
+end
+
+function eval(taylorinvmat_fun,X, padetype)
+    fun = f -> RobustPade.robustpade.(f,padetype[1], padetype[2])
+    mat = (fun.(taylorinvmat_fun))
+    return sum(inv(map(f -> f(X), mat)))
+end
+
+N = 100
+kx = range(-2pi,2pi,length=N)
+ky = range(-2pi,2pi,length=N) #[0.] #for chains
+kmat = [(y,x) for x in kx, y in ky ]
+structurefactor =  brillouin_zone_cut_Matrix(kmat,Correlators,lattice,center_sites);
+### Evaluate the correlators at a frequency and plot the 2D Brillouin zone cut
+taylor_vec = Vector{Matrix{Taylor1{Float64}}}(undef,N^2);
+for i = 1:N^2
+    taylor_vec[i] = calc_taylorinvmat_fun(structurefactor[i])
+end
+
+X = -3
+padetype = [6,5]
+evaluate(y) = eval(y, X, padetype); #define evaluation function
+res_vec = Vector{Float64}(undef,N^2);
+Threads.@threads for i = 1:N^2
+    res_vec[i] = evaluate(taylor_vec[i])
+end
+struc = reshape(res_vec,(N,N))
+p = Plots.heatmap(kx,ky,struc, clims=(0,1.))
