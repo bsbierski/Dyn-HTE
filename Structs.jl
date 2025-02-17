@@ -29,6 +29,44 @@ end
 end
 
 
+mutable struct gG_properties
+    order::Int
+    index::Int
+    symmetry_factor::Int
+    is_symmetric::Bool
+
+    function gG_properties(data::Vector{Int64})
+        length(data) == 4 || throw(ArgumentError("Expected a vector of length 4"))
+        return new(Int(data[1]), Int(data[2]), Int(data[3]),Bool(data[4]))
+    end
+end
+
+mutable struct unique_Graph
+    ref_graph ::GraphG
+    distance ::Int
+    gG_vec ::Vector{gG_properties}
+
+    function unique_Graph(data::Vector{Any})
+        length(data) == 3 || throw(ArgumentError("Expected a vector of length 3"))
+        return new(data[1], Int(data[3]),gG_properties.(data[2]))
+    end
+
+end
+
+mutable struct unique_Graphs
+    max_order ::Int
+    graphs ::Vector{unique_Graph}
+
+    function unique_Graphs(data::Vector{Any})
+        length(data) == 2 || throw(ArgumentError("Expected a vector of length 2"))
+        return new(data[1], unique_Graph.(data[2]))
+    end
+
+    function unique_Graphs(max_order,graphs)
+        return new(max_order, graphs)
+    end
+
+end
 
 struct GraphGinfo
     gG::GraphG                      # graphG

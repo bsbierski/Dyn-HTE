@@ -101,7 +101,9 @@ function give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}})
         #unique_gGs = map(x -> x[1], unique_gG_vec[2])
         for (o,gG_vec_order) in enumerate(gG_vec[(unique_order+2):end])
             for (index,gg) in enumerate(gG_vec_order)
-
+                if mod(index,1000) ==0
+                    println(string(index)*" out of "*string(length(gG_vec_order))*" done")
+                end
                 # find first isomorphic graph to gg that is already in the unique list. There is at most one. 
                 unique_index = findfirst(x->is_simple_isomorphic(gg,x[1]), unique_gG_vec[2])
                 # if there is no matching graph: add gg to list of unique graphs
@@ -123,6 +125,39 @@ function give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}})
 
 end
 
+
+function give_unique_gG_vec(max_order::Int)
+    """
+    loades unique_gG_vec
+    """
+
+    # try to load the file. if it does not exist try to load the file of one less order
+    file_path = "GraphFiles/unique_gG_vec_$max_order"*".jld2"
+
+    if isfile(file_path)
+        unique_gG_vec = load_object(file_path) 
+        return unique_gG_vec
+    else
+        if max_order == 12
+                ##Combine the 4 parts for order 12
+                graphlist = Vector{Vector{unique_Graph}}(undef,4)
+                for part = 1:4
+                    @load "GraphFiles/unique_gG_vec_$maxorder"*"_$part"*".jld2" unique_graphs_12_part
+                    graphlist[part] = unique_graphs_12_part.graphs
+                end
+                    combined = vcat(graphlist...) 
+                    combined_unique = unique_Graphs(max_order,combined)
+                    @save "GraphFiles/unique_gG_vec_12.jld2" combined_unique
+            return combined_unique
+        end
+        throw(ArgumentError("No unique graph file available for order $max_order"))
+    end
+
+end
+
+
+
+
 function e_fast(LL::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
     """
     find embedding factor e 
@@ -137,7 +172,7 @@ function e_fast(LL::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
     return numSubIsos 
 end
 
-function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order::Int,gG_vec_unique::Vector{Any},C_Dict_vec::Vector{Vector{Vector{Rational{Int64}}}})::Vector{Vector{Rational{Int64}}}
+function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order::Int,gG_vec_unique::unique_Graphs,C_Dict_vec::Vector{Vector{Vector{Rational{Int64}}}})::Vector{Vector{Rational{Int64}}}
     """ Calculate the coefficients of (-x)^n for TG_ii'(iν_m) from embedding factors of only the unique simple graphs and the gG's symmetry factors """    
 
     #initialize result array
@@ -152,9 +187,9 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
     ext_dist = dijkstra_shortest_paths(L,ext_j1).dists[ext_j2]
 
     # only iterate over the unique simple graphs in unique_Gg
-    for unique_Gg in gG_vec_unique[2]
-        gg = unique_Gg[1]   #Graph
-        gg_dist = unique_Gg[3] #edge distance between the external vertices
+    for unique_Gg in gG_vec_unique.graphs
+        gg = unique_Gg.ref_graph   #Graph
+        gg_dist = unique_Gg.distance #edge distance between the external vertices
           # if the graph is long enough
           if gg_dist < ext_dist 
             continue
@@ -177,14 +212,14 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
         
 
         #### now we sum overall graphG eqivalent to the unique Gg
-        for gG_idx in eachindex(unique_Gg[2])
-            g_order = unique_Gg[2][gG_idx][1] #order
-            gG_vec_index = unique_Gg[2][gG_idx][2] #index
-            symmetry_factor = unique_Gg[2][gG_idx][3] #symmetry factor
-            issymmetric = Bool(unique_Gg[2][gG_idx][4])  #bool if the graph is symmetric
+        for graph in unique_Gg.gG_vec
+            g_order = graph.order #order
+            gG_vec_index = graph.index #index
+            symmetry_factor = graph.symmetry_factor#symmetry factor
+            is_symmetric = graph.is_symmetric  #bool if the graph is symmetric
            
             fac = 2
-        if  issymmetric
+        if  is_symmetric
             fac = 1
         end
 
@@ -199,7 +234,6 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
 
     return result_array
 end
-
 
 
 ###### LEGACY FUNCTIONS

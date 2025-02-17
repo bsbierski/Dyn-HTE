@@ -7,8 +7,26 @@ plt_empty = plot(label="",axis=([], false))
 graphsInRow = 6 #for plotting
 
 include("Structs.jl")
+include("vf2_edited.jl") 
 
 ####### various helper functions ################### 
+function split_vec(vec::Vector,part::Int,parts::Int)
+    """ splits vector in parts (keep longtail), returns the chunk and its start and end indices """
+    chunkLen = Int(floor(length(vec)/parts))
+
+    if parts==1 && part==1
+        return vec,1,length(vec)
+    end
+
+    @assert part>0
+    @assert parts>=part
+    if part==parts
+        return vec[1+(part-1)*chunkLen:end], 1+(part-1)*chunkLen, length(vec)
+    else
+        return vec[1+(part-1)*chunkLen:(part)*chunkLen], 1+(part-1)*chunkLen, (part)*chunkLen
+    end
+end
+
 function degeneracy(g::SimpleWeightedGraph{Int64, Int64})::Int
     """ get degeneracy factor prod_b(m_b!) for bonds b in SimpleWeightedGraph """
     mat = g.weights
@@ -34,7 +52,7 @@ function isIsomorph(g1::Graph,g2::Graph)::Bool
     return Graphs.Experimental.has_isomorph(g1_simple,g2_simple,edge_relation=edge_relation)
 end
 function isIsomorph(gG1::GraphG,gG2::GraphG)::Bool
-    """ for graphsG: check if gG1 ~ gG2 (j1,j1')=(j2,j2') or =(j2',j2)"""
+    """ for graphsG: check if gG1 ~ gG2 with (j1,j1')=(j2,j2') or (j1,j1')=(j2',j2)"""
     
     ### add terminal vertices via edge with weight 100 
     gG1_ext = copy(gG1.g)
@@ -58,40 +76,27 @@ function isIsomorph(gG1::GraphG,gG2::GraphG)::Bool
     return Graphs.Experimental.has_isomorph(gG1_ext_simple,gG2_ext_simple,edge_relation=edge_relation)
 end
 
-function isSymmetric(gG::GraphG)::Bool
-    """ check if gG is symmetric under exchange of j,j' """
-    if gG.jjp[1]==gG.jjp[2] return true
+function is_symmetric(gG::GraphG)::Bool
+    """
+    find if gG is a symmetric graph with respect to switching the two external legs (fix the mapping of the two external vertices)
+    """
+    gg = gG.g
+    gg_simple = toSimpleGraph(gg)
+
+    edge_relation(b1,b2) = (gg.weights[src(b1),dst(b1)] == gg.weights[src(b2),dst(b2)])
+
+    # finds if there is an isomorphism by only permuting the internal vertices between the graph and the graph with its external vertices flipped.
+    count = count_subgraphisomorph(gg_simple,gg,edge_relation=edge_relation,jL1 = gG.jjp[2],jL2 = gG.jjp[1],jG1 = gG.jjp[1],jG2 = gG.jjp[2])
+    
+    if count >0 
+        return true
     else
-        gg = copy(gG.g)
-        gg_flip = copy(gG.g)
-        
-        ### add to gg terminals j,j' and j',j with bond-weight 100,200
-        add_vertex!(gg)
-        add_edge!(gg,gG.jjp[1],nv(gg),100)
-        
-        add_vertex!(gg)
-        add_edge!(gg,gG.jjp[2],nv(gg),200)
-        
-        add_vertex!(gg_flip)
-        add_edge!(gg_flip,gG.jjp[2],nv(gg_flip),100)
-        
-        add_vertex!(gg_flip)
-        add_edge!(gg_flip,gG.jjp[1],nv(gg_flip),200)
-        
-        ### convert gg,gg_flip to SimpleGraphs
-        gg_simple = toSimpleGraph(gg)
-        gg_flip_simple = toSimpleGraph(gg_flip)
-        
-        ### prepare isomorphism check on gg <--> ggflip respecting the edge-weights
-        edge_relation(b1,b2) = (gg.weights[src(b1),dst(b1)] == gg_flip.weights[src(b2),dst(b2)])
-        
-        ### check if gG,j,j' is isomorph to gG,j',j
-        return Graphs.Experimental.has_isomorph(gg_simple,gg_flip_simple,edge_relation=edge_relation)
+        return false
     end
 end
 
 function findg(g::Graph,g_vec::Vector{Graph})::Int
-    """ find g in g_vec, if found return index, else return 0"""
+    """ search g in g_vec, if found return index, else return 0"""
     for k in eachindex(g_vec)
         if isIsomorph(g,g_vec[k])
             return k
@@ -182,7 +187,7 @@ function numberOfLeaves(g::SimpleWeightedGraph{Int64, Int64})::Int
     end
     return res
 end
-function noLeavesExceptAt(g::SimpleWeightedGraph{Int64, Int64},j_vec::Vector{Int}=Int[])::Bool
+function noLeavesExceptAt(g::SimpleWeightedGraph{Int64, Int64},j_vec::Vector{Int64}=Int64[])::Bool
     ### check if a Graph g has leaves, exclude sites in j_vec from checking
     for i in vertices(g)
         bonds_i = sum(g.weights[i,:])
@@ -257,11 +262,11 @@ function symmetryFactor(gG::GraphG)::Int
     """ symmetry Factor of graphG, this is the number of graph automorphisms respecting edge weights and not touching external indices"""
     gg = copy(gG.g)
 
-    ### add to gg two vertices at terminals j,j' with bond-weight 100,200
+    ### add to gg two vertices at terminals j,j' with bond-weight 100,101
     add_vertex!(gg)
     add_edge!(gg,gG.jjp[1],nv(gg),100)
     add_vertex!(gg)
-    add_edge!(gg,gG.jjp[2],nv(gg),200)
+    add_edge!(gg,gG.jjp[2],nv(gg),101)
 
     ### convert gg,gg_flip to SimpleGraphs
     gg_simple = toSimpleGraph(gg)
@@ -274,7 +279,7 @@ end
 
 ####### graph plotting ##################################################################
 function gplot(g::Graph;title::String="",save::Bool=false)
-    Random.seed!(2017);
+    Random.seed!(2011);
     m = collect(g.g.weights)
     n = size(m)[1]
 
@@ -303,7 +308,7 @@ function gplot(g::Graph;title::String="",save::Bool=false)
     return fig
 end
 function gplot(gG::GraphG;title::String="",save::Bool=false)
-    Random.seed!(2017);
+    Random.seed!(2011);
     gplot = copy(gG.g) #the SimpleWeightedGraph for plotting with external legs
 
     ### add external bonds in red
@@ -387,42 +392,51 @@ end
 
 function getVacGraphs(graphs_vec::Vector{Vector{Graph}})::Vector{Vector{Graph}}
     graphs_vac_vec = copy(graphs_vec)
-    for m in 1:length(graphs_vac_vec)
-        graphs_vac_vec[m] = [g for g in graphs_vac_vec[m] if !hasGeneralizedLeaves(g)]
+    for m in 1:length(graphs_vac_vec)-1
+        graphs_vac_vec[m+1] = [g for g in graphs_vac_vec[m+1] if !hasGeneralizedLeaves(g)]
     end
     return graphs_vac_vec
 end
 
 function getGraphsG(graphs_vec::Vector{Vector{Graph}})::Vector{Vector{GraphG}}
-    """ get GraphsG from graphs_vec, need to remove equivalent ways of adding terminals """
+    """ load graphsG or compute GraphsG from graphs_vec, need to remove equivalent ways of adding terminals """
     graphsG_vec = [[GraphG(graphs_vec[1][1].g,[1,1])]]
 
     for n in eachindex(graphs_vec[2:end])
         g_vec = graphs_vec[2:end][n]
         gG_vec = GraphG[]
+        fileName = "GraphFiles/graphsG_"*string(n)*".jld2"
 
-        println("get GraphsG for n="*string(n))
+        ### load if available
+        if isfile(fileName)
+            println("load GraphsG for n="*string(n))
+            gG_vec = load_object(fileName)
         
-        for g in g_vec
-            ggG_vec = GraphG[]
-            for jp in vertices(g.g), j in vertices(g.g)
-                if noLeavesExceptAt(g.g,[j,jp])
-                    gG_test = GraphG(g.g,[j,jp])
-                    if !hasGeneralizedLeaves(gG_test)
-                        isNew = true
-                        Threads.@threads for ggG in ggG_vec
-                            if isIsomorph(ggG,gG_test) 
-                                isNew = false
-                                break
-                            end
-                        end 
-                        if isNew push!(ggG_vec,gG_test) end
+        ### or compute if not
+        else
+            println("compute GraphsG for n="*string(n))
+            for g in g_vec
+                ggG_vec = GraphG[]
+                for jp in vertices(g.g), j in vertices(g.g)
+                    if noLeavesExceptAt(g.g,[j,jp])
+                        gG_test = GraphG(g.g,[j,jp])
+                        if !hasGeneralizedLeaves(gG_test)
+                            isNew = true
+                            Threads.@threads for ggG in ggG_vec
+                                if isIsomorph(ggG,gG_test) 
+                                    isNew = false
+                                    break
+                                end
+                            end 
+                            if isNew push!(ggG_vec,gG_test) end
+                        end
                     end
                 end
+                append!(gG_vec,ggG_vec)
             end
-            append!(gG_vec,ggG_vec)
+            save_object(fileName,gG_vec)
         end
-        
+
         push!(graphsG_vec,gG_vec)
     end
 
@@ -533,39 +547,59 @@ function plotVconSubtractions(gG::GraphG,subs::Vector{VconSub},graphsG_vec::Vect
         end
     end
 
-    fig = plot(plt_vec..., layout=(1+maxNumberOfVacuumGraphs,1+length(subs))
-    ,dpi=300,size=(400*(1+length(subs)),400*(1+maxNumberOfVacuumGraphs)),plot_title="V-con subtraction")
+    fig = plot(plt_vec..., layout=(1+maxNumberOfVacuumGraphs,1+length(subs)),dpi=300,size=(400*(1+length(subs)),400*(1+maxNumberOfVacuumGraphs)),plot_title="V-con subtraction")
     if save
         savefig("figs/"*"VConSub.png")
     end
     return fig
 end
 
+### if GraphFiles/graphs12.jld2 has not yet been merged from its <100Mb parts a,b, then merge and save it
+if !isfile("GraphFiles/graphs_12.jld2")
+    save_object("GraphFiles/graphs_12.jld2",vcat(load_object("GraphFiles/graphs_12a.jld2"),load_object("GraphFiles/graphs_12b.jld2")))
+end
+
+### if GraphEvaluations/Spin_S1half/C_12.jld2 does not yet exist, merge it from its parts
+if !isfile("GraphEvaluations/Spin_S1half/C_12.jld2")
+    save_object("GraphEvaluations/Spin_S1half/C_12.jld2",vcat(  load_object("GraphEvaluations/Spin_S1half/C_12a.jld2"),
+                                                                load_object("GraphEvaluations/Spin_S1half/C_12b.jld2"),
+                                                                load_object("GraphEvaluations/Spin_S1half/C_12c.jld2"),
+                                                                load_object("GraphEvaluations/Spin_S1half/C_12d.jld2")            
+                                                                ))
+end
+
+
 ################################################################################
 ###### START ###################################################################
 ################################################################################
 
 ###### generation of basic graphs with two or fewer leaves
-#nmax=7
-#graphs_vec = [ [Graph(SimpleWeightedGraph(diagm([0])))] ]      ## the single-vertex graph with 0 edges
+#graphs_vec = [ [Graph(SimpleWeightedGraph{Int64,Int64}(diagm([Int64(0)])))] ]      ## the single-vertex graph with 0 edges
 #save_object("GraphFiles/graphs_0.jld2",graphs_vec[end])
-#for _ in 1:nmax
-#    push!(graphs_vec,getAllGraphsNextOrder(graphs_vec[end]));       ##repeat the evaluation of this line to generate all graphs
+#for nn in 1:8
+#    @show nn
+#    push!(graphs_vec,getAllGraphsNextOrder(graphs_vec[end]));       
 #end
-#gplot(graphs_vec[1+nmax])
+#gplot(graphs_vec[1+6])
 
-###### take apart graphs_12 into a,b to comply with 100MB limit of git
-#graphs_12 = load_object("GraphFiles/graphs_12.jld2")
-#save_object("GraphFiles/graphs_12a.jld2",graphs_12[1:100000])
-#save_object("GraphFiles/graphs_12b.jld2",graphs_12[100001:end])
+##repeat the evaluation of this line to generate all graphs
+#push!(graphs_vec,getAllGraphsNextOrder(graphs_vec[end]));  #graphs11 with 46384 graphs use 36.4MiB
 
-###### if already generated: load graphs_1,2,3,...,10 or up to 12
-#graphs_vec = [load_object("GraphFiles/graphs_"*string(n)*".jld2") for n in 0:10]
-#graphs_vec = push!([load_object("GraphFiles/graphs_"*string(n)*".jld2") for n in 0:11],append!(load_object("GraphFiles/graphs_12a.jld2"),load_object("GraphFiles/graphs_12b.jld2")))
+### split graphs_12 into a,b
+#save_object("GraphFiles/graphs_12a.jld2", split_vec(graphs_vec[end],1,2)[1] )
+#save_object("GraphFiles/graphs_12b.jld2", split_vec(graphs_vec[end],2,2)[1] )
 
-###### generate lists of vac-graphs and graphsG
-#graphsVac_vec = getVacGraphs(graphs_vec)
-#graphsG_vec = getGraphsG(graphs_vec)
+
+###### if already generated: load graphs_1,2,3,...,nmax
+nmax=12 
+graphs_vec = [load_object("GraphFiles/graphs_"*string(n)*".jld2") for n in 0:nmax]
+
+###### generate/load lists of vac-graphs and graphsG
+graphsVac_vec = getVacGraphs(graphs_vec)
+graphsG_vec = getGraphsG(graphs_vec)
+
+
+
 
 ###### plot low order graphs and some dedicated figs for paper
 if false
@@ -580,14 +614,13 @@ end
 if false
     #gG = graphsG_vec[4+1][6]
     #gG = graphsG_vec[7+1][156]
-    gG = graphsG_vec[6+1][90]
+    gG = graphsG_vec[6+1][6]
     #gG = graphsG_vec[5+1][36]
 
     gplot(gG)
     subs=getVconSubtractions(gG,graphsG_vec,graphsVac_vec)
     plotVconSubtractions(gG,subs,graphsG_vec,graphsVac_vec,save=true)
 end
-
 
 ###### test tetramer g12 embeddings and subtractions
 if false
@@ -608,4 +641,20 @@ if false
     #    subs=getVconSubtractions(gG,graphsG_vec,graphsVac_vec)
     #    display(plotVconSubtractions(gG,subs,graphsG_vec,graphsVac_vec))
     #end
+end
+
+
+function whichParts(parts::Int,vec,miss::Vector{Int})::Vector{Int}
+    res = Int[]
+    for part in 1:parts
+        @show part
+        chunk,a,b = split_vec(vec,part,parts)
+        for m in miss
+            if m in collect(a:b)
+                append!(res,part)
+                break
+            end
+        end
+    end
+    return res
 end

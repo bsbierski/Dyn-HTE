@@ -1,4 +1,8 @@
 *.toml
 *.pdf
 *.svg
+unique_gG_vec_12.jld2
+graphsG_12.jld2
+C_12.jld2
+graphs_12.jld2
 

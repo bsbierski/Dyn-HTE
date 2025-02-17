@@ -6,24 +6,18 @@ import Pkg
 Pkg.activate(@__DIR__) #activates the environment in the folder of the current file
 
 include("Embedding.jl")
-include("GraphGeneration.jl")
 include("LatticeGraphs.jl")
 include("ConvenienceFunctions.jl") 
 #specify max order
-max_order = 4
+max_order = 12
 
 #LOAD FILES 
 #-------------------------------------------------------------------------------------
-
-#generate list of graphs
-graphs_vec = [load_object("GraphFiles/graphs_"*string(nn)*".jld2") for nn in 0:max_order];
-gG_vec = getGraphsG(graphs_vec);
-## identify which gG have the same underlying simple-graph structure. Precalculate Symmetry factors. 
-gG_vec_unique = give_unique_gG_vec(gG_vec);
+#load list of unique graphs
+gG_vec_unique = give_unique_gG_vec(max_order);
 
 #create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) 
-   
+C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) ;
 #load dictionaries of all lower orders C_Dict_vec 
 for ord = 0:max_order
     C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
@@ -31,16 +25,14 @@ end
 #-----------------------------------
 
 #1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
-L = 4
-lattice,LatGraph,center_sites = getLattice_Ball(L,"kagome");
+L = max_order
+lattice,LatGraph,center_sites = getLattice_Ball(L,"chain");
 display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
 
 #2.Compute all correlations in the lattice
 Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
 
 #3. Fourier Transform
-
-
 
 ### Compute A 2D Brillouin zone cut: 
 N = 100
@@ -333,3 +325,87 @@ println(R_z_scalar_2)
 println("Comparison:")
 println("Matrix-valued Padé approximant diagonal elements: ", diag(R_z_matrix))
 println("Scalar Padé approximants: ", [R_z_scalar_1, R_z_scalar_2])
+
+
+
+
+
+x_QMC_vec = collect(1:8)
+imax=20
+m_vec = [0,1,2]
+TGiip_m = zeros((length(x_QMC_vec),imax+1,length(m_vec)))
+TGiip_m_err = zeros((length(x_QMC_vec),imax+1,length(m_vec)))
+
+using HDF5
+for x_QMC_pos in eachindex(x_QMC_vec) 
+    x_QMC=x_QMC_vec[x_QMC_pos]
+    fid = h5open("/Users/Schneider.Benedikt/LRZ Sync+Share/_Home/UNI/PHD_Project/Dynamic High Temperature Series Expansion/QMC_Worm/SpinHalfAFMHeisenbergChain/job_BSb_beta"*string(x_QMC)*".out.h5", "r")
+    for (m_pos,m) in enumerate(m_vec)
+        TGiip_m[x_QMC_pos,:,m_pos] = read(fid["simulation"]["results"]["DensDens_CorrFun_w$m"]["mean"]["value"])[1:imax+1]
+        TGiip_m_err[x_QMC_pos,:,m_pos] = read(fid["simulation"]["results"]["DensDens_CorrFun_w$m"]["mean"]["error"])[1:imax+1]
+    end
+end
+
+gG_vec_unique_new = unique_Graphs(gG_vec_unique)
+@save "gG_vec_unique_new.jld2" gG_vec_unique_new
+
+
+function compute_lattice_correlations_new(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int64}}}
+    """compute all correlations from the center_sites to all other sites of the lattice"""
+    Correlators = Array{Matrix{Rational{Int64}}}(undef, lattice.length,length(lattice.unitcell.basis));
+    Threads.@threads for jp = 1:lattice.length
+        for b = 1:length(lattice.unitcell.basis)
+        Correlators[jp,b] = mapreduce(permutedims, vcat, Calculate_Correlator_fast_new(LatGraph,center_sites[b],jp,max_order,gG_vec_unique,C_Dict_vec))
+        end
+    end
+    return Correlators
+end
+
+@time Correlators_new = compute_lattice_correlations_new(LatGraph,lattice,center_sites,max_order,gG_vec_unique_new,C_Dict_vec)
+
+
+for maxorder = 1:11
+file_path = "GraphFiles/unique_gG_vec_$maxorder.jld2"
+if isfile(file_path)
+        unique_gG_vec = load_object(file_path) 
+        gG_vec_unique_new = unique_Graphs(unique_gG_vec)
+        @save "GraphFiles/unique_gG_vec_$maxorder"*"_new.jld2" unique_gG_vec
+end
+end
+
+test = 1
+print("test$test"*"test")
+
+maxorder = 12
+file_path = "GraphFiles/unique_gG_vec_$maxorder.jld2"
+if isfile(file_path)
+    unique_gG_vec = load_object(file_path) 
+    gG_vec_unique_new = unique_Graphs(unique_gG_vec)
+   #@save "GraphFiles/unique_gG_vec_$maxorder"*"_new.jld2"
+end
+
+@load file_path gG_vec_unique_new
+
+gG_vec_unique_new.graphs
+
+unique_Graphs(12,)
+vcat([1],[2],[3],[4])
+
+
+
+unique_graphs_12_part = gG_vec_unique.graphs[1:5000]
+@save "GraphFiles/unique_gG_vec_$maxorder"*"_1"*".jld2" unique_graphs_12_part
+unique_graphs_12_part = gG_vec_unique.graphs[5001:40000]
+@save "GraphFiles/unique_gG_vec_$maxorder"*"_2"*".jld2" unique_graphs_12_part
+unique_graphs_12_part = gG_vec_unique.graphs[40001:150000]
+@save "GraphFiles/unique_gG_vec_$maxorder"*"_3"*".jld2" unique_graphs_12_part
+unique_graphs_12_part = gG_vec_unique.graphs[150001:end]
+@save "GraphFiles/unique_gG_vec_$maxorder"*"_4"*".jld2" unique_graphs_12_part
+for part = 1:6
+split = split_vec(gG_vec_unique.graphs,part,10)[1]
+unique_graphs_12_part = unique_Graphs(12,split)
+@save "GraphFiles/unique_gG_vec_$maxorder"*"_$part"*"_new.jld2" unique_graphs_12_part
+end
+
+split = split_vec(gG_vec_unique_new.graphs,part,4)[1]
+unique_Graphs([12,split])

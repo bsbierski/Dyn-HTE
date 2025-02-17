@@ -330,7 +330,7 @@ function get_JSkw_mat_finitex(diag_off_diag_flag,method::String,x::Float64,k_vec
                 m_vec_extrapolated_pade[m_idx] = get_pade(m_vec[m_idx],1+Int(floor(max_order/2))-m_idx,1+Int(floor(max_order/2))-m_idx)
             end
             δ_vec,r_vec = fromMomentsToδ([m(x) for m in m_vec_extrapolated_pade])
-          # println("Delta_vec (pade) for "*string(k)*"is:",δ_vec)
+           println("Delta_vec (pade) for "*string(k)*"is:",δ_vec)
         end
 
         ###IDA
@@ -386,6 +386,22 @@ function get_JSkw_mat_finitex(diag_off_diag_flag,method::String,x::Float64,k_vec
             #println("Delta_vec (direct delta) for "*string(k)*"is:",δ_vec)
         end
 
+
+        ###DIRECT DELTA EXTRAPOLATION VIA IDA
+        if method=="padedelta"
+            δ_vec_raw = fromMomentsToδ(m_vec)
+
+            δ_vec = zeros(length(m_vec))
+
+            for δ_idx=1:length(δ_vec)
+                t =  Taylor1(Float64, max_order+δ_idx)
+                δ_poly= δ_vec_raw[δ_idx](t)
+                δ_vec[δ_idx] = robustpade(δ_poly,6+δ_idx,6)(x)
+            end
+
+            println("Delta_vec (direct delta) for "*string(k)*"is:",δ_vec)
+        end
+
         ###Now extrapolte deltas
         δ_vec_ext = extrapolate_δvec(δ_vec,r_min,r_max,r_ext,intercept0)
 
@@ -420,7 +436,7 @@ function brillouin_zone_cut(kmat::Union{Matrix{Tuple{Float64,Float64}},Matrix{Tu
     (nx,ny) = size(kmat)
 
     structurefactor = Array{Matrix{Float64}}(undef, nx,ny);
-    for i in 1:nx
+    Threads.@threads for i in 1:nx
         for j in 1:ny
             z = zeros(size(Correlators[1]))
             # Compute Fourier transformation at momentum (kx, ky). The real-space position of the i-th spin is obtained via getSitePosition(lattice,i). 
@@ -465,8 +481,22 @@ function eval_correlator_LR_continuous_pad(Correlator,X,pade_order)
    
 end
 
+function brillouin_zone_cut_Matrix(kmat::Union{Matrix{Tuple{Float64,Float64}},Matrix{Tuple{Float64,Float64,Float64}}},Correlators::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Matrix{Matrix{Matrix{Float64}}}
+    """computes the fourier transform along a 2D cut through the 2D or 3D k-space
+        given the Correlation Matrix computet from compute_lattice_correlations """
+    (nx,ny) = size(kmat)
 
-function fourier_transform(k,Correlators::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Matrix{Matrix{ComplexF64}}
+    structurefactor = Array{Matrix{Matrix{ComplexF64}}}(undef, nx,ny);
+    Threads.@threads for i in 1:nx
+        for j in 1:ny
+            z = fourier_transform(kmat[i,j],Correlators,lattice,center_sites)
+            structurefactor[i,j] = z #= / (length(lattice) * length(lattice.unitcell.basis)) =#
+        end
+    end
+    return structurefactor
+end
+
+function fourier_transform(k,Correlators::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Matrix{Matrix{Float64}}
     """computes the fourier transform along a 2D cut through the 2D or 3D k-space
         given the Correlation Matrix computet from compute_lattice_correlations """
    
@@ -487,7 +517,7 @@ function fourier_transform(k,Correlators::Matrix{Matrix{Rational{Int64}}},lattic
 
                 # calculate correlator between the center site of b1 and all sites of b2 
                 for index in indexlist
-                    z += exp(1im*dot(k, getSitePosition(lattice,index).-getSitePosition(lattice,center_sites[b1]))) *  Correlators[index,b1]
+                    z += cos(dot(k, getSitePosition(lattice,index).-getSitePosition(lattice,center_sites[b1]))) *  Correlators[index,b1]
                 end
                 structurefactor[b1,b2] = z
                 end
