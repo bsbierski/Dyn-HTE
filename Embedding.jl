@@ -128,7 +128,7 @@ end
 
 function give_unique_gG_vec(max_order::Int)
     """
-    loades unique_gG_vec
+    loads unique_gG_vec
     """
 
     # try to load the file. if it does not exist try to load the file of one less order
@@ -142,8 +142,8 @@ function give_unique_gG_vec(max_order::Int)
                 ##Combine the 4 parts for order 12
                 graphlist = Vector{Vector{unique_Graph}}(undef,4)
                 for part = 1:4
-                    @load "GraphFiles/unique_gG_vec_$maxorder"*"_$part"*".jld2" unique_graphs_12_part
-                    graphlist[part] = unique_graphs_12_part.graphs
+                    @load "GraphFiles/unique_gG_vec_$max_order"*"_$part"*".jld2" unique_graphs_12_part
+                    graphlist[part] = unique_Graphs(12,unique_graphs_12_part).graphs
                 end
                     combined = vcat(graphlist...) 
                     combined_unique = unique_Graphs(max_order,combined)
@@ -154,8 +154,6 @@ function give_unique_gG_vec(max_order::Int)
     end
 
 end
-
-
 
 
 function e_fast(LL::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
