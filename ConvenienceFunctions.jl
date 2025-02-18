@@ -4,7 +4,8 @@ using Symbolics, RobustPade, Polynomials, DifferentialEquations, LsqFit, TaylorS
 function get_c_iipDyn_mat(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int64}}}
     """compute all non-trivial coefficients G_ii' on lattice L from the center_sites i to all other sites i' of the lattice"""
     GiipDyn_mat = Array{Matrix{Rational{Int64}}}(undef, lattice.length,length(lattice.unitcell.basis));
-    Threads.@threads for jp = 1:lattice.length
+    Threads.@threads :dynamic for jp = 1:lattice.length
+        println("bond "*string(jp)*" of "*string(lattice.length))
         for b = 1:length(lattice.unitcell.basis)
             GiipDyn_mat[jp,b] = mapreduce(permutedims, vcat, Calculate_Correlator_fast(LatGraph,center_sites[b],jp,max_order,gG_vec_unique,C_Dict_vec))
         end
@@ -22,14 +23,18 @@ function get_c_iipDyn_mat_slow(LatGraph,lattice,center_sites,max_order,gG_vec,C_
     return c_iipDyn_mat
 end
 
-function get_c_iipEqualTime_mat(GiipDyn_mat::Matrix{Matrix{Rational{Int64}}},max_order::Int)::Matrix{Rational{Int64}}
+function get_c_iipEqualTime_mat(c_iipDyn_mat::Matrix{Matrix{Rational{Int64}}},max_order::Int)::Array{Rational{Int64}}
     """ perform frequency sum over real-space dynamic correlators to obtain equal time correlators """
-    GiipEqualTime_mat = Matrix{Rational{Int64}}(undef, length(GiipDyn_mat),max_order+1)
-    for j in eachindex(GiipDyn_mat)
-        GiipEqualTime_mat[j,:] = [sum(GiipDyn_mat[j][n+1,:] .* [1//1,1//12,1//720,1//30240,1//1209600,1//47900160,691//1307674368000,1//74724249600,3617//10670622842880000,43867//5109094217170944000]) for n in 0:max_order]
+    c_iipEqualTime_mat = Array{Rational{Int64}}(undef, length(c_iipDyn_mat[:,1]), length(c_iipDyn_mat[1,:]), max_order+1)
+    for j in eachindex(c_iipDyn_mat[:,1])
+        for b in eachindex(c_iipDyn_mat[1,:])
+            c_iipEqualTime_mat[j,b,:] = [sum(c_iipDyn_mat[j,b][n+1,:] .* [1//1,1//12,1//720,1//30240,1//1209600,1//47900160,691//1307674368000,1//74724249600,3617//10670622842880000,43867//5109094217170944000]) for n in 0:max_order]
+        end
     end
-    return GiipEqualTime_mat
+    return c_iipEqualTime_mat
 end
+
+
 
 
 
