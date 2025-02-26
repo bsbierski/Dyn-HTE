@@ -36,8 +36,6 @@ end
 
 
 
-
-
 ###### bare series polynomial in Gii'(x,m) at Matsubara integer m truncated at n 
 function get_TGiip_m_bare(c_iipDyn_mat::Matrix{Matrix{Rational{Int64}}},m::Int,n::Int)::Matrix{Polynomial}
     TGiip_bare = Array{Polynomial}(undef, lattice.length,length(lattice.unitcell.basis));
@@ -95,9 +93,35 @@ function get_intDiffApprox(p::Polynomial,x_vec::Vector{Float64},M::Int,L::Int,N:
     return sol.u
 end
 
+###### variable transform from x to u=tanh(fx)
+function get_p_u(coeffs_x::Vector{Float64},f::Float64)
+    """ transform polynomial in x (defined via coeffs_x) to polynomial in u=tanh(fx) truncated to degree length(coeffs_x)-1 """ 
+    """ this is too slow for transforming many coeffs_x, use the linear trafo instead """
+    @variables x u
+    x = taylor(atanh(u)/f, u, 0:(length(coeffs_x)-1), rationalize=false)
+    p_u_ext = simplify(series(coeffs_x,x);expand=true)
+    p_u = Polynomial(Symbolics.value.(taylor_coeff(p_u_ext,u,0:12,rationalize=false)),:u)
+    return p_u
+end
+
+function get_LinearTrafoToCoeffs_u(max_order::Int,f::Float64)::Matrix{Float64}
+    """ get linear transform polynomial coeffs from x to u=tanh(fx) """ 
+    """ to be used as res*coeffs_x """
+    res = zeros(max_order+1,max_order+1)
+    @variables x u
+    x = taylor((atanh(u)/f), u, 0:max_order, rationalize=false)
+
+    for n in 0:max_order
+        xpn = simplify(x^n;expand=true)
+        res[:,n+1] = Symbolics.value.(taylor_coeff(xpn,u,0:max_order,rationalize=false))
+    end
+    return res
+end
+
+
 ###### k-space functions
 function create_brillouin_zone_path(points, num_samples::Int)
-    """ create a linear interpolation between high symmetry points in BZ """
+    """ create a linear interpolation between an arbitrary number of (high symmetry) points in BZ """
     # Calculate distances between consecutive points
     distances = [norm(p2 .- p1) for (p1, p2) in zip(points[1:end-1], points[2:end])]
     total_distance = sum(distances)
@@ -146,11 +170,10 @@ function get_c_kDyn_mat(kvec,c_iipDyn_mat::Array{Matrix{Rational{Int64}}},lattic
                 z += cos(dot(kvec[i],getSitePosition(lattice,k).-getSitePosition(lattice,center_sites[b]))) *  c_iipDyn_mat[k,b]
             end
         end
-        z[z< 10^(-14)] .= 0
+       # z[z< 10^(-14)] .= 0
         BrillPath[i] = z 
     end
     
-
     return BrillPath
 end
 
