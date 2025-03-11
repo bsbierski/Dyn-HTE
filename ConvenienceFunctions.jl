@@ -1,6 +1,6 @@
 using Symbolics, RobustPade, Polynomials, DifferentialEquations, LsqFit, TaylorSeries
 
-###### get expansion coefficients for correlators G_ii' in real-space (dynamic-Matsubara and equal-time) 
+###### get expansion of real-space G_ii' (dynamic-Matsubara "Dyn" and "Equal-time") 
 function get_c_iipDyn_mat(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int64}}}
     """compute all non-trivial coefficients G_ii' on lattice L from the center_sites i to all other sites i' of the lattice"""
     GiipDyn_mat = Array{Matrix{Rational{Int64}}}(undef, lattice.length,length(lattice.unitcell.basis));
@@ -116,8 +116,40 @@ function get_LinearTrafoToCoeffs_u(max_order::Int,f::Float64)::Matrix{Float64}
     return res
 end
 
-
 ###### k-space functions
+function get_c_kEqualTime(k,c_iipEqualTime_mat::Array{Rational{Int64}},lattice::Lattice,center_sites)::Vector{Float64}
+    """ computes the spatial FT of c_iipEqualTime for momentum k """
+    """ assumes inversion symmetry of the lattice to get real FT transform """
+    c_kEqualTime = zeros(Float64, length(c_iipEqualTime_mat[1,1,:]))
+    for b in 1:length(lattice.unitcell.basis)
+        for j in 1:length(lattice)
+            r = getSitePosition(lattice,j).-getSitePosition(lattice,center_sites[b])
+            c_kEqualTime[:] += cos(dot(k,r)) *  c_iipEqualTime_mat[j,b,:]
+        end
+    end
+    
+    return c_kEqualTime / length(lattice.unitcell.basis)
+end
+function get_c_kDyn(k,c_iipDyn::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Matrix{Float64}
+    """ computes the spatial FT of c_iipDyn for momentum k """
+    """ assumes inversion symmetry of the lattice to get real FT transform """
+    c_kDyn = 0.0*c_iipDyn[1,1]
+    for b in 1:length(lattice.unitcell.basis)
+        for j in 1:length(lattice)
+            r = getSitePosition(lattice,j).-getSitePosition(lattice,center_sites[b])
+            c_kDyn[:,:] += cos(dot(k,r)) *  c_iipDyn[j,b][:,:]
+        end
+    end
+    
+    for c_pos in  eachindex(c_kDyn)
+        if abs(c_kDyn[c_pos]) < 1e-12
+            c_kDyn[c_pos] = 0.0
+        end
+    end
+
+    return c_kDyn / length(lattice.unitcell.basis)
+end
+
 function create_brillouin_zone_path(points, num_samples::Int)
     """ create a linear interpolation between an arbitrary number of (high symmetry) points in BZ """
     # Calculate distances between consecutive points
@@ -174,7 +206,6 @@ function get_c_kDyn_mat(kvec,c_iipDyn_mat::Array{Matrix{Rational{Int64}}},lattic
     
     return BrillPath
 end
-
 
 
 ###### moments, continued fractions and dynamical spin structure factors
@@ -436,6 +467,9 @@ function get_JSkw_mat_finitex(diag_off_diag_flag,method::String,x::Float64,k_vec
 
     return JSkw_mat
 end
+
+
+
 
 
 ################################# BJÖRN STOPPED HERE ##################################
