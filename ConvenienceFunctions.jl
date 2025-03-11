@@ -34,8 +34,6 @@ function get_c_iipEqualTime_mat(c_iipDyn_mat::Matrix{Matrix{Rational{Int64}}},ma
     return c_iipEqualTime_mat
 end
 
-
-
 ###### bare series polynomial in Gii'(x,m) at Matsubara integer m truncated at n 
 function get_TGiip_m_bare(c_iipDyn_mat::Matrix{Matrix{Rational{Int64}}},m::Int,n::Int)::Matrix{Polynomial}
     TGiip_bare = Array{Polynomial}(undef, lattice.length,length(lattice.unitcell.basis));
@@ -248,8 +246,6 @@ function fromMomentsToδ(m_vec::Vector{Float64})
     δ_vec = [δ0,δ1,δ2,δ3,δ4,δ5,δ6,δ7,δ8][1:length(m_vec)] 
     return δ_vec , 1.0*collect(0:length(δ_vec)-1)
 end
-
-
 function fromMomentsToδ(m_vec::Vector{Polynomial{Float64, :x}})
     @assert length(m_vec)<=7
 

@@ -15,5 +15,5 @@ plt_empty = plot([0,0],[0,0],label="")
 function addABC(plt,label);
     """ adds "label" on the top left of plot axes """
     xl,yl = xlims(plt),ylims(plt)
-    annotate!(plt, xl[1]-0.18*(xl[2]-xl[1]), yl[2]-0.02*(yl[2]-yl[1]), (label,8,:left) )
+    annotate!(plt, xl[1]-0.16*(xl[2]-xl[1]), yl[2]-0.02*(yl[2]-yl[1]), (label,8,:left) )
 end
