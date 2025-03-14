@@ -5,7 +5,7 @@ include("../../LatticeGraphs.jl")
 include("../../ConvenienceFunctions.jl") 
 
 ### maximum expansion order
-n_max = 12
+n_max = 12                                      
 
 ### load list of unique graphs
 gG_vec_unique = give_unique_gG_vec(n_max);
@@ -42,12 +42,12 @@ c_iipEqualTime_mat = get_c_iipEqualTime_mat(c_iipDyn_mat,n_max)
 
 if false #test uniform χ against HTE literature
     ###### HTE for χ = ∑_i<SiSj> from Dyn-HHTE ##############################################
-    println( [sum(c_iipEqualTime_mat[:,1,n+1]) for n in 0:12]' )
+    println( [sum(c_iipEqualTime_mat[:,1,n+1]) for n in 0:n_max]' )
 
     # comparison to [Lohmann,PRB,89.014415(2014)] for S=1/2 for n<=9 - ok
-    function cLohmann(nn)
+    function cLohmann(nn)::Rational{Int}
         n = nn+1 #Lohmann uses a different convention for order
-        r=3//4
+        r= 3//4
         if n == 1
             return (1//3) * r
         elseif n == 2
@@ -69,15 +69,15 @@ if false #test uniform χ against HTE literature
         elseif n == 10
             return −1//1273096440000*r^2 * (257596200 − 9180862110r + 93799827171r^2 − 426255134022r^3 + 931126345494r^4 − 977085756168r^5 + 621427831616r^6 − 280517703040r^7 + 48779713280r^8)
         else
-            return 0  # Undefined for n > 9 in given series
+            return 0  # Undefined for n > 10 in given series
         end
     end
     println(  [cLohmann(n)*(-1)^n for n in 0:9]' )
 
-    # comparison to [Elstner and Young,PRB50.6871(1994)] - ok 
-    # [they have other definition for \chi and hence start at order β. They have a typo (fixed here)]
+    ## comparison to [Elstner and Young,PRB50.6871(1994)] for S=1/2 only - ok
+    ## [they have other definition for \chi and hence start at order β. They have a typo (fixed here)]
     coeffs = [4,-32,192,-384,-1280,-155136,2711296,56705024,-1716811776,-47711784960,2004747075584,55843726884864,-3367208347123712];
-    println( [coeffs[1+n]*(-1)^n//4^(n+2)//factorial(n+1) for n in 0:12]' )
+    println( [coeffs[1+n]*(-1)^n//4^(n+2)//factorial(n+1) for n in 0:n_max]' )
 end
 
 ##### equal-time correlations (r-space)
