@@ -322,7 +322,7 @@ function extrapolate_δvec(δ_vec::Vector{Float64},r_min::Int,r_max::Int,r_ext::
     """ extrapolate parameters of continued fraction δ_vec=[δ[0],δ[1],...,δ[R]] 
     using a linear interpolation for δ_vec[r_min] to δ[r_max], extrapolate δ[r_max+1]...δ[r_ext]. 
     If intercept0=true use line through origin. """
-    @assert r_max > r_min
+    @assert r_max >= r_min
     @assert r_ext > r_max
     @assert r_max+1 <= length(δ_vec)
     ### define linear fit-function, fit and extrapolate
