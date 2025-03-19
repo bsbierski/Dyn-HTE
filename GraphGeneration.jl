@@ -561,7 +561,7 @@ if !isfile("GraphFiles/graphs_12.jld2")
 end
 
 ### if GraphEvaluations C_11.jld2 and C_12.jld2 do not yet exist, merge it from its parts
-for sstring in ["S1half"]#"S1"
+for sstring in ["S1half","S1"]
 
     if !isfile("GraphEvaluations/Spin_"*sstring*"/C_11.jld2")
         println("merging C_11 ...")
