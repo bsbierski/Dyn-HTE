@@ -170,15 +170,15 @@ function e_fast(LL::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
     return numSubIsos 
 end
 
-function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order::Int,gG_vec_unique::unique_Graphs,C_Dict_vec::Vector{Vector{Vector{Rational{Int64}}}})::Vector{Vector{Rational{Int64}}}
+function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order::Int,gG_vec_unique::unique_Graphs,C_Dict_vec::Vector{Vector{Vector{Rational{Int128}}}})::Vector{Vector{Rational{Int128}}}
     """ Calculate the coefficients of (-x)^n for TG_ii'(iν_m) from embedding factors of only the unique simple graphs and the gG's symmetry factors """    
 
     #initialize result array
-    result_array = Vector{Vector{Rational{Int64}}}(undef, max_order+1)
+    result_array = Vector{Vector{Rational{Int128}}}(undef, max_order+1)
 
     #for every order we get result vector representing prefactors of [δw,Δ^2,Δ^4,Δ^6,Δ^8,Δ^10,Δ^12,Δ^14,Δ^16,Δ^18]
     for ord = 1:max_order+1
-        result_array[ord] = zeros(Rational{Int64},10)
+        result_array[ord] = zeros(Rational{Int128},10)
     end
 
     #calculate the shortest graph distance between ext_j1 and ext_j2

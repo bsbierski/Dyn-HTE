@@ -22,12 +22,12 @@ lattice,LatGraph,center_sites = getLattice_Ball(L,"kagome");
 #display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.11,fontsize=4,nodeshape=:rect,curves=false))
 
 ### compute all correlations in the lattice (or load them)
-fileName_c = "CaseStudy/Kagome/Kagome_c_iipDyn_nmax"*string(n_max)*"_L"*string(L)*".jld2"
+fileName_c = "CaseStudy/Kagome_Lattice/Kagome_c_iipDyn_nmax"*string(n_max)*"_L"*string(L)*".jld2"
 if isfile(fileName_c)
     c_iipDyn_mat = load_object(fileName_c)
 else
     c_iipDyn_mat = get_c_iipDyn_mat(LatGraph,lattice,center_sites,n_max,gG_vec_unique,C_Dict_vec);
-    save_object("CaseStudy/Kagome/Kagome_c_iipDyn.jld2",c_iipDyn_mat)
+    save_object("CaseStudy/Kagome_Lattice/Kagome_c_iipDyn.jld2",c_iipDyn_mat)
 end
 
 ### define special points in BZ

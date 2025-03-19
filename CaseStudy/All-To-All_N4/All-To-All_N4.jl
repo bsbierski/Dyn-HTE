@@ -12,7 +12,7 @@ spin_string = "S1" #"S1half" #"S3half"
 gG_vec_unique = give_unique_gG_vec(n_max);
 
 ### load dictionaries of all lower orders C_Dict_vec 
-C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,n_max+1);
+C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,n_max+1);
 for ord = 0:n_max
     C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_"*spin_string*"/C_"*string(ord)*".jld2")
 end 
