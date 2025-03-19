@@ -9,20 +9,20 @@ include(path_DynHTSE*"ConvenienceFunctions.jl")
 include(path_DynHTSE*"plotConventions.jl") 
 
 #specify max order
-max_order = 11
+max_order = 10
+spin_string = "S1" #"S1half" #"S3half"
 
 #LOAD FILES -------------------------
 #generate list of graphs
 #graphs_vec = [load_object(path_DynHTSE*"GraphFiles_chain/graphs_"*string(nn)*".jld2") for nn in 0:max_order]
-gG_vec_unique = getGraphsG(max_order)
+gG_vec_unique = give_unique_gG_vec(n_max)
  
-#create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) 
-   
+
 #load dictionaries of all lower orders C_Dict_vec 
-for ord = 0:max_order
-    C_Dict_vec[ord+1]  = load_object(path_DynHTSE*"GraphFiles/GraphG_Lists_S1/C_"*string(ord)*".jld2")
-end 
+C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,n_max+1);
+for ord = 0:n_max
+    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_"*spin_string*"/C_"*string(ord)*".jld2")
+end
 #-----------------------------------
 
 ### Define Lattice
@@ -31,7 +31,7 @@ reference_site = 1
 display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
 
 
-on_site_correlator = Calculate_Correlator(LatGraph,reference_site,reference_site,max_order,gG_vec,C_Dict_vec)
+on_site_correlator = Calculate_Correlator_fast(LatGraph,reference_site,reference_site,max_order,gG_vec_unique,C_Dict_vec)
 for ord = 0:max_order
     on_site_correlator[ord+1] *= (-1)^ord
 end
