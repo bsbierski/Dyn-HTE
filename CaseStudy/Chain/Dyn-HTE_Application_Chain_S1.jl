@@ -1,19 +1,20 @@
 ######### Dyn-HTE for chain #########
 using Polynomials, HDF5, Measurements
-include("plotConventions.jl") 
+
 
 path_DynHTSE="C:/Users/ruben/Documents/GitHub/Projects/Master/Dyn-HTE/Dyn-HTE/"
 include(path_DynHTSE*"Embedding.jl")
 include(path_DynHTSE*"LatticeGraphs.jl")
-#include(path_DynHTSE*"ConvenienceFunctions.jl")
+include(path_DynHTSE*"ConvenienceFunctions.jl")
+include(path_DynHTSE*"plotConventions.jl") 
 
 #specify max order
 max_order = 11
 
 #LOAD FILES -------------------------
 #generate list of graphs
-graphs_vec = [load_object(path_DynHTSE*"GraphFiles_chain/graphs_"*string(nn)*".jld2") for nn in 0:max_order]
-gG_vec = getGraphsG(graphs_vec)
+#graphs_vec = [load_object(path_DynHTSE*"GraphFiles_chain/graphs_"*string(nn)*".jld2") for nn in 0:max_order]
+gG_vec_unique = getGraphsG(max_order)
  
 #create vector of all lower order dictionaries
 C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) 
