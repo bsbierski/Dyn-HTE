@@ -1,8 +1,15 @@
 *.toml
-*.pdf
 *.svg
+*.png
 unique_gG_vec_12.jld2
 graphsG_12.jld2
-C_12.jld2
 graphs_12.jld2
+GraphFiles/graphs_12.jld2
+GraphFiles/graphsG_12.jld2
+GraphEvaluations/Spin_S1half/C_11.jld2
+GraphEvaluations/Spin_S1/C_11.jld2
+GraphEvaluations/Spin_S3half/C_11.jld2
+GraphEvaluations/Spin_S1half/C_12.jld2
+GraphEvaluations/Spin_S1/C_12.jld2
+GraphEvaluations/Spin_S3half/C_12.jld2
 

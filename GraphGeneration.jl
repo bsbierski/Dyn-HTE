@@ -556,16 +556,31 @@ end
 
 ### if GraphFiles/graphs12.jld2 has not yet been merged from its <100Mb parts a,b, then merge and save it
 if !isfile("GraphFiles/graphs_12.jld2")
+    println("merging graphs12 ...")
     save_object("GraphFiles/graphs_12.jld2",vcat(load_object("GraphFiles/graphs_12a.jld2"),load_object("GraphFiles/graphs_12b.jld2")))
 end
 
-### if GraphEvaluations/Spin_S1half/C_12.jld2 does not yet exist, merge it from its parts
-if !isfile("GraphEvaluations/Spin_S1half/C_12.jld2")
-    save_object("GraphEvaluations/Spin_S1half/C_12.jld2",vcat(  load_object("GraphEvaluations/Spin_S1half/C_12a.jld2"),
-                                                                load_object("GraphEvaluations/Spin_S1half/C_12b.jld2"),
-                                                                load_object("GraphEvaluations/Spin_S1half/C_12c.jld2"),
-                                                                load_object("GraphEvaluations/Spin_S1half/C_12d.jld2")            
-                                                                ))
+### if GraphEvaluations C_11.jld2 and C_12.jld2 do not yet exist, merge it from its parts
+for sstring in ["S1half","S1"]
+
+    if !isfile("GraphEvaluations/Spin_"*sstring*"/C_11.jld2")
+        println("merging C_11 ...")
+        save_object("GraphEvaluations/Spin_"*sstring*"/C_11.jld2",vcat(  load_object("GraphEvaluations/Spin_"*sstring*"/C_11a.jld2"),
+                                                                    load_object("GraphEvaluations/Spin_"*sstring*"/C_11b.jld2")            
+                                                                    ))
+    end
+
+    if !isfile("GraphEvaluations/Spin_"*sstring*"/C_12.jld2")
+        println("merging C_12 ...")
+        save_object("GraphEvaluations/Spin_"*sstring*"/C_12.jld2",vcat(  load_object("GraphEvaluations/Spin_"*sstring*"/C_12a.jld2"),
+                                                                    load_object("GraphEvaluations/Spin_"*sstring*"/C_12b.jld2"),
+                                                                    load_object("GraphEvaluations/Spin_"*sstring*"/C_12c.jld2"),
+                                                                    load_object("GraphEvaluations/Spin_"*sstring*"/C_12d.jld2"),
+                                                                    load_object("GraphEvaluations/Spin_"*sstring*"/C_12e.jld2"),
+                                                                    load_object("GraphEvaluations/Spin_"*sstring*"/C_12f.jld2")            
+                                                                    ))
+    end
+
 end
 
 

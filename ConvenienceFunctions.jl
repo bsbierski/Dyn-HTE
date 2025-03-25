@@ -1,10 +1,11 @@
 using Symbolics, RobustPade, Polynomials, DifferentialEquations, LsqFit, TaylorSeries
 
-###### get expansion coefficients for correlators G_ii' in real-space (dynamic-Matsubara and equal-time) 
+###### get expansion of real-space G_ii' (dynamic-Matsubara "Dyn" and "Equal-time") 
 function get_c_iipDyn_mat(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int64}}}
     """compute all non-trivial coefficients G_ii' on lattice L from the center_sites i to all other sites i' of the lattice"""
     GiipDyn_mat = Array{Matrix{Rational{Int64}}}(undef, lattice.length,length(lattice.unitcell.basis));
-    Threads.@threads for jp = 1:lattice.length
+    Threads.@threads :dynamic for jp = 1:lattice.length
+        println("bond "*string(jp)*" of "*string(lattice.length))
         for b = 1:length(lattice.unitcell.basis)
             GiipDyn_mat[jp,b] = mapreduce(permutedims, vcat, Calculate_Correlator_fast(LatGraph,center_sites[b],jp,max_order,gG_vec_unique,C_Dict_vec))
         end
@@ -22,15 +23,16 @@ function get_c_iipDyn_mat_slow(LatGraph,lattice,center_sites,max_order,gG_vec,C_
     return c_iipDyn_mat
 end
 
-function get_c_iipEqualTime_mat(GiipDyn_mat::Matrix{Matrix{Rational{Int64}}},max_order::Int)::Matrix{Rational{Int64}}
+function get_c_iipEqualTime_mat(c_iipDyn_mat::Matrix{Matrix{Rational{Int64}}},max_order::Int)::Array{Rational{Int64}}
     """ perform frequency sum over real-space dynamic correlators to obtain equal time correlators """
-    GiipEqualTime_mat = Matrix{Rational{Int64}}(undef, length(GiipDyn_mat),max_order+1)
-    for j in eachindex(GiipDyn_mat)
-        GiipEqualTime_mat[j,:] = [sum(GiipDyn_mat[j][n+1,:] .* [1//1,1//12,1//720,1//30240,1//1209600,1//47900160,691//1307674368000,1//74724249600,3617//10670622842880000,43867//5109094217170944000]) for n in 0:max_order]
+    c_iipEqualTime_mat = Array{Rational{Int64}}(undef, length(c_iipDyn_mat[:,1]), length(c_iipDyn_mat[1,:]), max_order+1)
+    for j in eachindex(c_iipDyn_mat[:,1])
+        for b in eachindex(c_iipDyn_mat[1,:])
+            c_iipEqualTime_mat[j,b,:] = [sum(c_iipDyn_mat[j,b][n+1,:] .* [1//1,1//12,1//720,1//30240,1//1209600,1//47900160,691//1307674368000,1//74724249600,3617//10670622842880000,43867//5109094217170944000]) for n in 0:max_order]
+        end
     end
-    return GiipEqualTime_mat
+    return c_iipEqualTime_mat
 end
-
 
 ###### bare series polynomial in Gii'(x,m) at Matsubara integer m truncated at n 
 function get_TGiip_m_bare(c_iipDyn_mat::Matrix{Matrix{Rational{Int64}}},m::Int,n::Int)::Matrix{Polynomial}
@@ -89,9 +91,67 @@ function get_intDiffApprox(p::Polynomial,x_vec::Vector{Float64},M::Int,L::Int,N:
     return sol.u
 end
 
+###### variable transform from x to u=tanh(fx)
+function get_p_u(coeffs_x::Vector{Float64},f::Float64)
+    """ transform polynomial in x (defined via coeffs_x) to polynomial in u=tanh(fx) truncated to degree length(coeffs_x)-1 """ 
+    """ this is too slow for transforming many coeffs_x, use the linear trafo instead """
+    @variables x u
+    x = taylor(atanh(u)/f, u, 0:(length(coeffs_x)-1), rationalize=false)
+    p_u_ext = simplify(series(coeffs_x,x);expand=true)
+    p_u = Polynomial(Symbolics.value.(taylor_coeff(p_u_ext,u,0:12,rationalize=false)),:u)
+    return p_u
+end
+
+function get_LinearTrafoToCoeffs_u(max_order::Int,f::Float64)::Matrix{Float64}
+    """ get linear transform polynomial coeffs from x to u=tanh(fx) """ 
+    """ to be used as res*coeffs_x """
+    res = zeros(max_order+1,max_order+1)
+    @variables x u
+    x = taylor((atanh(u)/f), u, 0:max_order, rationalize=false)
+
+    for n in 0:max_order
+        xpn = simplify(x^n;expand=true)
+        res[:,n+1] = Symbolics.value.(taylor_coeff(xpn,u,0:max_order,rationalize=false))
+    end
+    return res
+end
+
 ###### k-space functions
+function get_c_kEqualTime(k,c_iipEqualTime_mat::Array{Rational{Int64}},lattice::Lattice,center_sites)::Vector{Float64}
+    """ computes the spatial FT of c_iipEqualTime for momentum k """
+    """ assumes inversion symmetry of the lattice to get real FT transform """
+    c_kEqualTime = zeros(Float64, length(c_iipEqualTime_mat[1,1,:]))
+    for b in 1:length(lattice.unitcell.basis)
+        for j in 1:length(lattice)
+            r = getSitePosition(lattice,j).-getSitePosition(lattice,center_sites[b])
+            c_kEqualTime[:] += cos(dot(k,r)) *  c_iipEqualTime_mat[j,b,:]
+        end
+    end
+    
+    return c_kEqualTime / length(lattice.unitcell.basis)
+end
+function get_c_kDyn(k,c_iipDyn::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Matrix{Float64}
+    """ computes the spatial FT of c_iipDyn for momentum k """
+    """ assumes inversion symmetry of the lattice to get real FT transform """
+    c_kDyn = 0.0*c_iipDyn[1,1]
+    for b in 1:length(lattice.unitcell.basis)
+        for j in 1:length(lattice)
+            r = getSitePosition(lattice,j).-getSitePosition(lattice,center_sites[b])
+            c_kDyn[:,:] += cos(dot(k,r)) *  c_iipDyn[j,b][:,:]
+        end
+    end
+    
+    for c_pos in  eachindex(c_kDyn)
+        if abs(c_kDyn[c_pos]) < 1e-12
+            c_kDyn[c_pos] = 0.0
+        end
+    end
+
+    return c_kDyn / length(lattice.unitcell.basis)
+end
+
 function create_brillouin_zone_path(points, num_samples::Int)
-    """ create a linear interpolation between high symmetry points in BZ """
+    """ create a linear interpolation between an arbitrary number of (high symmetry) points in BZ """
     # Calculate distances between consecutive points
     distances = [norm(p2 .- p1) for (p1, p2) in zip(points[1:end-1], points[2:end])]
     total_distance = sum(distances)
@@ -140,14 +200,12 @@ function get_c_kDyn_mat(kvec,c_iipDyn_mat::Array{Matrix{Rational{Int64}}},lattic
                 z += cos(dot(kvec[i],getSitePosition(lattice,k).-getSitePosition(lattice,center_sites[b]))) *  c_iipDyn_mat[k,b]
             end
         end
-        z[z< 10^(-14)] .= 0
+       # z[z< 10^(-14)] .= 0
         BrillPath[i] = z 
     end
     
-
     return BrillPath
 end
-
 
 
 ###### moments, continued fractions and dynamical spin structure factors
@@ -219,8 +277,6 @@ function fromMomentsToδ(m_vec::Vector{Float64})
     δ_vec = [δ0,δ1,δ2,δ3,δ4,δ5,δ6,δ7,δ8][1:length(m_vec)] 
     return δ_vec , 1.0*collect(0:length(δ_vec)-1)
 end
-
-
 function fromMomentsToδ(m_vec::Vector{Polynomial{Float64, :x}})
     @assert length(m_vec)<=7
 
@@ -266,7 +322,7 @@ function extrapolate_δvec(δ_vec::Vector{Float64},r_min::Int,r_max::Int,r_ext::
     """ extrapolate parameters of continued fraction δ_vec=[δ[0],δ[1],...,δ[R]] 
     using a linear interpolation for δ_vec[r_min] to δ[r_max], extrapolate δ[r_max+1]...δ[r_ext]. 
     If intercept0=true use line through origin. """
-    @assert r_max > r_min
+    @assert r_max >= r_min
     @assert r_ext > r_max
     @assert r_max+1 <= length(δ_vec)
     ### define linear fit-function, fit and extrapolate
@@ -413,6 +469,9 @@ function get_JSkw_mat_finitex(diag_off_diag_flag,method::String,x::Float64,k_vec
 
     return JSkw_mat
 end
+
+
+
 
 
 ################################# BJÖRN STOPPED HERE ##################################
