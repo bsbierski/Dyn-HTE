@@ -32,6 +32,7 @@ display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodesh
 #2.Compute all correlations in the lattice
 Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
 
+
 #3. Fourier Transform
 
 ### Compute A 2D Brillouin zone cut: 
@@ -349,7 +350,7 @@ end
 gG_vec_unique_new = unique_Graphs(gG_vec_unique)
 @save "gG_vec_unique_new.jld2" gG_vec_unique_new
 
-
+#= 
 function compute_lattice_correlations_new(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int64}}}
     """compute all correlations from the center_sites to all other sites of the lattice"""
     Correlators = Array{Matrix{Rational{Int64}}}(undef, lattice.length,length(lattice.unitcell.basis));
@@ -364,16 +365,15 @@ end
 @time Correlators_new = compute_lattice_correlations_new(LatGraph,lattice,center_sites,max_order,gG_vec_unique_new,C_Dict_vec)
 
 
-for maxorder = 1:11
+for maxorder = 0:0
 file_path = "GraphFiles/unique_gG_vec_$maxorder.jld2"
 if isfile(file_path)
         unique_gG_vec = load_object(file_path) 
-        gG_vec_unique_new = unique_Graphs(unique_gG_vec)
-        @save "GraphFiles/unique_gG_vec_$maxorder"*"_new.jld2" unique_gG_vec
+        unique_gG_vec = unique_Graphs(unique_gG_vec)
+       @save "GraphFiles/unique_gG_vec_$maxorder"*".jld2" unique_gG_vec
 end
 end
 
-test = 1
 print("test$test"*"test")
 
 maxorder = 12
@@ -393,13 +393,13 @@ vcat([1],[2],[3],[4])
 
 
 
-unique_graphs_12_part = gG_vec_unique.graphs[1:5000]
+unique_graphs_12_part = unique_Graphs(12,gG_vec_unique.graphs[1:5000])
 @save "GraphFiles/unique_gG_vec_$maxorder"*"_1"*".jld2" unique_graphs_12_part
-unique_graphs_12_part = gG_vec_unique.graphs[5001:40000]
+unique_graphs_12_part = unique_Graphs(12,gG_vec_unique.graphs[5001:40000])
 @save "GraphFiles/unique_gG_vec_$maxorder"*"_2"*".jld2" unique_graphs_12_part
-unique_graphs_12_part = gG_vec_unique.graphs[40001:150000]
+unique_graphs_12_part = unique_Graphs(12,gG_vec_unique.graphs[40001:150000])
 @save "GraphFiles/unique_gG_vec_$maxorder"*"_3"*".jld2" unique_graphs_12_part
-unique_graphs_12_part = gG_vec_unique.graphs[150001:end]
+unique_graphs_12_part = unique_Graphs(12,gG_vec_unique.graphs[150001:end]
 @save "GraphFiles/unique_gG_vec_$maxorder"*"_4"*".jld2" unique_graphs_12_part
 for part = 1:6
 split = split_vec(gG_vec_unique.graphs,part,10)[1]
@@ -408,4 +408,190 @@ unique_graphs_12_part = unique_Graphs(12,split)
 end
 
 split = split_vec(gG_vec_unique_new.graphs,part,4)[1]
-unique_Graphs([12,split])
+unique_Graphs([12,split]) =#
+max_order = 12
+gG_vec_unique = give_unique_gG_vec(max_order);
+C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) ;
+for ord = 0:max_order
+    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
+end 
+
+@time gG_vec_unique_precalc = precalculate_unique_graphs(max_order,gG_vec_unique,C_Dict_vec);
+
+gG_vec_unique_precalc.graphs[12].graph_value
+
+
+function precalculate_unique_graphs(max_order::Int,gG_vec_unique::unique_Graphs,C_Dict_vec::Vector{Vector{Vector{Rational{Int64}}}})::unique_Graphs_precalc
+    """ Calculate the coefficients of (-x)^n for TG_ii'(iν_m) from embedding factors of only the unique simple graphs and the gG's symmetry factors """    
+
+    result_vector = Vector{unique_Graph_precalc}(undef,length(gG_vec_unique.graphs))
+
+    # only iterate over the unique simple graphs in unique_Gg
+    for (index,unique_Gg) in enumerate(gG_vec_unique.graphs)
+            #initialize result array
+        result_array = Matrix{Rational{Int64}}(undef, max_order+1,10)
+
+     #for every order we get result vector representing prefactors of [δw,Δ^2,Δ^4,Δ^6,Δ^8,Δ^10,Δ^12,Δ^14,Δ^16,Δ^18]
+     for ord = 1:max_order+1
+        result_array[ord,:] = zeros(Rational{Int64},10)
+    end
+
+        gg = unique_Gg.ref_graph   #Graph
+        gg_dist = unique_Gg.distance
+
+        
+
+        #### now we sum overall graphG eqivalent to the unique Gg
+        for graph in unique_Gg.gG_vec
+            g_order = graph.order #order
+            gG_vec_index = graph.index #index
+            symmetry_factor = graph.symmetry_factor#symmetry factor
+            is_symmetric = graph.is_symmetric  #bool if the graph is symmetric
+           
+            fac = 2
+            if is_symmetric
+                fac = 1
+            end
+
+            #look up the value of the graph from C_Dict_vec
+            look_up_dict =C_Dict_vec[g_order+1][gG_vec_index]
+            result_array[g_order+1,:] .+= look_up_dict/symmetry_factor*fac
+        end
+
+        result_vector[index] = unique_Graph_precalc(gg,gg_dist,result_array)
+    end
+
+    return unique_Graphs_precalc(max_order,result_vector)
+end
+
+
+function compute_lattice_correlations_new(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int64}}}
+    """compute all correlations from the center_sites to all other sites of the lattice"""
+    Correlators = Array{Matrix{Rational{Int64}}}(undef, lattice.length,length(lattice.unitcell.basis));
+    Threads.@threads for jp = 1:lattice.length
+        for b = 1:length(lattice.unitcell.basis)
+        Correlators[jp,b] =  Calculate_Correlator_faster(LatGraph,center_sites[b],jp,max_order,gG_vec_unique,C_Dict_vec)
+        end
+    end
+    return Correlators
+end
+
+function Calculate_Correlator_faster(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order::Int,gG_vec_unique::unique_Graphs_precalc,C_Dict_vec::Vector{Vector{Vector{Rational{Int64}}}})::Matrix{Rational{Int64}}
+    """ Calculate the coefficients of (-x)^n for TG_ii'(iν_m) from embedding factors of only the unique simple graphs and the gG's symmetry factors """    
+
+    #initialize result array
+    result_array = Matrix{Rational{Int64}}(undef, max_order+1,10)
+
+    #for every order we get result vector representing prefactors of [δw,Δ^2,Δ^4,Δ^6,Δ^8,Δ^10,Δ^12,Δ^14,Δ^16,Δ^18]
+    for ord = 1:max_order+1
+        result_array[ord,:] = zeros(Rational{Int64},10)
+    end
+
+    #calculate the shortest graph distance between ext_j1 and ext_j2
+    ext_dist = dijkstra_shortest_paths(L,ext_j1).dists[ext_j2]
+
+    # only iterate over the unique simple graphs in unique_Gg
+    for  unique_Gg in gG_vec_unique.graphs
+        gg = unique_Gg.ref_graph   #Graph
+        gg_dist = unique_Gg.distance #edge distance between the external vertices
+        gg_val = unique_Gg.graph_value
+          # if the graph is long enough
+          if gg_dist < ext_dist 
+            continue
+        end
+
+        #if its the onsite correlator we only need on-site graphs 
+        if ext_dist == 0
+            if gg_dist > ext_dist 
+                continue
+            end
+        else #if not, we dont need any on site graphs
+            if gg_dist == 0 
+                continue
+            end
+        end
+
+        #calculate the embedding factor
+        emb_fac = e_fast(L,ext_j1,ext_j2,gg)
+
+        result_array .+=  emb_fac*gg_val
+    end
+
+    return result_array
+end
+
+
+max_order = 10
+
+#LOAD FILES 
+#-------------------------------------------------------------------------------------
+#load list of unique graphs
+gG_vec_unique = give_unique_gG_vec(max_order);
+
+#create vector of all lower order dictionaries
+C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) ;
+#load dictionaries of all lower orders C_Dict_vec 
+for ord = 0:max_order
+    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
+end 
+#-----------------------------------
+
+#1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
+L = max_order
+lattice,LatGraph,center_sites = getLattice_Ball(L,"triang");
+display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
+
+#2.Compute all correlations in the lattice
+@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
+
+gG_vec_unique_precalc = precalculate_unique_graphs(max_order,gG_vec_unique,C_Dict_vec);
+@time Correlators_new = compute_lattice_correlations_new(LatGraph,lattice,center_sites,max_order,gG_vec_unique_precalc,C_Dict_vec);
+
+Correlators == Correlators_new
+
+
+gG_vec_unique_precalc.graphs[2].graph_value
+
+
+
+
+#Calculate the Quantum to Classical Correspondence
+
+
+function calc_taylorinvmat_fun(corr)
+    orderJ,orderω = size(corr)
+    @variables x
+    taylormat = y -> sum(y[i,1]*x^(i-1) for i =  1:orderJ)
+    invtaylormat = inv(taylormat(corr));
+    t = Taylor1(Float64,orderJ-1)
+    return  substitute(invtaylormat, Dict(x=>t)) 
+end
+
+
+### Compute A 2D Brillouin zone cut: 
+N = 30;
+kx = (1:1)*2pi/(1);
+ky = (1:N)*2pi/(N); #[0.] #for chains
+kmat = [(y,x) for x in kx, y in ky ];
+structurefactor =  brillouin_zone_cut(kmat,Correlators,lattice,center_sites);
+invstruc = calc_taylorinvmat_fun.(structurefactor);
+invcorrs = brillouin_zone_cut_inverse(kmat,invstruc,lattice,center_sites);
+
+
+test = brillouin_zone_cut_inverse(kmat,structurefactor,lattice,center_sites);
+
+test[12]
+Float64.(Correlators[12])
+
+sumcoeffs = [sum(abs.(invcorrs[i][:])) for i in 1:length(invcorrs)]
+distances = [norm(lattice.sitePositions[i] .- lattice.sitePositions[center_sites[1]]) for i =1:length(lattice)]
+pchain = scatter(psquare,distances,sumcoeffs, yaxis = :log, title = L"$G_{ij}^{-1}(i\omega = 0) = \sum_n c_{ij,n} x^n$" , xlabel = "|i-j|" , ylabel = L"\sum_n |c_{ij,n}|", label = "Chain")
+
+(invcorrs[11]/invcorrs[13])[:]*10^6
+
+invcorrs[13][1]
+
+distances
+
+center_sites
+

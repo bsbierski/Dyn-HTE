@@ -22,13 +22,20 @@ end
 #-----------------------------------
 
 #1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
-L = 12
+L = max_order
 lattice,LatGraph,center_sites = getLattice_Ball(L,"kagome");
 display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
 
 #2.Compute all correlations in the lattice
 
-#@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
+
+@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
+
+gG_vec_unique_precalc = precalculate_unique_graphs(max_order,gG_vec_unique,C_Dict_vec);
+
+truncated_unique=unique_Graphs_precalc(gG_vec_unique_precalc.max_order,gG_vec_unique_precalc.graphs[1:4000])
+@time Correlators_new = compute_lattice_correlations_new(LatGraph,lattice,center_sites,max_order,truncated_unique,C_Dict_vec);
+Correlators = Correlators_new
 @load "CaseStudy/Kagome/Correlation_Data_L12.jld2" Correlators
 
 #test uniform susceptibility with /10.1103/PhysRevB.89.014415 
@@ -37,6 +44,7 @@ Correlators[center_sites[1]][:,1]
 center_sites[2]
 
 Correlators[center_sites[1],:][2][:,1]
+
 #3. Fourier Transform
 ### Compute A 2D Brillouin zone cut: }
 N = 40
@@ -87,15 +95,15 @@ pathticks = ["Γ","M","K","Γ"]
 Nk = 100
 kvec,kticks_positioins = create_brillouin_zone_path(path, Nk)
 BrillPath = brillouin_zone_path(kvec,Correlators,lattice,center_sites);
-BrillPath[37][:,1]
  
-
+kticks_positioins
+JSkw_mat_total = get_JSkw_mat_finitex("total","pade",x,[kvec[37]],w_vec,0.02,1,3,200,false,Correlators,lattice,center_sites)
 ###### S(k,w) heatmap
 using CairoMakie
 
 x = 1.5
 w_vec = collect(0.01:0.0314/2:4.0)
-JSkw_mat_total = get_JSkw_mat_finitex("total","padedelta",x,kvec,w_vec,0.02,1,3,200,false,Correlators,lattice,center_sites)
+JSkw_mat_total = get_JSkw_mat_finitex("total","pade",x,kvec,w_vec,0.02,1,3,200,false,Correlators,lattice,center_sites)
 
 #plotting
 fig = Figure(fontsize=25,resolution = (900,500));
@@ -181,3 +189,94 @@ Threads.@threads for i = 1:N^2
 end
 struc = reshape(res_vec,(N,N))
 p = Plots.heatmap(kx,ky,struc, clims=(0,1.))
+
+#Calculate the Quantum to Classical Correspondence
+
+ #in special cases Num values appear. For those we need to read out their Float value
+ import Base
+ function Base.Float64(x::Num)
+     return Float64(Symbolics.value(x))
+  end     
+  function calc_taylorinvmat_fun(corr::Matrix{Matrix{ComplexF64}})::Matrix{Taylor1{ComplexF64}}
+    orderJ,orderω = size(corr[1])
+    @variables x::Real
+    taylormat = y -> sum(y[i,1]*x^(i-1) for i =  1:orderJ)
+    invtaylormat = inv(taylormat.(corr));
+    t = Taylor1(ComplexF64,orderJ-1)
+    subsfun = y -> substitute(real(y), Dict(x=>t)) + 1im* substitute(imag(y), Dict(x=>t)) 
+    taylorinvmat_fun =  subsfun.(invtaylormat)
+    return taylorinvmat_fun
+end
+
+
+### Compute A 2D Brillouin zone cut: 
+N = 20;
+kx = (1:N)*2pi/(N);
+ky = (1:N)*2pi/(N); #[0.] #for chains
+kmat = Tuple.([[1,1/sqrt(3)].*x .+ [1,-1/sqrt(3)].*y for x in kx, y in ky ]);
+structurefactor =  brillouin_zone_cut_Matrix(kmat,Correlators,lattice,center_sites);
+invstruc = Array{Matrix{Taylor1{ComplexF64}}}(undef,N,N)
+Threads.@threads for i=1:N
+    for j = 1:N
+        invstruc[i,j] = calc_taylorinvmat_fun(structurefactor[i,j])
+
+    end
+end
+invcorrs = inverse_fourier_transform(kmat,invstruc,lattice,center_sites);
+
+
+structurefactor =  brillouin_zone_cut_Matrix(kmat,Correlators,lattice,center_sites);
+invcorrstest = inverse_fourier_transform(kmat,structurefactor,lattice,center_sites);
+
+
+
+typeof(structurefactor)
+structurefactor[1]
+(1/invcorrs[190,1])[:]
+Float64.(Correlators[193])
+invcorrstest[193]
+
+(invcorrs[201]/invcorrs[199])
+
+center_sites
+
+p= plot();
+betavec = 0:0.02:10
+padetypes = [[4,5],[5,6],[6,6]]
+for padetype in padetypes
+corrlist = (x->RobustPade.robustpade.(x,padetype[1], padetype[2])).([invcorrs[157],-invcorrs[158],invcorrs[134],invcorrs[159]]);
+corrlist = (x->RobustPade.robustpade.(x,padetype[1], padetype[2])).([1/invcorrs[157],-invcorrs[158]/invcorrs[157],invcorrs[134]/invcorrs[157],invcorrs[159]/invcorrs[157]])
+for c in corrlist
+evaluate(x) = [x(beta) for beta in betavec ] 
+corrbetavec = evaluate(c)
+plot!(p,betavec,corrbetavec, label = "T = " ,yrange = [-0.1,0.3] )
+end
+end
+
+
+center_sites
+real(1/invcorrs[190,1])[:]
+real(invcorrs[190,2]/invcorrs[190,1])[:]
+real(invcorrs[193,1]/invcorrs[190,1])[:]*10^5
+
+
+
+sumcoeffs = [sum(abs.(invcorrs[i,b][:])) for i in 1:length(lattice), b in 1:3]
+distances = [norm(lattice.sitePositions[i] .- lattice.sitePositions[center_sites[b]]) for i in 1:length(lattice) , b in 1:3]
+using LaTeXStrings
+pkagome = scatter(distances[:],sumcoeffs[:], yaxis = :log, title = L"$G_{ij}^{-1} = \sum_n c_n x^n$" , xlabel = "|i-j|" , ylabel = L"\sum_n c_n", label = "Kagome")
+
+
+sortperm(distances[:,1])[16]
+distances[sortperm(distances[:,1])][16]
+
+real(1/invcorrs[190,1])[:]
+real(invcorrs[191,1]/invcorrs[190,1])[:]
+real(invcorrs[228,1]/invcorrs[190,1])[:]*10^5
+real(invcorrs[193,1]/invcorrs[190,1])[:]*10^5
+real(invcorrs[194,1]/invcorrs[190,1])[:]*10^5
+
+
+sort()
+
+sumcoeffs[:]

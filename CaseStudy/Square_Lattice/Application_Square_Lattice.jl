@@ -5,7 +5,7 @@ include("../../Embedding.jl")
 include("../../LatticeGraphs.jl")
 include("../../ConvenienceFunctions.jl") 
 #specify max order
-max_order = 11
+max_order = 12
 
 #LOAD FILES 
 #-------------------------------------------------------------------------------------
@@ -23,7 +23,7 @@ end
 #1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
 L = max_order
 lattice,LatGraph,center_sites = getLattice_Ball(L,"square");
-display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
+display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.12,fontsize=4,nodeshape=:rect,curves=false))
 
 #2.Compute or load all correlations in the lattice
 #@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
@@ -32,19 +32,28 @@ display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodesh
 #check the susceptibility with 10.1103/PhysRevB.53.14228
 (brillouin_zone_cut([(0.0,0.0) (0.0,0.0) ;(0.0,0.0)  (0.0,0.0)],Correlators,lattice,center_sites)[1]*4)[:,1].*[factorial(n)*4^n for n in 0:max_order]
 
-
+Correlators
 
 #3. Fourier Transform
 
 ### Compute A 2D Brillouin zone cut: 
-N = 100
-kx = range(-4pi,4pi,length=N)
-ky = range(-4pi,4pi,length=N) #[0.] #for chains
+N = 30
+kx = [0.,0]#(1:N)*2pi/(N)
+ky = [0.,0]#(1:N)*2pi/(N) #[0.] #for chains
 kmat = [(y,x) for x in kx, y in ky ]
-structurefactor =  brillouin_zone_cut(kmat,Correlators,lattice,center_sites);
+structurefactor =  brillouin_zone_cut(kmat,Correlators,lattice,center_sites)
+corrs=brillouin_zone_cut_inverse(kmat,structurefactor,lattice,center_sites);
+
+
+structurefactor[1][:,1]
+corrs[1]
+Float64.(Correlators[1])
+
+
+structurefactor[1,1]
 
 ### Evaluate the correlators at a frequency and plot the 2D Brillouin zone cut
-x = 4.2
+x = -1.2
 padetype = [5,6]
 evaluate(y) = eval_correlator_LR_continuous_pad(y, x, padetype); #define evaluation function
 struc = real.(evaluate.(structurefactor));
@@ -132,5 +141,215 @@ CairoMakie.plot!(ax,[k for k in 1:Nk+1],2.4*disp, color = :orange, alpha = 0.45,
 axislegend(ax)
 display(fig)
 
-#save("SquareX"*string(x)*".pdf",fig)
+inv(10)
 
+
+
+
+calc_taylorinvmat_fun(corr)
+
+
+#Calculate the Quantum to Classical Correspondence
+
+
+function calc_taylorinvmat_fun(corr)
+    orderJ,orderω = size(corr)
+    @variables x
+    taylormat = y -> sum(y[i,1]*x^(i-1) for i =  1:orderJ)
+    invtaylormat = inv(taylormat(corr));
+    t = Taylor1(Float64,orderJ-1)
+    return  substitute(invtaylormat, Dict(x=>t)) 
+end
+
+
+### Compute A 2D Brillouin zone cut: 
+N = 30;
+kx = (1:N)*2pi/(N);
+ky = (1:N)*2pi/(N); #[0.] #for chains
+kmat = [(y,x) for x in kx, y in ky ];
+structurefactor =  brillouin_zone_cut(kmat,Correlators,lattice,center_sites);
+invstruc = calc_taylorinvmat_fun.(structurefactor);
+invcorrs = brillouin_zone_cut_inverse(kmat,invstruc,lattice,center_sites);
+
+
+#evaluate first then invert 
+eval(x) = eval_correlator_LR_continuous_pad_tanh(x,-1/0.2,[6,6],2);
+
+invstruc = 1 ./ eval.(structurefactor)
+invcorrs = brillouin_zone_cut_inverse(kmat,invstruc ,lattice,center_sites);
+
+fnew = []
+gnew = []
+ϵ1new = []
+ϵ2new = []
+betas = 1:5
+for beta = betas
+    eval(x) = eval_correlator_LR_continuous_pad_tanh(x,-beta,[12,0],0.8);
+    invstruc = 1 ./ eval.(structurefactor)
+    invcorrs = brillouin_zone_cut_inverse(kmat,invstruc ,lattice,center_sites);
+    append!(fnew,real(1/invcorrs[157]))
+    append!(gnew,real(invcorrs[181,1]/invcorrs[157,1]))
+    append!(ϵ1new,real(invcorrs[132,1]/invcorrs[157,1]))
+    append!(ϵ2new,real(invcorrs[111,1]/invcorrs[157,1]))
+end
+p= plot(betas,fnew, ylims = [0,0.3]);
+plot!(p,betas,gnew);
+plot!(p,betas,ϵ1new);
+plot!(p,betas,ϵ2new)
+
+p= plot();
+betavec = 0:0.02:10
+padetypes = [[4,5],[5,6],[6,6]]
+for padetype in padetypes
+corrlist = (x->RobustPade.robustpade.(x,padetype[1], padetype[2])).([invcorrs[157],-invcorrs[158],invcorrs[134],invcorrs[159]]);
+corrlist = (x->RobustPade.robustpade.(x,padetype[1], padetype[2])).([1/invcorrs[157],-invcorrs[158]/invcorrs[157],invcorrs[134]/invcorrs[157],invcorrs[159]/invcorrs[157]])
+for c in corrlist
+evaluate(x) = [x(beta) for beta in betavec ] 
+corrbetavec = evaluate(c)
+plot!(p,betavec,corrbetavec, label = "T = " ,yrange = [-0.1,0.3] )
+end
+end
+
+
+sumcoeffs = [sum(abs.(invcorrs[i][:])) for i in 1:length(invcorrs)]
+distances = norm.(lattice.sitePositions)
+psquare=scatter(p,distances,sumcoeffs, yaxis = :log, title = L"$G_{ij}^{-1}(i\omega = 0) = \sum_n c_{ij,n} x^n$" , xlabel = "|i-j|" , ylabel = L"\sum_n |c_{ij,n}|", label = "Square")
+
+
+
+
+sortperm(distances[:])[14]
+distances[sortperm(distances[:])][14]
+
+real(1/invcorrs[157])[:]
+real(invcorrs[181,1]/invcorrs[157,1])[:]
+real(invcorrs[132,1]/invcorrs[157,1])[:]*10^5
+real(invcorrs[111,1]/invcorrs[157,1])[:]*10^5
+real(invcorrs[110,1]/invcorrs[157,1])[:]*10^5
+
+
+
+# QMC data for QCC Square lattice
+using HDF5
+fid = h5open("CaseStudy/Square_Lattice/job_BSb_beta1.out.h5", "r")
+res=fid["simulation"]["results"]["DensDens_CorrFun_w0"]["mean"]["value"][:]
+L = Int(length(res)^(1/2))
+positions = [(n -L*(floor(n/(L/2))), m - L*floor(m/(L/2)) ) for  n=0:(L-1) , m=0:(L-1) ]
+pos = reshape(positions,L^2)
+resmat= reshape(res,L,L)
+ressym = 1/2*(resmat+transpose(resmat))[:]
+N = Int(40);
+kx = (1:N)*2pi/(N);
+ky = (1:N)*2pi/(N); #[0.] #for chains
+structurefactor1 =  brillouin_zone_cut([(y,x) for x in kx, y in ky ],ressym,positions);
+structurefactor2 =  brillouin_zone_cut([(y,-x) for x in kx, y in ky ],ressym,positions);
+structurefactor3 =  brillouin_zone_cut([(-y,x) for x in kx, y in ky ],ressym,positions);
+structurefactor4 =  brillouin_zone_cut([(-y,-x) for x in kx, y in ky ],ressym,positions);
+structurefactor = 1/4*(structurefactor1+structurefactor2+structurefactor3+structurefactor4)
+minimum(structurefactor)
+
+
+Plots.heatmap(structurefactor)
+
+invtest
+res
+
+invstruc = 1 ./structurefactor
+invcorrs = brillouin_zone_cut_inverse(kmat,invstruc ,lattice,center_sites);
+Plots.heatmap(structurefactor)
+
+
+
+f = []
+g = []
+ϵ1 = []
+ϵ2 = []
+betas = 1:5
+for beta = betas
+    fid = h5open("CaseStudy/Square_Lattice/job_BSb_beta$beta.out.h5", "r")
+    res=fid["simulation"]["results"]["DensDens_CorrFun_w0"]["mean"]["value"][:]
+    L = Int(length(res)^(1/2))
+    positions = [(n -L*(floor(n/(L/2))), m - L*floor(m/(L/2)) ) for  n=0:(L-1) , m=0:(L-1) ]
+    pos = reshape(positions,L^2)
+    resmat= reshape(res,L,L)
+    ressym = 1/2*(resmat+transpose(resmat))[:]
+    N = L;
+    kx = (1:N)*2pi/(N);
+    ky = (1:N)*2pi/(N); #[0.] #for chains
+    structurefactor1 =  brillouin_zone_cut([(y,x) for x in kx, y in ky ],ressym,positions);
+    structurefactor2 =  brillouin_zone_cut([(y,-x) for x in kx, y in ky ],ressym,positions);
+    structurefactor3 =  brillouin_zone_cut([(-y,x) for x in kx, y in ky ],ressym,positions);
+    structurefactor4 =  brillouin_zone_cut([(-y,-x) for x in kx, y in ky ],ressym,positions);
+    structurefactor = 1/4*(structurefactor1+structurefactor2+structurefactor3+structurefactor4)
+    invstruc = 1 ./structurefactor
+    invcorrs = brillouin_zone_cut_inverse2(kmat,invstruc,positions);
+    append!(f,real(1/invcorrs[1]))
+    append!(g,real(invcorrs[2]/invcorrs[1]))
+    append!(ϵ1,real(invcorrs[3]/invcorrs[1]))
+    append!(ϵ2,real(invcorrs[L+2]/invcorrs[1]))
+end
+p= plot(betas,f , ylims = [0,0.3]);
+plot!(p,betas,g);
+plot!(p,betas,ϵ1);
+plot!(p,betas,ϵ2)
+scatter!(p,betas,fnew)
+
+
+structurefactor =  brillouin_zone_cut(kmat,res[sortperm(norm.(pos))][1:9],pos[sortperm(norm.(pos))][1:9]);
+
+scatter(norm.(pos[sortperm(norm.(pos))]),abs.(res[sortperm(norm.(pos))]) , xlims = [0,10] )
+
+norm1(x) = norm(x,1) 
+
+
+scatter(positions[norm1.(positions) .< 10], xrange = [-10,10],yrange = [-10,10] , aspect_ratio=:equal)
+
+
+position
+norm.(position) == transpose(norm.(position))
+resmat= reshape(res,L,L)
+
+resmatsym = (1/2*(resmat+transpose(resmat)))[:]
+
+function brillouin_zone_cut(kmat::Union{Matrix{Tuple{Float64,Float64}},Matrix{Tuple{Float64,Float64,Float64}}},Correlators::Vector{Float64},positions)
+    """computes the fourier transform along a 2D cut through the 2D or 3D k-space
+        given the Correlation Matrix computet from compute_lattice_correlations """
+    (nx,ny) = size(kmat)
+
+    structurefactor = Array{Float64}(undef, nx,ny);
+    Threads.@threads for i in 1:nx
+        for j in 1:ny
+            z = 0
+                for k in 1:length(positions)
+                    if norm(positions[k],1) < 30
+                    z += cos(dot(kmat[i,j], positions[k])) *  Correlators[k]
+                    end
+                 end
+            structurefactor[i,j] = abs(z) #= / (length(lattice) * length(lattice.unitcell.basis)) =#
+        end
+    end
+    return structurefactor
+end
+
+
+function brillouin_zone_cut_inverse2(kmat::Union{Matrix{Tuple{Float64,Float64}},Matrix{Tuple{Float64,Float64,Float64}}},Correlators,positions)
+    """computes the fourier transform along a 2D cut through the 2D or 3D k-space
+        given the Correlation Matrix computet from compute_lattice_correlations """
+    (nx,ny) = size(kmat)
+
+    structurefactor = Array{Float64}(undef, length(positions));
+    Threads.@threads for k in 1:length(positions)
+        z = 0
+
+     for i in 1:nx
+        for j in 1:ny
+                    z += cos(dot(kmat[i,j], positions[k])) *  Correlators[i,j]
+            end 
+        end
+    structurefactor[k] = z/(nx*ny) #= / (length(lattice) * length(lattice.unitcell.basis)) =#
+end
+    return structurefactor
+end
+
+
+norm((1,1))
