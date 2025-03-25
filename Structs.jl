@@ -68,6 +68,28 @@ mutable struct unique_Graphs
 
 end
 
+
+mutable struct unique_Graph_precalc
+    ref_graph ::GraphG
+    distance ::Int
+    graph_value ::Matrix{Rational{Int64}}
+    
+    function unique_Graph_precalc(ref_graph,distance,graph_value)
+        return new(ref_graph,distance,graph_value)
+    end
+
+end
+
+mutable struct unique_Graphs_precalc
+    max_order ::Int
+    graphs ::Vector{unique_Graph_precalc}
+
+    function unique_Graphs_precalc(max_order,graphs)
+        return new(max_order, graphs)
+    end
+
+end
+
 struct GraphGinfo
     gG::GraphG                      # graphG
     jjp::Tuple{Int8,Int8}           # jjp

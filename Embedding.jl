@@ -185,7 +185,7 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
     ext_dist = dijkstra_shortest_paths(L,ext_j1).dists[ext_j2]
 
     # only iterate over the unique simple graphs in unique_Gg
-    for unique_Gg in gG_vec_unique.graphs
+    for (index,unique_Gg) in enumerate(gG_vec_unique.graphs)
         gg = unique_Gg.ref_graph   #Graph
         gg_dist = unique_Gg.distance #edge distance between the external vertices
           # if the graph is long enough
@@ -207,6 +207,7 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
         #calculate the embedding factor
         emb_fac = e_fast(L,ext_j1,ext_j2,gg)
 
+       # println("$index th graph embeding factor = $emb_fac")
         
 
         #### now we sum overall graphG eqivalent to the unique Gg
