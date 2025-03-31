@@ -2,11 +2,10 @@ using JLD2
 #using RobustPad
 
 include("../../Embedding.jl")
-include("../../GraphGeneration.jl")
 include("../../LatticeGraphs.jl")
 include("../../ConvenienceFunctions.jl") 
 #specify max order
-max_order = 11
+max_order = 12
 
 #LOAD FILES 
 #-------------------------------------------------------------------------------------
@@ -14,7 +13,7 @@ max_order = 11
 gG_vec_unique = give_unique_gG_vec(max_order);
 
 #create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) ;
+C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,max_order+1) ;
 #load dictionaries of all lower orders C_Dict_vec 
 for ord = 0:max_order
     C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
@@ -28,7 +27,7 @@ display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.2,fontsize=7,nodesh
 
 #2.Compute all correlations in the lattice
 #@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
-@load "CaseStudy/Triang_Lattice/Correlation_Data_L11.jld2" Correlators
+@load "CaseStudy/Triang_Lattice/Correlation_Data_L12.jld2" Correlators
 
 #check the susceptibility with 10.1103/PhysRevB.53.14228
 (brillouin_zone_cut([(0.0,0.0) (0.0,0.0) ;(0.0,0.0)  (0.0,0.0)],Correlators,lattice,center_sites)[1]*4)[:,1].*[factorial(n)*4^n for n in 0:max_order]
@@ -46,7 +45,7 @@ structurefactor =  brillouin_zone_cut(kmat,Correlators,lattice,center_sites);
 
 ### Evaluate the correlators at a frequency and plot the 2D Brillouin zone cut
 x = -1.5
-padetype = [5,6]
+padetype = [6,6]
 evaluate(y) = eval_correlator_LR_continuous_pad(y, x, padetype); #define evaluation function
 struc = real.(evaluate.(structurefactor));
 p = Plots.heatmap(kx,ky,struc,clims=(0,0.25))
@@ -98,14 +97,14 @@ BrillPath = brillouin_zone_path(kvec,Correlators,lattice,center_sites);
 ###### S(k,w) heatmap
 using CairoMakie
 
-x = 1.5
+x = 2.5
 w_vec = collect(0.01:0.0314/2:5.0)
-JSkw_mat = get_JSkw_mat_finitex("total","pade",x,kvec,w_vec,0.02,1,2,200,false,Correlators,lattice,center_sites)
+JSkw_mat = get_JSkw_mat_finitex("total","padetanh",x,kvec,w_vec,0.02,1,3,200,false,Correlators,lattice,center_sites)
 
 
 fig = Figure(fontsize=25,resolution = (900,500));
 ax=Axis(fig[1,1],limits=(0,Nk+1,0,5),ylabel=L"\omega/J=w",title="Triangular Lattice: x="*string(x),titlesize=25,xlabelsize=25,ylabelsize=25);
-hm=CairoMakie.heatmap!(ax,[k for k in 1:Nk+1],w_vec, JSkw_mat,colormap=:viridis,colorrange=(0.001,0.5),highclip=:white);
+hm=CairoMakie.heatmap!(ax,[k for k in 1:Nk+1],w_vec, JSkw_mat,colormap=:viridis,colorrange=(0.001,0.3),highclip=:white);
 ax.xticks = (kticks_positioins,pathticks)
 CairoMakie.Colorbar(fig[:, end+1], hm,size=40, label = L"J S(k,w)")
 resize_to_layout!(fig);

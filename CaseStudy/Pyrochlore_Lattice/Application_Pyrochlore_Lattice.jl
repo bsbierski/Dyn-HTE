@@ -2,11 +2,10 @@ using JLD2
 #using RobustPad
 
 include("../../Embedding.jl")
-include("../../GraphGeneration.jl")
 include("../../LatticeGraphs.jl")
 include("../../ConvenienceFunctions.jl") 
 #specify max order
-max_order = 8
+max_order = 11
 
 #LOAD FILES 
 #-------------------------------------------------------------------------------------
@@ -14,12 +13,15 @@ max_order = 8
 gG_vec_unique = give_unique_gG_vec(max_order);
 
 #create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) ;
+C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,max_order+1) ;
 #load dictionaries of all lower orders C_Dict_vec 
 for ord = 0:max_order
     C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
 end 
 #-----------------------------------
+
+C_Dict_vec[5][1:10]
+gplot(graphsG_vec[5][10])
 
 #1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
 L = max_order
@@ -28,13 +30,16 @@ lattice,LatGraph,center_sites = getLattice_Ball(L,"pyrochlore");
 
 
 
+
 #2.Compute all correlations in the lattice
 @time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
+@load "CaseStudy/Pyrochlore_Lattice/Correlation_DataS=S1_L11.jld2" Correlators
 
 
 #check the susceptibility with 10.1103/PhysRevB.53.14228
 (brillouin_zone_cut([(0.0,0.0,0.0) (0.0,0.0,0.0) ;(0.0,0.0,0.0)  (0.0,0.0,0.0)],Correlators,lattice,center_sites)[1]*4)[:,1].*[factorial(n)*4^n for n in 0:max_order]
 
+using Plots
 
 
 ### Compute A 2D Brillouin zone cut: 
@@ -45,11 +50,13 @@ kmat = [(x,x,y) for x in kx, y in ky ]
 structurefactor =  brillouin_zone_cut(kmat,Correlators,lattice,center_sites);
 
 ### Evaluate the correlators at a frequency and plot the 2D Brillouin zone cut
-x = -5
-padetype = [4,4]
-evaluate(y) = eval_correlator_LR_continuous_pad_exp(y, x, padetype,3); #define evaluation function
+if true
+x = -2
+padetype = [6,5]
+evaluate(y) = eval_correlator_LR_continuous_pad_tanh(y, x, padetype,2); #define evaluation function
 struc = ( evaluate.(structurefactor));
-p = Plots.heatmap(kx,ky,abs(x)*transpose(struc); clims=(0,4),aspect_ratio=1/sqrt(3) , xlims = [-8pi,8pi])
+p = Plots.heatmap(kx,ky,abs(x)*transpose(struc); clims=(0,10),aspect_ratio=1/sqrt(3) , xlims = [-8pi,8pi])
+end
 
 
 
@@ -78,16 +85,46 @@ BrillPath = brillouin_zone_path(kvec,Correlators,lattice,center_sites);
 ###### S(k,w) heatmap
 using CairoMakie
 
-x = 3.
-w_vec = collect(-5:0.0614/2:5.0)
-JSkw_mat = get_JSkw_mat_finitex("total","pade",x,kvec,w_vec,0.02,1,2,200,false,Correlators,lattice,center_sites)
+x = 0.8
+w_vec = collect(0:0.0314/2:9.0)
+JSkw_mat = get_JSkw_mat_finitex("total","pade",x,kvec,w_vec,0.02,1,3,200,false,Correlators,lattice,center_sites)
 
 
-fig = Figure(fontsize=25,resolution = (900,500));
-ax=Axis(fig[1,1],limits=(0,Nk+1,0,5),ylabel=L"\omega/J=w",title="Pyrochlore): x="*string(x),titlesize=25,xlabelsize=25,ylabelsize=25);
-hm=CairoMakie.heatmap!(ax,[k for k in 1:Nk+1],w_vec, JSkw_mat,colormap=:viridis,colorrange=(0.001,1),highclip=:white);
+fig = Figure(fontsize=25,resolution = (400,500));
+ax=Axis(fig[1,1],limits=(0,Nk+1,0,6),ylabel=L"\omega/J=w",title="Pyrochlore S=1: x="*string(x),titlesize=25,xlabelsize=25,ylabelsize=25,aspect = 1/2);
+hm=CairoMakie.heatmap!(ax,[k for k in 1:Nk+1],w_vec, JSkw_mat,colormap=:viridis,colorrange=(0.001,2),highclip=:white);
 ax.xticks = (kticks_positioins,pathticks)
 CairoMakie.Colorbar(fig[:, end+1], hm,size=40, label = L"J S(k,w)")
 resize_to_layout!(fig);
 display(fig)
 
+
+testgraph = gG_vec_unique.graphs[end].ref_graph
+
+function profile_test(LatGraph,testgraph)::Int64
+   n = e_fast(LatGraph,1,1,testgraph)
+   return n
+end
+profile_test(LatGraph,testgraph)
+@time profile_test(LatGraph,testgraph);
+
+using ProfileView
+ProfileView.@profview profile_test(LatGraph,testgraph)
+
+
+using AllocCheck
+
+@check_allocs multiply(x, y) = x * y
+
+
+profile_test()
+
+try
+    profile_test(LatGraph,testgraph)
+catch err
+    err.errors[1]
+end
+
+1+1
+
+ProfileView.@profview

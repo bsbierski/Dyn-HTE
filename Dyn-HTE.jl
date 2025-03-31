@@ -9,7 +9,7 @@ include("Embedding.jl")
 include("LatticeGraphs.jl")
 include("ConvenienceFunctions.jl") 
 #specify max order
-max_order = 12
+max_order = 10
 
 #LOAD FILES 
 #-------------------------------------------------------------------------------------
@@ -17,10 +17,10 @@ max_order = 12
 gG_vec_unique = give_unique_gG_vec(max_order);
 
 #create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) ;
+C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,max_order+1) ;
 #load dictionaries of all lower orders C_Dict_vec 
 for ord = 0:max_order
-    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
+    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1/C_"*string(ord)*".jld2")
 end 
 #-----------------------------------
 
@@ -31,7 +31,7 @@ display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodesh
 
 #2.Compute all correlations in the lattice
 Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
-
+c_iipDyn_mat = Correlators
 
 #3. Fourier Transform
 

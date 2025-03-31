@@ -189,7 +189,7 @@ function create_brillouin_zone_path(points, num_samples::Int)
     return interpolated_points, input_indices
 end
 
-function get_c_kDyn_mat(kvec,c_iipDyn_mat::Array{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Vector{Matrix{Float64}}
+function get_c_kDyn_mat(kvec,c_iipDyn_mat::Array{Matrix{Rational{Int}}},lattice::Lattice,center_sites)::Vector{Matrix{Float64}}
     """computes the expansion coefficients c_k for the k-points in k_vec """
     BrillPath = Array{Matrix{Float64}}(undef,length(kvec));
     for i in eachindex(kvec)
@@ -369,7 +369,7 @@ function get_JSkw_mat_x0(k_vec::Vector,w_vec::Vector{Float64},η::Float64,r_min:
 end
 
 
-function get_JSkw_mat_finitex(diag_off_diag_flag,method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},η::Float64,r_min::Int,r_max::Int,r_ext::Int,intercept0::Bool,c_iipDyn_mat::Array{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)
+function get_JSkw_mat_finitex(diag_off_diag_flag,method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},η::Float64,r_min::Int,r_max::Int,r_ext::Int,intercept0::Bool,c_iipDyn_mat::Array{Matrix{Rational{Int128}}},lattice::Lattice,center_sites)
     JSkw_mat = 1.0*zeros(length(k_vec),length(w_vec))
     max_order = Int((size(c_iipDyn_mat[1])[1]-1))
 
@@ -386,6 +386,19 @@ function get_JSkw_mat_finitex(diag_off_diag_flag,method::String,x::Float64,k_vec
                 m_vec_extrapolated_pade[m_idx] = get_pade(m_vec[m_idx],1+Int(floor(max_order/2))-m_idx,1+Int(floor(max_order/2))-m_idx)
             end
             δ_vec,r_vec = fromMomentsToδ([m(x) for m in m_vec_extrapolated_pade])
+           println("Delta_vec (pade) for "*string(k)*"is:",δ_vec)
+        end
+
+        if method=="padetanh"
+            f = 2
+            m_vec_extrapolated_pade = Array{Any}(undef,length(m_vec))
+            for m_idx=1:length(m_vec)
+
+                mfun = y -> (f*atanh(y)) * m_vec[m_idx](f*atanh(y))
+                pad = robustpade(mfun,1+Int(floor(max_order/2))-m_idx,1+Int(floor(max_order/2))-m_idx)
+                m_vec_extrapolated_pade[m_idx] = pad
+            end
+            δ_vec,r_vec = fromMomentsToδ([m(tanh(x/f))/x for m in m_vec_extrapolated_pade])
            println("Delta_vec (pade) for "*string(k)*"is:",δ_vec)
         end
 
@@ -478,9 +491,9 @@ end
 
 ###### Brillouin Zone functions
 
-function compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int64}}}
+function compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int128}}}
     """compute all correlations from the center_sites to all other sites of the lattice"""
-    Correlators = Array{Matrix{Rational{Int64}}}(undef, lattice.length,length(lattice.unitcell.basis));
+    Correlators = Array{Matrix{Rational{Int128}}}(undef, lattice.length,length(lattice.unitcell.basis));
     Threads.@threads for jp = shuffle(1:lattice.length)
         for b = 1:length(lattice.unitcell.basis)
         Correlators[jp,b] = mapreduce(permutedims, vcat, Calculate_Correlator_fast(LatGraph,center_sites[b],jp,max_order,gG_vec_unique,C_Dict_vec))
@@ -490,7 +503,7 @@ function compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG
 end
 
 
-function brillouin_zone_cut(kmat::Union{Matrix{Tuple{Float64,Float64}},Matrix{Tuple{Float64,Float64,Float64}}},Correlators::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Matrix{Matrix{Float64}}
+function brillouin_zone_cut(kmat::Union{Matrix{Tuple{Float64,Float64}},Matrix{Tuple{Float64,Float64,Float64}}},Correlators::Matrix{Matrix{Rational{Int128}}},lattice::Lattice,center_sites)::Matrix{Matrix{Float64}}
     """computes the fourier transform along a 2D cut through the 2D or 3D k-space
         given the Correlation Matrix computet from compute_lattice_correlations """
     (nx,ny) = size(kmat)
@@ -642,7 +655,7 @@ end
 
 
 
-function brillouin_zone_path(kvec,Correlators::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Vector{Matrix{Float64}}
+function brillouin_zone_path(kvec,Correlators::Matrix{Matrix{Rational{Int128}}},lattice::Lattice,center_sites)::Vector{Matrix{Float64}}
     """computes the fourier transform along a 1D path through k-space given the path computed by create_brillouin_zone_path """
     BrillPath = Array{Matrix{Float64}}(undef,length(kvec));
     for i in eachindex(kvec)
@@ -782,7 +795,7 @@ function inverse_fourier_transform(kmat,Correlators::Matrix{Matrix{T}},lattice::
 end
 
 
-function get_c_kDyn_mat(kvec,c_iipDyn_mat::Array{Matrix{Rational{Int64}}},lattice::Lattice,center_sites,diag_off_diag_flag::String)::Vector{Matrix{Float64}}
+function get_c_kDyn_mat(kvec,c_iipDyn_mat::Array{Matrix{Rational{Int128}}},lattice::Lattice,center_sites,diag_off_diag_flag::String)::Vector{Matrix{Float64}}
     """computes the expansion coefficients c_k for the k-points in k_vec """
     BrillPath = Array{Matrix{Float64}}(undef,length(kvec));
 
