@@ -11,7 +11,7 @@ n_max = 12
 gG_vec_unique = give_unique_gG_vec(n_max);
 
 ### load dictionaries of all lower orders C_Dict_vec 
-C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,n_max+1);
+C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,n_max+1);
 for ord = 0:n_max
     C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
 end 
@@ -21,7 +21,7 @@ L = 12
 lattice,LatGraph,center_sites = getLattice_Ball(L,"kagome");
 #display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.11,fontsize=4,nodeshape=:rect,curves=false))
 
-### compute all correlations in the lattice (or load them)
+### compute (or load) all correlations in the lattice
 fileName_c = "CaseStudy/Kagome_Lattice/Kagome_c_iipDyn_nmax"*string(n_max)*"_L"*string(L)*".jld2"
 if isfile(fileName_c)
     c_iipDyn_mat = load_object(fileName_c)
@@ -81,7 +81,7 @@ if false #test uniform χ against HTE literature
 end
 
 ##### equal-time correlations (r-space)
-if true #standard Padé in x
+if false #standard Padé in x
     j_vec = [191,154,153,151]
     x_vec_bare = collect(0:0.025:1.35)
     x_vec = collect(0:0.1:50)
@@ -104,7 +104,7 @@ if true #standard Padé in x
     #savefig(plt_final,"CaseStudy/Kagome/KagomeEqualTimeCorrelator_j_xsweep_L$L.png")
 end
 
-if true  # u=tanh(fx) with bare series in u or Pade in u
+if false  # u=tanh(fx) with bare series in u or Pade in u
     j_vec = [191,153,154,151,155,120]
 
     f=0.72
@@ -296,7 +296,7 @@ if true
     xPlots,yPlots=1,1
     plt_final = plot(plt_m,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.45*aps_width*yPlots))
     display(plt_final)
-    savefig(plt_final,"CaseStudy/Kagome/Kagome_moments_u-series_k"*k_label*".png")
+    savefig(plt_final,"CaseStudy/Kagome_Lattice/Kagome_moments_u-series_k"*k_label*".png")
 end
 
 ### DSF and δ_r (as inset) for x ∈ x0_vec
@@ -304,8 +304,8 @@ w_vec = collect(0.0:0.025:4)
 plt_JS = plot([0,0],[-1,-2],color=:grey,label="Dyn-HTE",xlims=(0,w_vec[end]),ylims=(0,0.2),xlabel=L"\omega/J=w",ylabel=L"J \, S(\mathbf{k}=M,\omega)",legend=:bottomleft)#,title="Kagome AFM S=1/2: "*"JS("*k_label*",w)")
 plot!(plt_JS,inset=bbox(0.65,0.03,0.32,0.5),subplot=2)
 plt_δ =  plt_JS[2]
-plot!(plt_δ,[0],[0],label="",xlabel=L"r",ylabel=L"\delta_{\mathbf{k},r}",legend=:topleft)
-scatter!(plt_JS,[0],[-2],color=:grey,marker=:cross,label="NLCE+Gauss [Sherman2018]")
+plot!(plt_δ,[0],[0],label="",xlabel=L"r",ylabel=L"\delta_{\mathbf{k}=M,r}",legend=:topleft)
+plot!(plt_JS,[0],[-2],color=:grey,linestyle=:dash,label="NLCE+Gauss [Sherman2018]")
 
 for x0_pos in eachindex(x0_vec)
     x0 = x0_vec[x0_pos]
@@ -319,17 +319,17 @@ for x0_pos in eachindex(x0_vec)
 
 
     ### plot Sherman's NLCE
-    fileNameNCLE = "CaseStudy/Kagome/Sherman2018NLCE_data/Sherman_NLCE_JS_x"*string(x0)*"_"*k_label*".csv"
+    fileNameNCLE = "CaseStudy/Kagome_Lattice/Sherman2018NLCE_data/Sherman_NLCE_JS_x"*string(x0)*"_"*k_label*".csv"
     if isfile(fileNameNCLE)
         Sherman = readdlm(fileNameNCLE,',',Float64)
-        scatter!(plt_JS,Sherman[:,1],Sherman[:,2],color=thermalCol4_vec[x0_pos],marker=:cross,markersize=3.0,label="")#,label="x=$x0"
+        plot!(plt_JS,Sherman[:,1],Sherman[:,2],color=thermalCol4_vec[x0_pos],linestyle=:dash,label="")#,label="x=$x0"
     end
 
 end
 xPlots,yPlots=1,1
 plt_final = plot(plt_JS,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.62*aps_width*yPlots))
 display(plt_final)
-savefig(plt_final,"CaseStudy/Kagome/Kagome_JS_k"*k_label*".png")
+savefig(plt_final,"CaseStudy/Kagome_Lattice/Kagome_JS_k"*k_label*".png")
 
 ### plot for paper
 addABC(plt_m,"(a)")
@@ -337,7 +337,7 @@ addABC(plt_JS[1],"(b)")
 xPlots,yPlots=1,2
 plt_final = plot(plt_m,plt_JS,  layout=Plots.grid(2,1,heights=[0.45,0.55]), size=(aps_width*xPlots,(0.45+0.62)/2*aps_width*yPlots))
 display(plt_final)
-savefig(plt_final,"CaseStudy/Kagome/Kagome_JS_k"*k_label*"_paper.pdf")
+savefig(plt_final,"CaseStudy/Kagome_Lattice/Kagome_JS_k"*k_label*"_paper.pdf")
 
 
 
