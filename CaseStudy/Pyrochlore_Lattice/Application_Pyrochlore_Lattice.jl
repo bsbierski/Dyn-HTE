@@ -5,7 +5,7 @@ include("../../Embedding.jl")
 include("../../LatticeGraphs.jl")
 include("../../ConvenienceFunctions.jl") 
 #specify max order
-max_order = 11
+max_order = 5
 
 #LOAD FILES 
 #-------------------------------------------------------------------------------------
@@ -20,8 +20,7 @@ for ord = 0:max_order
 end 
 #-----------------------------------
 
-C_Dict_vec[5][1:10]
-gplot(graphsG_vec[5][10])
+
 
 #1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
 L = max_order
@@ -32,8 +31,8 @@ lattice,LatGraph,center_sites = getLattice_Ball(L,"pyrochlore");
 
 
 #2.Compute all correlations in the lattice
-@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
-@load "CaseStudy/Pyrochlore_Lattice/Correlation_DataS=S1_L11.jld2" Correlators
+#@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
+@load "CaseStudy/Pyrochlore_Lattice/Correlation_DataS=S1half_L12.jld2" Correlators
 
 
 #check the susceptibility with 10.1103/PhysRevB.53.14228
@@ -51,11 +50,11 @@ structurefactor =  brillouin_zone_cut(kmat,Correlators,lattice,center_sites);
 
 ### Evaluate the correlators at a frequency and plot the 2D Brillouin zone cut
 if true
-x = -2
-padetype = [6,5]
-evaluate(y) = eval_correlator_LR_continuous_pad_tanh(y, x, padetype,2); #define evaluation function
+x = -6
+padetype = [6,6]
+evaluate(y) = eval_correlator_LR_continuous_pad(y, x, padetype); #define evaluation function
 struc = ( evaluate.(structurefactor));
-p = Plots.heatmap(kx,ky,abs(x)*transpose(struc); clims=(0,10),aspect_ratio=1/sqrt(3) , xlims = [-8pi,8pi])
+p = Plots.heatmap(kx,ky,abs(x)*transpose(struc); clims=(0,6),aspect_ratio=1/sqrt(3) , xlims = [-8pi,8pi])
 end
 
 
@@ -64,7 +63,7 @@ end
 ############# Brillouin zone path
 #1. Define a high symmetry path through the brillouin zone
 #---pyrochlore (2,2, l)
-path = [(4pi,4pi,-4pi+0.01),(4pi,4pi,0+0.01),(4pi,4pi,4pi+0.01)]
+path = [(4pi,4pi,-4pi+0.01),(4pi,4pi,0),(4pi,4pi,4pi-0.01)]
 pathticks = ["Γ","W","Γ"]
 
 #---pyrochlore (h,h, 2)
@@ -85,14 +84,14 @@ BrillPath = brillouin_zone_path(kvec,Correlators,lattice,center_sites);
 ###### S(k,w) heatmap
 using CairoMakie
 
-x = 0.8
+x = 4.
 w_vec = collect(0:0.0314/2:9.0)
-JSkw_mat = get_JSkw_mat_finitex("total","pade",x,kvec,w_vec,0.02,1,3,200,false,Correlators,lattice,center_sites)
+JSkw_mat = get_JSkw_mat_finitex("total","padetanh",x,kvec,w_vec,0.02,3,3,200,false,Correlators,lattice,center_sites)
 
 
 fig = Figure(fontsize=25,resolution = (400,500));
 ax=Axis(fig[1,1],limits=(0,Nk+1,0,6),ylabel=L"\omega/J=w",title="Pyrochlore S=1: x="*string(x),titlesize=25,xlabelsize=25,ylabelsize=25,aspect = 1/2);
-hm=CairoMakie.heatmap!(ax,[k for k in 1:Nk+1],w_vec, JSkw_mat,colormap=:viridis,colorrange=(0.001,2),highclip=:white);
+hm=CairoMakie.heatmap!(ax,[k for k in 1:Nk+1],w_vec, JSkw_mat,colormap=:viridis,colorrange=(0.001,1),highclip=:white);
 ax.xticks = (kticks_positioins,pathticks)
 CairoMakie.Colorbar(fig[:, end+1], hm,size=40, label = L"J S(k,w)")
 resize_to_layout!(fig);
@@ -100,6 +99,18 @@ display(fig)
 
 
 testgraph = gG_vec_unique.graphs[end].ref_graph
+
+using AllocCheck
+@time Calculate_Correlator_fast(LatGraph,1,2,10,gG_vec_unique,C_Dict_vec);
+
+
+
+function profile_test(LatGraph)
+    n = dijkstra_shortest_paths(LatGraph,1).dists[2]
+end
+
+@time profile_test(LatGraph)
+2244
 
 function profile_test(LatGraph,testgraph)::Int64
    n = e_fast(LatGraph,1,1,testgraph)
@@ -112,17 +123,21 @@ using ProfileView
 ProfileView.@profview profile_test(LatGraph,testgraph)
 
 
+
+
 using AllocCheck
 
 @check_allocs multiply(x, y) = x * y
 
-
-profile_test()
-
+@check_allocs function profile_test(LatGraph,gG_vec_unique,C_Dict_vec)::Vector{Vector{Rational{Int128}}}
+n = Calculate_Correlator_fast(LatGraph,1,2,10,gG_vec_unique,C_Dict_vec)
+return n
+end
+@time profile_test(LatGraph,gG_vec_unique,C_Dict_vec)
 try
-    profile_test(LatGraph,testgraph)
+    profile_test(LatGraph,gG_vec_unique,C_Dict_vec)
 catch err
-    err.errors[1]
+    err.errors[30]
 end
 
 1+1
