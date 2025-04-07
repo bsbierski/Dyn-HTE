@@ -9,7 +9,7 @@ include("Embedding.jl")
 include("LatticeGraphs.jl")
 include("ConvenienceFunctions.jl") 
 #specify max order
-max_order = 10
+max_order = 12
 
 #LOAD FILES 
 #-------------------------------------------------------------------------------------
@@ -20,18 +20,17 @@ gG_vec_unique = give_unique_gG_vec(max_order);
 C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,max_order+1) ;
 #load dictionaries of all lower orders C_Dict_vec 
 for ord = 0:max_order
-    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1/C_"*string(ord)*".jld2")
+    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
 end 
 #-----------------------------------
 
 #1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
-L = max_order
-lattice,LatGraph,center_sites = getLattice_Ball(L,"chain");
+L = 12
+lattice,LatGraph,center_sites = getLattice_Ball(L,"square");
 display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
 
 #2.Compute all correlations in the lattice
 Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
-c_iipDyn_mat = Correlators
 
 #3. Fourier Transform
 
@@ -54,7 +53,7 @@ p = Plots.heatmap(kx,ky,struc,clims=(0,1.))
 #1. Define a high symmetry path through the brillouin zone
 
 #---chain
-path = [(0,0),(2pi,0)]
+path = [(0.01,0.01),(2pi-0.1,0.01)]
 pathticks = ["Γ","Γ"]
 
 #---triangular
@@ -116,10 +115,11 @@ heatmap(1:length(kvec),ωvec,spectrum, xticks=(kticks_positioins,pathticks),colo
 ###### S(k,w) heatmap}
 using CairoMakie
 
-x = 2.0
+x = 0
 #k_vec = [(k,0.0) for k in 0.01:(2*π-0.02)/14:(2*π-0.01)]
 w_vec = collect(0.01:0.0314/2:5.0)
-JSkw_mat = get_JSkw_mat_finitex("pade",x,kvec,w_vec,0.02,0,3,200,false,Correlators,lattice,center_sites)
+JSkw_mat = get_JSkw_mat_finitex("total","pade",x,kvec,w_vec,0.02,1,5,200,false,Correlators,lattice,center_sites)
+
 
 
 
@@ -131,6 +131,8 @@ hm=CairoMakie.heatmap!(ax,[k for k in 1:Nk+1],w_vec, JSkw_mat,colormap=:viridis,
 ax.xticks = (kticks_positioins,pathticks)
 CairoMakie.Colorbar(fig[:, end+1], hm,size=40, label = L"J S(k,w)")
 resize_to_layout!(fig);
+display(fig)
+
 CairoMakie.plot!(ax,QMC_axis*(Nk+0.5),1*QMCdata, color = :pink, alpha = 0.45,label = L"T=0 \text{QMC-Gap}")
 CairoMakie.plot!(ax,[k for k in 1:Nk+1],2.4*disp, color = :orange, alpha = 0.45,label = L"T=0 \text{LSWT-Dispersion}")
 axislegend(ax)
@@ -421,7 +423,7 @@ end
 gG_vec_unique_precalc.graphs[12].graph_value
 
 
-function precalculate_unique_graphs(max_order::Int,gG_vec_unique::unique_Graphs,C_Dict_vec::Vector{Vector{Vector{Rational{Int64}}}})::unique_Graphs_precalc
+function precalculate_unique_graphs(max_order::Int,gG_vec_unique::unique_Graphs,C_Dict_vec::Vector{Vector{Vector{Rational{Int128}}}})::unique_Graphs_precalc
     """ Calculate the coefficients of (-x)^n for TG_ii'(iν_m) from embedding factors of only the unique simple graphs and the gG's symmetry factors """    
 
     result_vector = Vector{unique_Graph_precalc}(undef,length(gG_vec_unique.graphs))
@@ -429,11 +431,11 @@ function precalculate_unique_graphs(max_order::Int,gG_vec_unique::unique_Graphs,
     # only iterate over the unique simple graphs in unique_Gg
     for (index,unique_Gg) in enumerate(gG_vec_unique.graphs)
             #initialize result array
-        result_array = Matrix{Rational{Int64}}(undef, max_order+1,10)
+        result_array = Matrix{Rational{Int128}}(undef, max_order+1,10)
 
      #for every order we get result vector representing prefactors of [δw,Δ^2,Δ^4,Δ^6,Δ^8,Δ^10,Δ^12,Δ^14,Δ^16,Δ^18]
      for ord = 1:max_order+1
-        result_array[ord,:] = zeros(Rational{Int64},10)
+        result_array[ord,:] = zeros(Rational{Int128},10)
     end
 
         gg = unique_Gg.ref_graph   #Graph
@@ -465,9 +467,9 @@ function precalculate_unique_graphs(max_order::Int,gG_vec_unique::unique_Graphs,
 end
 
 
-function compute_lattice_correlations_new(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int64}}}
+function compute_lattice_correlations_new(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int128}}}
     """compute all correlations from the center_sites to all other sites of the lattice"""
-    Correlators = Array{Matrix{Rational{Int64}}}(undef, lattice.length,length(lattice.unitcell.basis));
+    Correlators = Array{Matrix{Rational{Int128}}}(undef, lattice.length,length(lattice.unitcell.basis));
     Threads.@threads for jp = 1:lattice.length
         for b = 1:length(lattice.unitcell.basis)
         Correlators[jp,b] =  Calculate_Correlator_faster(LatGraph,center_sites[b],jp,max_order,gG_vec_unique,C_Dict_vec)
@@ -476,15 +478,15 @@ function compute_lattice_correlations_new(LatGraph,lattice,center_sites,max_orde
     return Correlators
 end
 
-function Calculate_Correlator_faster(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order::Int,gG_vec_unique::unique_Graphs_precalc,C_Dict_vec::Vector{Vector{Vector{Rational{Int64}}}})::Matrix{Rational{Int64}}
+function Calculate_Correlator_faster(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order::Int,gG_vec_unique::unique_Graphs_precalc,C_Dict_vec::Vector{Vector{Vector{Rational{Int128}}}})::Matrix{Rational{Int128}}
     """ Calculate the coefficients of (-x)^n for TG_ii'(iν_m) from embedding factors of only the unique simple graphs and the gG's symmetry factors """    
 
     #initialize result array
-    result_array = Matrix{Rational{Int64}}(undef, max_order+1,10)
+    result_array = Matrix{Rational{Int128}}(undef, max_order+1,10)
 
     #for every order we get result vector representing prefactors of [δw,Δ^2,Δ^4,Δ^6,Δ^8,Δ^10,Δ^12,Δ^14,Δ^16,Δ^18]
     for ord = 1:max_order+1
-        result_array[ord,:] = zeros(Rational{Int64},10)
+        result_array[ord,:] = zeros(Rational{Int128},10)
     end
 
     #calculate the shortest graph distance between ext_j1 and ext_j2
@@ -529,7 +531,7 @@ max_order = 10
 gG_vec_unique = give_unique_gG_vec(max_order);
 
 #create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) ;
+C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,max_order+1) ;
 #load dictionaries of all lower orders C_Dict_vec 
 for ord = 0:max_order
     C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
@@ -544,7 +546,7 @@ display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodesh
 #2.Compute all correlations in the lattice
 @time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
 
-gG_vec_unique_precalc = precalculate_unique_graphs(max_order,gG_vec_unique,C_Dict_vec);
+@time gG_vec_unique_precalc = precalculate_unique_graphs(max_order,gG_vec_unique,C_Dict_vec);
 @time Correlators_new = compute_lattice_correlations_new(LatGraph,lattice,center_sites,max_order,gG_vec_unique_precalc,C_Dict_vec);
 
 Correlators == Correlators_new

@@ -382,7 +382,7 @@ function get_JSkw_mat_finitex(diag_off_diag_flag,method::String,x::Float64,k_vec
         if method=="pade"
             m_vec_extrapolated_pade = Array{Any}(undef,length(m_vec))
             for m_idx=1:length(m_vec)
-                println(m_vec[m_idx])
+              #  println(m_vec[m_idx])
                 m_vec_extrapolated_pade[m_idx] = get_pade(m_vec[m_idx],1+Int(floor(max_order/2))-m_idx,1+Int(floor(max_order/2))-m_idx)
             end
             δ_vec,r_vec = fromMomentsToδ([m(x) for m in m_vec_extrapolated_pade])
@@ -712,7 +712,7 @@ function eval_correlator_LR_continuous_pad_exp(Correlator,X,pade_order,f)
    
 end
 
-function brillouin_zone_cut_Matrix(kmat::Union{Matrix{Tuple{Float64,Float64}},Matrix{Tuple{Float64,Float64,Float64}}},Correlators::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Matrix{Matrix{Matrix{ComplexF64}}}
+function brillouin_zone_cut_Matrix(kmat::Union{Matrix{Tuple{Float64,Float64}},Matrix{Tuple{Float64,Float64,Float64}}},Correlators::Matrix{Matrix{Rational{Int128}}},lattice::Lattice,center_sites)::Matrix{Matrix{Matrix{ComplexF64}}}
     """computes the fourier transform along a 2D cut through the 2D or 3D k-space
         given the Correlation Matrix computet from compute_lattice_correlations """
     (nx,ny) = size(kmat)
@@ -727,7 +727,7 @@ function brillouin_zone_cut_Matrix(kmat::Union{Matrix{Tuple{Float64,Float64}},Ma
     return structurefactor
 end
 
-function fourier_transform(k,Correlators::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Matrix{Matrix{ComplexF64}}
+function fourier_transform(k,Correlators::Matrix{Matrix{Rational{Int128}}},lattice::Lattice,center_sites)::Matrix{Matrix{ComplexF64}}
     """computes the fourier transform along a 2D cut through the 2D or 3D k-space
         given the Correlation Matrix computet from compute_lattice_correlations """
    

@@ -205,6 +205,7 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
         end
 
         #calculate the embedding factor
+       
         emb_fac = e_fast(L,ext_j1,ext_j2,gg)
 
        # println("$index th graph embeding factor = $emb_fac")
@@ -218,16 +219,16 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
             is_symmetric = graph.is_symmetric  #bool if the graph is symmetric
            
             fac = 2
-        if  is_symmetric
-            fac = 1
-        end
+            if  is_symmetric
+                fac = 1
+            end
 
             #look up the value of the graph from C_Dict_vec
-            look_up_dict =C_Dict_vec[g_order+1][gG_vec_index]
+            look_up_dict = C_Dict_vec[g_order+1][gG_vec_index]
 
             
             
-            result_array[g_order+1] .+= look_up_dict*emb_fac/symmetry_factor*fac
+            result_array[g_order+1] .+= look_up_dict.*Int128(emb_fac/symmetry_factor*fac)
         end
     end
 

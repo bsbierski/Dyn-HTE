@@ -72,7 +72,7 @@ end
 mutable struct unique_Graph_precalc
     ref_graph ::GraphG
     distance ::Int
-    graph_value ::Matrix{Rational{Int64}}
+    graph_value ::Matrix{Rational{Int128}}
     
     function unique_Graph_precalc(ref_graph,distance,graph_value)
         return new(ref_graph,distance,graph_value)
