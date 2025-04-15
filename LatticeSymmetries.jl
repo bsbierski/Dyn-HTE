@@ -415,27 +415,25 @@ function getSymmetryGroup(geometry::String)
 
     
     else 
-        println("Symmetry group for geometry: " * geometry * " not yet implemented") 
-        symmetry_Group = sym_group(Vector{sym_element}())
-        translation_Group = translation_group([1 0; 0 1])
+        throw(error("Symmetry group for geometry: " * geometry * " not yet implemented"))
     end
 
     ### create graph for the lattice and return
-    return symmetry_Group,transl_G
+    return symmetry_Group,translation_Group
 end
-
+#= 
 sym_G,transl_G = getSymmetryGroup("triang")
 sym_G,transl_G = getSymmetryGroup("square")
+sym_G,transl_G =  getSymmetryGroup("test")
 
-reduction_dict,bond_vec_red,position_dict = sym_reduced_lattice(lattice,center_sites,sym_G,transl_G)
-#= 
-mutable struct HTE_Lattice
-    name::String
-    lattice::Lattice
-    LatGraph::SimpleGraph
-    center_sites::Vector{<:Int}
-end
- =#
+
+
+
+reduction_dict,bond_vec_red,position_dict = sym_reduced_lattice(hte_lattice.lattice,center_sites,sym_G,transl_G)
+
+
+reduction_dict
+
 
 
 function compute_lattice_correlations(LatGraph,lattice,reduction_dict,bond_vec_red,position_dict,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int128}}}
@@ -458,4 +456,4 @@ end
 
 @time Correlators1 = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
 @time Correlators2 = compute_lattice_correlations(LatGraph,lattice,reduction_dict,bond_vec_red,position_dict,max_order,gG_vec_unique,C_Dict_vec);
-Correlators1 == Correlators2
+Correlators1 == Correlators2 =#

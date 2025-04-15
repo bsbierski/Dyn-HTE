@@ -2,48 +2,22 @@ using JLD2
 #using RobustPad
 #activates the environment in the folder of the current file
 
-include("../../Embedding.jl")
 include("../../LatticeGraphs.jl")
+include("../../Embedding.jl")
 include("../../ConvenienceFunctions.jl") 
 #specify max order
-max_order = 12
-
-#LOAD FILES 
-#-------------------------------------------------------------------------------------
-#load list of unique graphs
-gG_vec_unique = give_unique_gG_vec(max_order);
-
-#create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) ;
-#load dictionaries of all lower orders C_Dict_vec 
-for ord = 0:max_order
-    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
-end 
-#-----------------------------------
-
-#1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
-L = max_order
-lattice,LatGraph,center_sites = getLattice_Ball(L,"kagome");
-display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
-
-#2.Compute all correlations in the lattice
 
 
-@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
+L = 10
+spin_length = 1/2
+hte_graphs = load_dyn_hte_graphs(spin_length,L);
+hte_lattice = getLattice(L,"kagome");
+@time c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs);
 
-gG_vec_unique_precalc = precalculate_unique_graphs(max_order,gG_vec_unique,C_Dict_vec);
-
-truncated_unique=unique_Graphs_precalc(gG_vec_unique_precalc.max_order,gG_vec_unique_precalc.graphs[1:4000])
-@time Correlators_new = compute_lattice_correlations_new(LatGraph,lattice,center_sites,max_order,truncated_unique,C_Dict_vec);
-Correlators = Correlators_new
-@load "CaseStudy/Kagome/Correlation_Data_L12.jld2" Correlators
 
 #test uniform susceptibility with /10.1103/PhysRevB.89.014415 
 (brillouin_zone_cut([(0.0,0.0) (0.0,0.0) ;(0.0,0.0)  (0.0,0.0)],Correlators,lattice,center_sites)[1]*4/3)[:,1].*[factorial(n)*4^n for n in 0:max_order]
-Correlators[center_sites[1]][:,1]
-center_sites[2]
 
-Correlators[center_sites[1],:][2][:,1]
 
 #3. Fourier Transform
 ### Compute A 2D Brillouin zone cut: }
@@ -51,13 +25,13 @@ N = 40
 kx = range(-2pi,2pi,length=N)
 ky = range(-2pi,2pi,length=N) #[0.] #for chains
 kmat = [(y,x) for x in kx, y in ky ]
-structurefactor =  brillouin_zone_cut(kmat,Correlators,lattice,center_sites);
+c_kDyn =  get_c_kDyn(kmat,c_iipDyn_mat,hte_lattice);
 ### Evaluate the correlators at a frequency and plot the 2D Brillouin zone cut
-x = -4
-padetype = [4,4]
+x = -2
+padetype = [2,2]
 evaluate(y) = eval_correlator_LR_continuous_pad(y, x, padetype); #define evaluation function
-struc = ( evaluate.(structurefactor));
-p = Plots.heatmap(kx,ky,struc, clims=(0,1.0))
+struc = ( evaluate.(c_kDyn));
+p = Plots.heatmap(kx,ky,struc, clims=(0,0.3))
 
 
 ### Calculate the full S(ω,k)
@@ -169,7 +143,7 @@ function eval(taylorinvmat_fun,X, padetype)
     return sum(inv(map(f -> f(X), mat)))
 end
 
-N = 100
+N = 
 kx = range(-2pi,2pi,length=N)
 ky = range(-2pi,2pi,length=N) #[0.] #for chains
 kmat = [(y,x) for x in kx, y in ky ]
@@ -208,13 +182,13 @@ p = Plots.heatmap(kx,ky,struc, clims=(0,1.))
     return taylorinvmat_fun
 end
 
-
+kmat
 ### Compute A 2D Brillouin zone cut: 
 N = 20;
 kx = (1:N)*2pi/(N);
 ky = (1:N)*2pi/(N); #[0.] #for chains
 kmat = Tuple.([[1,1/sqrt(3)].*x .+ [1,-1/sqrt(3)].*y for x in kx, y in ky ]);
-structurefactor =  brillouin_zone_cut_Matrix(kmat,Correlators,lattice,center_sites);
+structurefactor =  get_c_kDyn_subl(kmat,c_iipDyn_mat,hte_lattice);
 invstruc = Array{Matrix{Taylor1{ComplexF64}}}(undef,N,N)
 Threads.@threads for i=1:N
     for j = 1:N
@@ -225,8 +199,12 @@ end
 invcorrs = inverse_fourier_transform(kmat,invstruc,lattice,center_sites);
 
 
-structurefactor =  brillouin_zone_cut_Matrix(kmat,Correlators,lattice,center_sites);
-invcorrstest = inverse_fourier_transform(kmat,structurefactor,lattice,center_sites);
+structurefactor =  get_c_kDyn_subl(kmat,c_iipDyn_mat,hte_lattice);
+invcorrstest = inverse_fourier_transform_subl(kmat,structurefactor,hte_lattice);
+
+hte_lattice.basis_positions
+invcorrstest[132]
+Float64.(c_iipDyn_mat[132])
 
 
 

@@ -4,34 +4,28 @@ using JLD2
 include("../../Embedding.jl")
 include("../../LatticeGraphs.jl")
 include("../../ConvenienceFunctions.jl") 
-#specify max order
-max_order = 12
 
-#LOAD FILES 
-#-------------------------------------------------------------------------------------
-#load list of unique graphs
-gG_vec_unique = give_unique_gG_vec(max_order);
 
-#create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,max_order+1) ;
-#load dictionaries of all lower orders C_Dict_vec 
-for ord = 0:max_order
-    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
-end 
-#-----------------------------------
 
-#1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
-L = max_order
-lattice,LatGraph,center_sites = getLattice_Ball(L,"triang");
-display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
+L = 12
+spin_length = 1/2
+hte_graphs = load_dyn_hte_graphs(spin_length,L);
+hte_lattice = getLattice(L,"triang");
+@time c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs);
+
+
+display(graphplot(hte_lattice.graph,names=1:nv(hte_lattice.graph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
 
 #2.Compute all correlations in the lattice
-#@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
-@load "CaseStudy/Triang_Lattice/Correlation_Data_L12.jld2" Correlators
+@time c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs; verbose =false, max_order = L);
+@save "CaseStudy/Triang_Lattice/c_iipDyn_mat_L12.jld2" c_iipDyn_mat
 
 #check the susceptibility with 10.1103/PhysRevB.53.14228
-(brillouin_zone_cut([(0.0,0.0) (0.0,0.0) ;(0.0,0.0)  (0.0,0.0)],Correlators,lattice,center_sites)[1]*4)[:,1].*[factorial(n)*4^n for n in 0:max_order]
+(brillouin_zone_cut([(0.0,0.0) (0.0,0.0) ;(0.0,0.0)  (0.0,0.0)],c_iipDyn_mat,lattice,center_sites)[1]*4)[:,1].*[factorial(n)*4^n for n in 0:max_order]
 
+
+c_EqualTime = get_c_iipEqualTime_mat(c_iipDyn_mat)
+structurefactor =get_c_kDyn_mat(kmat,c_EqualTime,hte_lattice);
 
 #3. Fourier Transform
 
@@ -41,14 +35,14 @@ kx = range(-0+0.001,2pi+0.001,length=N)
 ky = range(-0+0.001,2pi+0.001,length=N) 
 kmat = [[1,1/sqrt(3)].*x .+  [1,-1/sqrt(3)].*y for x in kx, y in ky ]
 kmat = [(y,x) for x in kx, y in ky ]
-structurefactor =  brillouin_zone_cut(kmat,Correlators,lattice,center_sites);
+c_kDyn_mat =  get_c_kDyn_mat(kmat,c_iipDyn_mat,hte_lattice);
 
 ### Evaluate the correlators at a frequency and plot the 2D Brillouin zone cut
-x = -1.5
+x = -10.0
 padetype = [6,6]
 evaluate(y) = eval_correlator_LR_continuous_pad(y, x, padetype); #define evaluation function
-struc = real.(evaluate.(structurefactor));
-p = Plots.heatmap(kx,ky,struc,clims=(0,0.25))
+struc = real.(evaluate.(c_kDyn_mat));
+p = Plots.heatmap(kx,ky,struc,clims=(0,0.4))
 
 ### Compute A 2D Brillouin zone cut: 
 N = 100
@@ -90,7 +84,7 @@ pathticks = ["Γ","M","K","Γ"]
 
 Nk = 100
 kvec,kticks_positioins = create_brillouin_zone_path(path, Nk)
-BrillPath = brillouin_zone_path(kvec,Correlators,lattice,center_sites);
+BrillPath = get_c_kDyn_mat(kvec,c_iipDyn_mat,hte_lattice);
 
 
 
@@ -111,6 +105,12 @@ resize_to_layout!(fig);
 display(fig)
 
 #save("TriangX"*string(x)*".pdf",fig)
+
+#Generate the path 
+Nk = 100
+kvec,kticks_positioins = create_brillouin_zone_path(path, Nk)
+BrillPath = get_c_kDyn_mat(kvec,c_iipDyn_mat,hte_lattice);
+
 
 #Compare Static susceptibility to QMC
 using CSV
@@ -148,16 +148,16 @@ pathticks = ["Γ","K","M","Γ"]
 p = plot()
 Nk = 100;
 kvec,kticks_positioins = create_brillouin_zone_path(path, Nk);
-BrillPath = brillouin_zone_path(kvec,Correlators,lattice,center_sites);
+BrillPath = get_c_kDyn_mat(kvec,c_iipDyn_mat,hte_lattice);
 BrillPath[38][:,1]
 #Plot the path
-Tvec = [2.0,1.0,0.5,0.375];
-padetypes = [[5,5]];
+Tvec = [0.375,0.25];
+padetypes = [[6,6],[5,5]];
 for padetype in padetypes
 for T in Tvec
-evaluate(x) = eval_correlator_LR_continuous_pad(x,-1/T,padetype);
+evaluate(x) = eval_correlator_LR_continuous_pad_tanh(x,-1/T,padetype,6);
 cut = 1/T* real.(evaluate.(BrillPath));
-Plots.plot!(p,0:Nk,cut,label=false, xticks=(kticks_positioins,pathticks)#= ,yrange = [0,2],xrange = [900,2800] =#)
+Plots.plot!(p,1:Nk+1,cut,label=false, xticks=(kticks_positioins,pathticks) ,yrange = [0,3]#=,xrange = [900,2800] =#)
 end
 end
 p
@@ -277,3 +277,12 @@ real(invcorrs[200]/invcorrs[199])[:]
 real(invcorrs[223]/invcorrs[199])[:]*10^5
 real(invcorrs[201]/invcorrs[199])[:]*10^5
 real(invcorrs[135]/invcorrs[199])[:]*10^5
+
+
+
+test = rand(Int8.([0,1]),1000,1000);
+test2 = rand([0,1],1000,1000);
+
+@time  test^2
+
+eigen(test)

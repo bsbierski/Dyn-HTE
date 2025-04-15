@@ -25,13 +25,23 @@ end
 #-----------------------------------
 
 #1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
-L = 12
-lattice,LatGraph,center_sites = getLattice_Ball(L,"square");
-display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
+L = 3
+spin_length = 1/2
+hte_graphs = load_dyn_hte_graphs(spin_length,L);
+hte_lattice = getLattice(L,"honeycomb");
+display(graphplot(hte_lattice.graph,names=1:nv(hte_lattice.graph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
+
+@time Correlators = get_c_iipDyn_mat(hte_lattice,hte_graphs; verbose =false, max_order = 12);
+
+
 
 #2.Compute all correlations in the lattice
-Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
+@time Correlators3 = compute_lattice_correlations(hte_lattice.graph,hte_lattice.lattice,hte_lattice.basis_positions,L,gG_vec_unique,C_Dict_vec);
 
+@time Correlators = get_c_iipDyn_mat(hte_lattice,hte_graphs; verbose =false, max_order = 12);
+@time Correlators2 = get_c_iipDyn_mat(hte_lattice.graph,hte_lattice.basis_positions,hte_graphs; verbose =false, max_order = 12);
+
+Correlators == Correlators2
 #3. Fourier Transform
 
 ### Compute A 2D Brillouin zone cut: 

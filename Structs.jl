@@ -69,6 +69,20 @@ mutable struct unique_Graphs
 end
 
 
+mutable struct Dyn_HTE_Graphs
+    S :: Rational{Int}    #Spin-Length
+    unique_graphs ::unique_Graphs #a dictionary ordering all graphs into equivalence classes 
+    c_dict::Vector{Vector{Vector{Rational{Int128}}}} #a dictionary of all values "c" for all graphs 
+end
+
+mutable struct Dyn_HTE_Lattice
+    name::String
+    lattice::Lattice
+    graph::SimpleGraph
+    basis_positions::Vector{<:Int}
+end
+
+
 mutable struct unique_Graph_precalc
     ref_graph ::GraphG
     distance ::Int

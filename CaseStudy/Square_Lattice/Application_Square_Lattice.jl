@@ -5,7 +5,7 @@ include("../../Embedding.jl")
 include("../../LatticeGraphs.jl")
 include("../../ConvenienceFunctions.jl") 
 #specify max order
-max_order = 12
+max_order = 10
 
 #LOAD FILES 
 #-------------------------------------------------------------------------------------
