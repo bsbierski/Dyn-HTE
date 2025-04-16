@@ -429,14 +429,14 @@ function vf2match!(
     # by an edge going out of the set M(s) of already matched vertices
     found_pair = false
     v = 0
-    @inbounds for j in Int.(1:n2)
+    @inbounds for j in 1:n2 #1:n2
         if state.out_2[j] != 0 && state.core_2[j] == 0
             v = j
             break
         end
     end
     if v != 0
-        @inbounds for u in Int.(1:n1)
+        @inbounds for u in 1:n1
             if state.out_1[u] != 0 && state.core_1[u] == 0
                 found_pair = true
                 if vf2check_feasibility(
@@ -461,14 +461,14 @@ function vf2match!(
     # If that is not the case we try if there is a pair of unmatched vertices u∈G₁ v∈G₂ that
     # are connected  by an edge coming in from the set M(s) of already matched vertices
     v = 0
-    @inbounds for j in Int.(1:n2)
+    @inbounds for j in 1:n2
         if state.in_2[j] != 0 && state.core_2[j] == 0
             v = j
             break
         end
     end
     if v != 0
-        @inbounds for u in Int.(1:n1)
+        @inbounds for u in 1:n1
             if state.in_1[u] != 0 && state.core_1[u] == 0
                 found_pair = true
                 if vf2check_feasibility(
@@ -493,14 +493,14 @@ function vf2match!(
     # If this is also not the case, we try all pairs of vertices u∈G₁ v∈G₂ that are not
     # yet matched
     v = 0
-    @inbounds for j in Int.(1:n2)
+    @inbounds for j in 1:n2
         if state.core_2[j] == 0
             v = j
             break
         end
     end
     if v != 0
-        @inbounds for u in Int.(1:n1)
+        @inbounds for u in 1:n1
             if state.core_1[u] == 0
                 if vf2check_feasibility(
                     u, v, state, problemtype, vertex_relation, edge_relation

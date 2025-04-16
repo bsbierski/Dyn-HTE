@@ -1,6 +1,7 @@
 using Graphs, GraphRecipes, Plots
 #include Lattice support from SpinMC.jl
 include("Lattice.jl")
+include("LatticeSymmetries.jl")
 
 function latticeToGraph(lattice::Lattice)::SimpleGraph{Int}
     """ transforms a Lattice Struct into a SimpleGraph """
@@ -18,7 +19,7 @@ function latticeToGraph(lattice::Lattice)::SimpleGraph{Int}
     return g
 end
 
-function getLattice(L::Int,geometry::String; PBC::Bool = true)
+function get_finite_Lattice(L::Int,geometry::String; PBC::Bool = true)
     """ creates lattice and corresponding graphs, L is the linear size, PBC sets the use of boundary conditions.
     Currently implmented:
         - chain
@@ -177,13 +178,13 @@ function find_graph_center(graph)
     return min_vertices
 end
 
-function getLattice_Ball(L::Int,geometry::String)
+function getLattice(L::Int,geometry::String)::Dyn_HTE_Lattice
     """ 
     Gives the lattice where all sites are at most L away from the center sites, no PBC
     """
 
     if geometry == "chain" #shortcut for chain
-        lattice,LatGraph = getLattice(2*L+1,"chain"; PBC = true)
+        lattice,LatGraph = get_finite_Lattice(2*L+1,"chain"; PBC = true)
         center_sites = [L+1]
         return lattice,LatGraph,center_sites
     end
@@ -205,7 +206,7 @@ function getLattice_Ball(L::Int,geometry::String)
 
 
     # Get the lattice and its corresponding graph representation
-    lattice, LatGraph = getLattice(2 * L + 1, geometry; PBC = false)
+    lattice, LatGraph = get_finite_Lattice(2 * L + 1, geometry; PBC = false)
 
     # Extract the number of sites in the unit cell
     basis = length(lattice.unitcell.basis)
@@ -243,7 +244,7 @@ function getLattice_Ball(L::Int,geometry::String)
     center_sites = find_graph_center(gg)
 
     # Return the modified lattice, its graph representation, and the central site(s)
-    return lattice, gg, center_sites
+    return Dyn_HTE_Lattice(geometry ,lattice, gg, center_sites)
 end
 
 ###### TESTS ############

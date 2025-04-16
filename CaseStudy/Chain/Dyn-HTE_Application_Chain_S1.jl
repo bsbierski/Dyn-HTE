@@ -2,7 +2,7 @@
 using Polynomials, HDF5, Measurements
 
 
-path_DynHTSE="C:/Users/ruben/Documents/GitHub/Projects/Master/Dyn-HTE/Dyn-HTE/"
+path_DynHTSE="../../"
 include(path_DynHTSE*"Embedding.jl")
 include(path_DynHTSE*"LatticeGraphs.jl")
 include(path_DynHTSE*"ConvenienceFunctions.jl")
@@ -181,7 +181,7 @@ k_vec=[0.2*π,π]
 
 w_vec = collect(-3.0:0.01:3.0)
 η=0.01
-ext_vec = [[5,6,true],[5,6,false],[6,6,true]]
+ext_vec = [[4,4,true]]
 
 title=""#"AFM Heisenberg chain, J/T=x=$x"
 plt_δ = plot([0],[0],label="",xlabel=L"r",ylabel=L"\delta_r",title="",legend=:topleft,xlim=(-0.2,10.2),ylim=(0,8))

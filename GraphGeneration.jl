@@ -10,6 +10,34 @@ include("Structs.jl")
 include("vf2_edited.jl") 
 
 ####### various helper functions ################### 
+function load_dyn_hte_graphs(spin_length::Number,max_order::Int)::Dyn_HTE_Graphs
+
+S = rationalize(spin_length)
+
+if S == 1//2
+    S_string = "Spin_S1half"
+elseif S == 1//1
+    S_string = "Spin_S1"
+else
+    throw(error("Spinlength "*string(spin_length)*" is not yet implemented"))
+end
+
+#load list of unique graphs
+gG_vec_unique = give_unique_gG_vec(max_order);
+
+#create vector of all lower order dictionaries
+C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,max_order+1) ;
+#load dictionaries of all lower orders C_Dict_vec 
+for ord = 0:max_order
+    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/"*S_string*"/C_"*string(ord)*".jld2")
+end 
+
+
+    Dyn_HTE_Graphs(S,gG_vec_unique,C_Dict_vec)
+
+end
+
+
 function split_vec(vec::Vector,part::Int,parts::Int)
     """ splits vector in parts (keep longtail), returns the chunk and its start and end indices """
     chunkLen = Int(floor(length(vec)/parts))
@@ -561,7 +589,7 @@ if !isfile("GraphFiles/graphs_12.jld2")
 end
 
 ### if GraphEvaluations C_11.jld2 and C_12.jld2 do not yet exist, merge it from its parts
-for sstring in ["S1half","S1"]
+for sstring in [] #= ["S1half","S1"] =#
 
     if !isfile("GraphEvaluations/Spin_"*sstring*"/C_11.jld2")
         println("merging C_11 ...")

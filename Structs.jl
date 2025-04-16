@@ -68,6 +68,42 @@ mutable struct unique_Graphs
 
 end
 
+
+mutable struct Dyn_HTE_Graphs
+    S :: Rational{Int}    #Spin-Length
+    unique_graphs ::unique_Graphs #a dictionary ordering all graphs into equivalence classes 
+    c_dict::Vector{Vector{Vector{Rational{Int128}}}} #a dictionary of all values "c" for all graphs 
+end
+
+mutable struct Dyn_HTE_Lattice
+    name::String
+    lattice::Lattice
+    graph::SimpleGraph
+    basis_positions::Vector{<:Int}
+end
+
+
+mutable struct unique_Graph_precalc
+    ref_graph ::GraphG
+    distance ::Int
+    graph_value ::Matrix{Rational{Int128}}
+    
+    function unique_Graph_precalc(ref_graph,distance,graph_value)
+        return new(ref_graph,distance,graph_value)
+    end
+
+end
+
+mutable struct unique_Graphs_precalc
+    max_order ::Int
+    graphs ::Vector{unique_Graph_precalc}
+
+    function unique_Graphs_precalc(max_order,graphs)
+        return new(max_order, graphs)
+    end
+
+end
+
 struct GraphGinfo
     gG::GraphG                      # graphG
     jjp::Tuple{Int8,Int8}           # jjp

@@ -185,7 +185,7 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
     ext_dist = dijkstra_shortest_paths(L,ext_j1).dists[ext_j2]
 
     # only iterate over the unique simple graphs in unique_Gg
-    for unique_Gg in gG_vec_unique.graphs
+    for (index,unique_Gg) in enumerate(gG_vec_unique.graphs)
         gg = unique_Gg.ref_graph   #Graph
         gg_dist = unique_Gg.distance #edge distance between the external vertices
           # if the graph is long enough
@@ -205,8 +205,10 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
         end
 
         #calculate the embedding factor
+       
         emb_fac = e_fast(L,ext_j1,ext_j2,gg)
 
+       # println("$index th graph embeding factor = $emb_fac")
         
 
         #### now we sum overall graphG eqivalent to the unique Gg
@@ -217,16 +219,16 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
             is_symmetric = graph.is_symmetric  #bool if the graph is symmetric
            
             fac = 2
-        if  is_symmetric
-            fac = 1
-        end
+            if  is_symmetric
+                fac = 1
+            end
 
             #look up the value of the graph from C_Dict_vec
-            look_up_dict =C_Dict_vec[g_order+1][gG_vec_index]
+            look_up_dict = C_Dict_vec[g_order+1][gG_vec_index]
 
             
             
-            result_array[g_order+1] .+= look_up_dict*emb_fac/symmetry_factor*fac
+            result_array[g_order+1] .+= look_up_dict.*Int128(emb_fac/symmetry_factor*fac)
         end
     end
 
