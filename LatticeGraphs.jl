@@ -184,9 +184,9 @@ function getLattice(L::Int,geometry::String)::Dyn_HTE_Lattice
     """
 
     if geometry == "chain" #shortcut for chain
-        lattice,LatGraph = get_finite_Lattice(2*L+1,"chain"; PBC = true)
+        lattice,LatGraph = get_finite_Lattice(2*L+1,"chain"; PBC = false)
         center_sites = [L+1]
-        return lattice,LatGraph,center_sites
+        return Dyn_HTE_Lattice(geometry ,lattice, LatGraph, center_sites)
     end
 
     ## helper function
