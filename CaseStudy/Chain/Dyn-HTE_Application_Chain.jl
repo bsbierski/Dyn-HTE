@@ -3,10 +3,20 @@ using Polynomials, HDF5, Measurements
 
 
 path_DynHTSE="C:/Users/ruben/Documents/GitHub/Projects/Master/Dyn-HTE/Dyn-HTE/"
-include(path_DynHTSE*"Embedding.jl")
 include(path_DynHTSE*"LatticeGraphs.jl")
 include(path_DynHTSE*"ConvenienceFunctions.jl")
 include(path_DynHTSE*"plotConventions.jl") 
+include(path_DynHTSE*"Embedding.jl")
+
+
+L = 10
+spin_length = 1/2
+hte_graphs = load_dyn_hte_graphs(spin_length,L)
+hte_lattice = getLattice(L,"triang")
+@time c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs)
+
+
+1+1
 
 #specify max order
 max_order = 12
