@@ -9,7 +9,7 @@ include(path_DynHTSE*"ConvenienceFunctions.jl")
 include(path_DynHTSE*"plotConventions.jl") 
 
 #specify max order
-max_order = 10
+n_max = 11
 spin_string = "S1" #"S1half" #"S3half"
 
 #LOAD FILES -------------------------
@@ -25,60 +25,142 @@ for ord = 0:n_max
 end
 #-----------------------------------
 
+
+
 ### Define Lattice
-LatGraph = complete_graph(4)
-reference_site = 1
+LatGraph = path_graph(25)#cycle_graph(25)
+reference_site_bulk = 13
+reference_site_edge = 1
 display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
 
+# #### Compute all non-zero G-coefficients c_ii'(m) 
+# lattice,LatGraph,center_sites = getLattice_Ball(n_max,"chain");
+# c_iipDyn_mat = get_c_iipDyn_mat(LatGraph,lattice,center_sites,n_max,gG_vec_unique,C_Dict_vec)
 
-on_site_correlator = Calculate_Correlator_fast(LatGraph,reference_site,reference_site,max_order,gG_vec_unique,C_Dict_vec)
-for ord = 0:max_order
-    on_site_correlator[ord+1] *= (-1)^ord
-end
 
-m_vec = []
+x=1.0
+
+on_site_correlator_bulk = Calculate_Correlator_fast(LatGraph,reference_site_bulk,reference_site_bulk,n_max,gG_vec_unique,C_Dict_vec)
+on_site_correlator_edge = Calculate_Correlator_fast(LatGraph,reference_site_edge,reference_site_edge,n_max,gG_vec_unique,C_Dict_vec)
+for ord = 0:n_max
+    on_site_correlator_bulk[ord+1] *= (-1)^ord
+    on_site_correlator_edge[ord+1] *= (-1)^ord
+end 
+
+m_vec_bulk = []
+m_vec_edge = []
 for m_idx = 0:5
-    m_summed = Polynomial([0])
-    for ord= 2*m_idx:max_order
+    m_summed_bulk = Polynomial([0])
+    m_summed_edge = Polynomial([0])
+    for ord= 2*m_idx:n_max
         if m_idx==0
-            m_summed +=  on_site_correlator[ord+1][m_idx+1]*Polynomial(Polynomial(vcat(zeros(ord-2*m_idx),[1])))
+            m_summed_bulk +=  on_site_correlator_bulk[ord+1][m_idx+1]*Polynomial(Polynomial(vcat(zeros(ord-2*m_idx),[1])))
+            m_summed_edge +=  on_site_correlator_edge[ord+1][m_idx+1]*Polynomial(Polynomial(vcat(zeros(ord-2*m_idx),[1])))
         elseif m_idx%2 ==0 
-            m_summed -=   on_site_correlator[ord+1][m_idx+1]*Polynomial(Polynomial(vcat(zeros(ord-2*m_idx),[1])))
+            m_summed_bulk -=   on_site_correlator_bulk[ord+1][m_idx+1]*Polynomial(Polynomial(vcat(zeros(ord-2*m_idx),[1])))
+            m_summed_edge -=   on_site_correlator_edge[ord+1][m_idx+1]*Polynomial(Polynomial(vcat(zeros(ord-2*m_idx),[1])))
         else
-            m_summed +=  on_site_correlator[ord+1][m_idx+1]*Polynomial(Polynomial(vcat(zeros(ord-2*m_idx),[1])))
+            m_summed_bulk +=  on_site_correlator_bulk[ord+1][m_idx+1]*Polynomial(Polynomial(vcat(zeros(ord-2*m_idx),[1])))
+            m_summed_edge +=  on_site_correlator_edge[ord+1][m_idx+1]*Polynomial(Polynomial(vcat(zeros(ord-2*m_idx),[1])))
         end
     end
-    push!(m_vec,m_summed )
+    push!(m_vec_bulk,m_summed_bulk )
+    push!(m_vec_edge,m_summed_edge )
 
 end
+
+# for f = 0.3:0.01:0.6
 
 #moment extrapolation
-m_vec_extrapolated_pade = []
-for m_idx=1:length(m_vec)
-    push!(m_vec_extrapolated_pade, get_pade(m_vec[m_idx],6-m_idx,6-m_idx))
+f=  0.56
+m_vec_bulk_extrapolated_pade = []
+m_vec_edge_extrapolated_pade = []
+m_vec_bulk_extrapolated_pade1 = []
+m_vec_edge_extrapolated_pade1 = []
+m_vec_bulk_extrapolated_u_pade = []
+m_vec_edge_extrapolated_u_pade = []
+m_vec_bulk_extrapolated_u_pade1 = []
+m_vec_edge_extrapolated_u_pade1 = []
+for m_idx=1:length(m_vec_bulk)-1
+    push!(m_vec_bulk_extrapolated_pade, extrapolate_series(m_vec_bulk[m_idx],"pade",(7-m_idx,6-m_idx)))
+    push!(m_vec_edge_extrapolated_pade, extrapolate_series(m_vec_edge[m_idx],"pade",(7-m_idx,6-m_idx)))
+
+    push!(m_vec_bulk_extrapolated_pade1, extrapolate_series(m_vec_bulk[m_idx],"pade",(6-m_idx,7-m_idx)))
+    push!(m_vec_edge_extrapolated_pade1, extrapolate_series(m_vec_edge[m_idx],"pade",(6-m_idx,7-m_idx)))
+
+    push!(m_vec_bulk_extrapolated_u_pade, extrapolate_series(m_vec_bulk[m_idx],"u_pade",(7-m_idx,7-m_idx,f)))
+    push!(m_vec_edge_extrapolated_u_pade, extrapolate_series(m_vec_edge[m_idx],"u_pade",(7-m_idx,7-m_idx,f)))
+
+    push!(m_vec_bulk_extrapolated_u_pade1, extrapolate_series(m_vec_bulk[m_idx],"u_pade",(8-m_idx,6-m_idx,f)))
+    push!(m_vec_edge_extrapolated_u_pade1, extrapolate_series(m_vec_edge[m_idx],"u_pade",(8-m_idx,6-m_idx,f)))
 end
 
-plt_m = plot([0],[0],label="",xlabel=L"x",ylabel=L"m_r",legend=:topleft,title="moments")
-x_vec = 0:0.05:0.5
-#plot moments
-for m_idx = 1:length(m_vec)
-    plot!(plt_m,x_vec,m_vec[m_idx].(x_vec),label="m"*string((m_idx-1)*2))
-end
-display(plt_m)
+# #plot moments pade
+# plt_m = plot([0],[0],label="",xlabel=L"x",ylabel=L"m_r",legend=:topleft,title="moments",ylims=(0,14))
+# x_vec = 0:0.01:2
+# #plot moments
+# for m_idx = 1:length(m_vec_bulk)-3
+#     plot!(plt_m,x_vec,m_vec_bulk[m_idx].(x_vec),label="m"*string((m_idx-1)*2)*" bulk",color=color_vec[m_idx],linestyle = linestyle_vec[1])
+#     plot!(plt_m,x_vec,m_vec_edge[m_idx].(x_vec),label="m"*string((m_idx-1)*2)*" edge",color=color_vec[4+m_idx],linestyle = linestyle_vec[1])
 
-x=2.0
-δ_vec,r_vec = fromMomentsToδ([m(x) for m in m_vec_extrapolated_pade])
+#     plot!(plt_m,x_vec,m_vec_bulk_extrapolated_pade[m_idx].(x_vec),label="",color=color_vec[m_idx],linestyle = linestyle_vec[2])
+#     plot!(plt_m,x_vec,m_vec_edge_extrapolated_pade[m_idx].(x_vec),label="",color=color_vec[4+m_idx],linestyle = linestyle_vec[2])
+
+#     plot!(plt_m,x_vec,m_vec_bulk_extrapolated_pade1[m_idx].(x_vec),label="",color=color_vec[m_idx],linestyle = linestyle_vec[3])
+#     plot!(plt_m,x_vec,m_vec_edge_extrapolated_pade1[m_idx].(x_vec),label="",color=color_vec[4+m_idx],linestyle = linestyle_vec[3])
+
+# end
+# display(plt_m)
+
+# #plot moments u pade
+# plt_m = plot([0],[0],label="",xlabel=L"x",ylabel=L"m_r",legend=:topleft,title="moments u-pade with f="*string(f),ylims=(0,14))
+# x_vec = 0:0.01:2
+# #plot moments
+# for m_idx = 1:length(m_vec_bulk)-3
+#     Plots.plot!(plt_m,x_vec,m_vec_bulk[m_idx].(x_vec),label="m"*string((m_idx-1)*2)*" bulk",color=color_vec[m_idx],linestyle = linestyle_vec[1])
+#     Plots.plot!(plt_m,x_vec,m_vec_edge[m_idx].(x_vec),label="m"*string((m_idx-1)*2)*" edge",color=color_vec[4+m_idx],linestyle = linestyle_vec[1])
+
+#     Plots.plot!(plt_m,x_vec,m_vec_bulk_extrapolated_u_pade[m_idx].(tanh.(f .*x_vec))./x_vec,label="",color=color_vec[m_idx],linestyle = linestyle_vec[2])
+#     Plots.plot!(plt_m,x_vec,m_vec_edge_extrapolated_u_pade[m_idx].(tanh.(f .*x_vec))./x_vec,label="",color=color_vec[4+m_idx],linestyle = linestyle_vec[2])
+
+#     Plots.plot!(plt_m,x_vec,m_vec_bulk_extrapolated_u_pade1[m_idx].(tanh.(f .*x_vec))./x_vec,label="",color=color_vec[m_idx],linestyle = linestyle_vec[3])
+#     Plots.plot!(plt_m,x_vec,m_vec_edge_extrapolated_u_pade1[m_idx].(tanh.(f .*x_vec))./x_vec,label="",color=color_vec[4+m_idx],linestyle = linestyle_vec[3])
+
+# end
+# display(plt_m)
+
+
+# end
+
+x=3.0
+
+δ_vec_bulk,r_vec = fromMomentsToδ([m(tanh(f*x))/x for m in m_vec_bulk_extrapolated_u_pade])
+δ_vec_edge,r_vec = fromMomentsToδ([m(tanh(f*x))/x for m in m_vec_edge_extrapolated_u_pade])
+
+
+# δ_vec_bulk,r_vec = fromMomentsToδ([m(x) for m in m_vec_bulk_extrapolated_pade])
+# δ_vec_edge,r_vec = fromMomentsToδ([m(x) for m in m_vec_edge_extrapolated_pade])
 #plot deltas 
-plt_deltas = plot([0],[0],label="",xlabel=L"r",ylabel=L"\delta_r",legend=:topleft,title="deltas")
-scatter!(plt_deltas,0:length(δ_vec)-1,δ_vec)
-display(plt_deltas)
+# plt_deltas = plot([0],[0],label="",xlabel=L"r",ylabel=L"\delta_r",legend=:topleft,title="deltas")
+# scatter!(plt_deltas,0:length(δ_vec)-1,δ_vec)
+# display(plt_deltas)
 
-δ_vec_ext = extrapolate_δvec(δ_vec,3,3,1000,true)
-w_step_size=0.01
-w_vec = collect(-3:w_step_size:3)
-JSKw = [JS(δ_vec_ext ,x,w,0.01) for w in w_vec]#[2*pi*(1-exp(-w*x))JS(δ_vec_ext ,x,w,0.01) for w in w_vec]
+δ_vec_bulk_ext = extrapolate_δvec(δ_vec_bulk,3,3,4000,true)
+δ_vec_edge_ext = extrapolate_δvec(δ_vec_edge,3,3,4000,true)
+w_step_size=0.005
+w_vec = collect(-5.001:w_step_size:5)
+JSKw_bulk = [x*(2*pi*(1-exp(-x*w))*JS(δ_vec_bulk_ext ,x,w,0.01))/w for w in w_vec]#[JS(δ_vec_bulk_ext ,x,w,0.01) for w in w_vec]
+JSKw_edge = [x*(2*pi*(1-exp(-x*w))*JS(δ_vec_edge_ext ,x,w,0.01))/w for w in w_vec]#[JS(δ_vec_edge_ext ,x,w,0.01) for w in w_vec]
 
-plot(w_vec,JSKw)
+Plots.plot(w_vec,JSKw_bulk,xlabel=L"\omega/J",ylabel=L"R_k(\omega)",label="bulk",color=color_vec[1],size =(aps_width,0.5*aps_width))
+Plots.annotate!(-4.2,10.18,Plots.text("x="*string(round(Int64,x)),:black,10))
+Plots.annotate!(-6.7,11.,Plots.text("b)",:black,10))
+display(Plots.plot!(w_vec,JSKw_edge,label="edge",color=color_vec[2],alpha=0.5))
+
+println("bulk normalization: "*string(sum(JSKw_bulk)*w_step_size))
+println("edge normalization: "*string(sum(JSKw_edge)*w_step_size))
+
+# savefig("chain_S1_edge_state.pdf")
 
 #Calculate moments 
 
@@ -349,28 +431,107 @@ savefig("chain_moments_and_deltas.pdf")
 ###### S(k,w) heatmap (Dyn-HTE)
 using CairoMakie
 
-f=0.48#0.31
 
-x = 4.0#0.128*32 
-k_step_size = 0.0039*22.2
-w_step_size = 0.05
-k_vec = [(k,0.0) for k in 0.015:k_step_size:(2*π-0.01)]#[(k,0.0) for k in 0.01:0.0039*2.4:(2*π-0.01)]
-w_vec = collect(-3:w_step_size:3)# for reliable sigma: collect(-5:0.05*0.1:5)
+f=0.57#0.31
+
+x = 4.00#0.128*32 
+k_step_size = 1/72
+w_step_size = 0.025
+k_vec = vcat(vcat((0.0001,0.0),[(k*pi,0.0) for k in 0:k_step_size:2][2:end-1] ),(1.999*pi,0.0))#[(k,0.0) for k in 0.01:0.0039*2.4:(2*π-0.01)]
+w_vec = collect(0:w_step_size:4)# for reliable sigma: collect(-5:0.05*0.1:5)
 JSkw_mat = get_JSkw_mat_finitex(f,"pade_subs",x,k_vec,w_vec,0.01,3,3,1000,false,c_iipDyn_mat,lattice,center_sites)
 
 
-fig = Figure(fontsize=10)
-ax=Axis(fig[1,1],xlabel=L"k/ \pi",ylabel=L"\omega/J=w",limits=(0,2,-3,3),title="Dyn-HTE x="*string(x)*" f="*string(f),titlesize=15,xlabelsize=12,ylabelsize=12)
-hm=CairoMakie.heatmap!(ax,[k[1]/π for k in k_vec],w_vec,JSkw_mat,colormap=:viridis,colorrange=(0.0,0.45),highclip=:white)
+
+w_step_size = 0.025
+w_vec = collect(0:w_step_size:4)# for reliable sigma: collect(-5:0.05*0.1:5)
+fig = Figure(size=(aps_width*2.5,0.7*aps_width))
+ax=Axis(fig[1,1],xlabel=L"k/ \pi",ylabel=L"\omega/J=w",limits=(0,2,0,3),titlesize=15,xlabelsize=12,ylabelsize=12)
+hm=CairoMakie.heatmap!(ax,[k[1]/π for k in k_vec][1:2:end],w_vec[1:2:end],(JSkw_mat[1:2:end,1:2:end].+0.00000001),colormap=:viridis,colorrange=(0,0.5),highclip=:white)
 # CairoMakie.Colorbar(fig[:, end+1], hm,size=10)
 grid = fig[1,2]= GridLayout()
 subgrid = GridLayout(grid[1, 1], tellheight = false)
 Label(subgrid[1, 1], L"JS(k,\omega)",fontsize=15)
 cb1=CairoMakie.Colorbar(subgrid[2, 1],hm,size=11,labelsize = 10) 
+rowgap!( subgrid,2)
+colgap!( subgrid,0)
+#Magnon plot
+function magnon_dispersion(k)
+    Delta_gap = 0.41047925
+    a_n = [ 1.96615,21.20162, -1.61279,-0.04766, 0.02407]
+    return Delta_gap*sqrt(1+sum([a_n[n]*(1-cos(n*(pi-k)))  for n=1:5]))
+end
+#FM
+# CairoMakie.lines!(fig[1,1],0:0.03:2,(1 .-cos.(pi.*(0:0.03:2))))
+#AFM
+#CairoMakie.lines!(fig[1,1],0:0.006:2,magnon_dispersion.(pi.*(0:0.006:2)),color="orange",alpha=0.4)
+#Haldane Gap
+CairoMakie.lines!(fig[1,1],[0,2],[0.41,0.41],color="grey")
+CairoMakie.text!(ax, 0.05, 2.91, text=L"x=4", fontsize=17, color=:white, align=(:left, :top) )
+
+# lbl=CairoMakie.Label(fig[1, 1, TopLeft()], "a)", fontsize = 20,padding=(20,0))
+
+#########################
+w_step_size=0.005
+w_vec = collect(-5.001:w_step_size:5)
+ax1=Axis(fig[1,3],xlabel=L"\omega/J",ylabel=L"R_k(\omega)",xgridvisible = false,ygridvisible = false)
+CairoMakie.lines!(ax1,w_vec,JSKw_bulk,label="bulk",color=color_vec[1])
+CairoMakie.lines!(ax1,w_vec,JSKw_edge,label="edge",color=color_vec[2])
+axislegend(ax1, framevisible = false)
+CairoMakie.text!(ax1, -5.0, 11.4, text=L"x=3", fontsize=17, color=:black, align=(:left, :top) )
+lbl=CairoMakie.Label(fig[1, 1, TopLeft()], "a)", fontsize = 17,padding=(20,-10))
+lbl=CairoMakie.Label(fig[1, 3, TopLeft()], "b)", fontsize = 17)
+
+##########################
+
 display(fig)
+
+# save("chain_S1_DSF_and_edge_state.pdf",fig)
+
+#now calculate equal time correlator =1/4 for consitency
+equal_time_corr = 0.0
+for k_idx in 1:length(k_vec) 
+    for w_idx in 1:length(w_vec) 
+        equal_time_corr+= JSkw_mat[k_idx,w_idx]
+    end 
+end
+equal_time_corr *= k_step_size*w_step_size
+println("Equal time correlator: "*string(equal_time_corr))
+println("Deviation from 2/3: "*string(round(abs(2/3-equal_time_corr)*3/2*100,digits=4))*"%")
+
+
+
 # save("chain_x_4.pdf",fig)
 
 
+
+
+#use DSF to determine density of states 
+DOS =  zeros(length(w_vec))
+for w_idx in 1:length(w_vec)
+    DOS[w_idx] = sum(JSkw_mat[1:end,w_idx])*k_step_size
+end
+
+display(Plots.plot(w_vec,DOS,title="DOS",xlabel=L"\omega",ylims=(0,maximum(DOS)+1)))
+
+
+
+
+#Plot k-slices of DSF 
+f=0.5#0.31
+
+x = 4.0#0.128*32 
+w_step_size = 0.01
+k_vec = [(k,0.0) for k in [0.2*pi,0.24*pi,0.3*pi]]#[(k,0.0) for k in 0.01:0.0039*2.4:(2*π-0.01)]
+w_vec = collect(0:w_step_size:3)# for reliable sigma: collect(-5:0.05*0.1:5)
+JSkw_mat = get_JSkw_mat_finitex(f,"pade_subs",x,k_vec,w_vec,0.01,3,3,2000,false,c_iipDyn_mat,lattice,center_sites)
+
+plt = Plots.plot([0],[0],label="",title="DSF k-slices at x="*string(x),xlabel=L"\omega",ylabel=L"JS(k,\omega)",xlims=(1.5,3),ylims=(0,2))
+for k_idx in [1,2,3]
+    Plots.plot!(w_vec,JSkw_mat[k_idx,1:end],label=[L"0.2 \pi",L"0.24 \pi",L"0.3 \pi"][k_idx],color = color_vec[k_idx])
+    # Plots.plot!([magnon_dispersion(k_vec[k_idx][1]),magnon_dispersion(k_vec[k_idx][1])],[0,4],label="",color = color_vec[k_idx])
+end
+display(plt)
 
 
 #now calculate equal time correlator =1/4 for consitency
@@ -386,189 +547,6 @@ println("Deviation from 1/4: "*string(round(abs(1/4-equal_time_corr)*4*100,digit
 
 #save("plots/HTSE"*string(x)*"_hq.pdf",fig)
 
-
-####### S(k,w) heatmap DMRG data
-using MAT
-beta = 16#0.128*16
-data = matread("SF_beta_"*string(beta)*".mat")
-
-k_DMRG = data["kk"]
-w_DMRG = data["om"]
-S_DMRG = data["Skw"]
-
-#blur data
-using ImageFiltering
-sigma = 2.1
-kernel = Kernel.gaussian(sigma)
-S_DMRG_blurred = imfilter(S_DMRG, kernel)
-
-
-fig = Figure(fontsize=10)
-ax=Axis(fig[1,1] ,limits=(0,2,-3,3),xlabel=L"k/ \pi",ylabel=L"\omega/J=w",title="DMRG x"*string(x),titlesize=15,xlabelsize=12,ylabelsize=12)
-
-hm=CairoMakie.heatmap!(ax,[k_DMRG[i] for i=1:length(k_DMRG)],[w_DMRG[i] for i=1:length(w_DMRG)],S_DMRG_blurred,colormap=:viridis,colorrange=(0.0,0.4),highclip=:white)
-
-resize_to_layout!(fig)
-display(fig)
-#now calculate equal time correlator =1/4 for consitency
-equal_time_corr = 0.0
-for k_idx in 1:length(k_DMRG) 
-    for w_idx in 1:length(w_DMRG) 
-        equal_time_corr+= S_DMRG[k_idx,w_idx]
-    end 
-end
-equal_time_corr *= 0.5*0.00390625*0.03138610973165286
-println("Equal time correlator: "*string(equal_time_corr))
-println("Deviation from 1/4: "*string(round(abs(1/4-equal_time_corr)*4*100,digits=4))*"%")
-
-save("plots/DMRG1"*string(beta)*".pdf",fig)
-
-
-
-
-######NOW THE COMPARISON OF Dyn-HTE and DMRG
-S_dyn_HTE= load_object("DSF_with_DynHTE_differnt_temperatures.jdl2")
-using MAT
-betas = [0,2,4]
-
-title_string =["","","","","","","","",""] 
-
-xPlots,yPlots=3,3
-
-fig = CairoMakie.Figure(layout=(yPlots,xPlots), size=(aps_width*2,0.60*aps_width*2),fontsize=7)
-
-grid = fig[1,1]= GridLayout()
-
-plotsDMRG = []
-plotsDynHTE = []
-plotsKslices = []
-hm= 0
-for (i,beta) in enumerate(betas)
-    data = matread("SF_beta_"*string(beta)*".mat")
-
-    #DMRG
-    k_DMRG = data["kk"]
-    w_DMRG = data["om"]
-    S_DMRG = data["Skw"]
-
-    #dyn-HTE
-    k_vec = [k for k in 0.015:0.0039*22.2:(2*π-0.01)]
-    w_step_size = 0.05
-    w_vec = collect(-3:w_step_size:3)
-    
-
-    #blur data
-    using ImageFiltering
-    sigma = 2.1
-    kernel = Kernel.gaussian(sigma)
-    S_DMRG_blurred = imfilter(S_DMRG, kernel)
-
-
-
-
-    ax=CairoMakie.Axis(grid[2,i],limits=(0,2,-2.5,2.5),xlabel=L"k/ \pi",ylabel=L"\omega/J=w",title=title_string[i],titlesize=10,xlabelsize=8,ylabelsize=8)
-    
-    
-
-    #DMRG
-    ax_dynHTE=CairoMakie.Axis(grid[1,i],limits=(0,2,-2.5,2.5),xlabel=L"k/ \pi",ylabel=L"\omega/J=w",title=title_string[i+3],titlesize=10,xlabelsize=8,ylabelsize=8)
-
-    hm=CairoMakie.heatmap!(ax,vec(k_DMRG)[1:3:end],vec(w_DMRG)[1:2:end],S_DMRG_blurred[1:3:end,1:2:end],colormap=:viridis,colorrange=(0.0,0.45),highclip=:white)
-    
-    push!(plotsDMRG, ax)
-    #dynHTE spot
-    CairoMakie.heatmap!(ax_dynHTE,vec([k/π for k in k_vec])[1:end],vec(w_vec)[1:end],S_dyn_HTE[i][1:end,1:end],colormap=:viridis,colorrange=(0.0,0.45),highclip=:white)
-    push!(plotsDynHTE, ax_dynHTE)
-
-    ###annotate
-    CairoMakie.text!(ax_dynHTE, 0.03, 2.42, text=[L"x=0",L"x=2",L"x=4"][i], fontsize=13, color=:white, align=(:left, :top) )
-    CairoMakie.text!(ax, 0.03, 2.42, text=[L"x=0",L"x=2",L"x=4"][i], fontsize=13, color=:white, align=(:left, :top) )
-    CairoMakie.text!(ax_dynHTE, 0.03, -1.8, text="Dyn-HTE", fontsize=12, color=:white, align=(:left, :top) )
-    CairoMakie.text!(ax, 0.03, -1.8, text="DMRG", fontsize=12, color=:white, align=(:left, :top) )
-    CairoMakie.text!(ax_dynHTE, 1.29, -1.81, text=[L"\Sigma=0.251",L"\Sigma=0.251",L"\Sigma=0.248"][i], fontsize=13, color=:white, align=(:left, :top) )
-    CairoMakie.text!(ax, 1.29, -1.81, text=L"\Sigma=0.250", fontsize=13, color=:white, align=(:left, :top) )
-
-    #k slices 
-    k_slice_values=[(0.2*π,0.0),(1*π,0.0)]
-    
-
-    if i==1
-        ax_k_sliced =CairoMakie.Axis(grid[3,i],xlabel=L"\omega/J=w",ylabel=L"JS(k,\omega)",title=title_string[i+6],titlesize=10,xlabelsize=8,ylabelsize=8 ,limits=(-3,3,-0.01,0.27))
-
-        for (k_pos,k) in enumerate([k_slice_values[i][1] for i=1:length(k_slice_values)])
-            CairoMakie.scatter!(ax_k_sliced,w_DMRG[1:2:191],S_DMRG_blurred[round(Integer,k/(pi*0.00390625)),:][1:2:191],color = color_vec[k_pos],markersize =5, alpha =0.6,label=["DMRG \n (k=0.2π)","DMRG \n (k=π)"][k_pos])
-            CairoMakie.lines!(ax_k_sliced,w_vec,S_dyn_HTE[i][round(Int,(k-0.015)/(0.0039*22.2))+1,:],color = color_vec[k_pos],label=["Dyn-HTE \n (k=0.2π)","Dyn-HTE \n (k=π)"][k_pos] )
-        end
-        subgrid = GridLayout(grid[3, 4], tellheight = false)
-        legend =Legend(subgrid[1,2],ax_k_sliced, position  = (0, 1),   tellwidth = false, backgroundcolor = :white, framevisible = false, labelsize = 7  ,anchor = :TopRight          )
-
-        CairoMakie.text!(ax_k_sliced,-2.84, 0.237, text=L"x=0", fontsize=10, color=:black)
-    else
-        ax_k_sliced =CairoMakie.Axis(grid[3,i],xlabel=L"\omega/J=w",title=title_string[i+6],titlesize=10,xlabelsize=8,ylabelsize=8 ,limits=[(-3,3,-0.012,0.31),(-3,3,-0.03,0.64)][i-1])
-
-        for (k_pos,k) in enumerate([k_slice_values[i][1] for i=1:length(k_slice_values)])
-            CairoMakie.scatter!(ax_k_sliced,w_DMRG[1:2:191],S_DMRG_blurred[round(Integer,k/(pi*0.00390625)),:][1:2:191],color = color_vec[k_pos],markersize =5, alpha =0.6)
-            CairoMakie.lines!(ax_k_sliced,w_vec,S_dyn_HTE[i][round(Int,(k-0.015)/(0.0039*22.2))+1,:],color = color_vec[k_pos])
-        end
-
-        CairoMakie.text!(ax_k_sliced, -2.84, [0.269,0.563][i-1], text=[L"x=2",L"x=4"][i-1], fontsize=10, color=:black )
-    end
-
-    ax_k_sliced.xgridvisible =false
-    ax_k_sliced.ygridvisible =false
-    push!(plotsKslices, ax_k_sliced)
-end 
-
-
-
-
-subgrid = GridLayout(grid[1, 4], tellheight = false)
-subgrid2 = GridLayout(grid[2, 4], tellheight = false)
-
-Label(subgrid[1, 1], L"JS(k,\omega)",fontsize=10)
-Label(subgrid2[1, 1],L"JS(k,\omega)",fontsize=10)
-
-
-cb1=CairoMakie.Colorbar(subgrid[2, 1],hm,size=11,labelsize = 10) 
-cb2= CairoMakie.Colorbar(subgrid2[2, 1],hm,size=11,labelsize = 10)
-
-hideydecorations!(plotsDMRG[2])
-hideydecorations!(plotsDMRG[3])
-hidedecorations!(plotsDynHTE[2], grid = false)
-hidedecorations!(plotsDynHTE[3], grid = false)
-hidexdecorations!(plotsDynHTE[1])
-hidedecorations!(plotsDynHTE[3], grid = false)
-# hideydecorations!(plotsKslices[2])
-# hideydecorations!(plotsKslices[3])
-
-colgap!(subgrid, 0)
-rowgap!(subgrid, 0)
-
-colgap!(subgrid2, 0)
-rowgap!(subgrid2, 0)
-
-colgap!(grid, 7)
-rowgap!(grid, 8)
-
-
-resize_to_layout!(fig)
-# Plots.savefig("dynHTE_dmrg_test.pdf")
-display(fig)
-save("chain_dynHTE_DMRG_comparison.pdf",fig)
-
-
-#now calculate equal time correlator =1/4 for consitency
-equal_time_corr = 0.0
-for k_idx in 1:length(k_DMRG) 
-    for w_idx in 1:length(w_DMRG) 
-        equal_time_corr+= S_DMRG[k_idx,w_idx]
-    end 
-end
-equal_time_corr *= 0.5*(maximum(k_DMRG)-minimum(k_DMRG))*(maximum(w_DMRG)-minimum(w_DMRG))/(length(k_DMRG)*length(w_DMRG))
-println("Equal time correlator: "*string(equal_time_corr))
-println("Deviation from 1/4: "*string(round(abs(1/4-equal_time_corr)*4*100,digits=4))*"%")
-
-save("plots/DMRG1"*string(beta)*".pdf",fig)
 
 
 ############Compare slices of heatmap in DMRG and Dyn-HTE 
@@ -795,120 +773,4 @@ for (k_pos,k) in enumerate(k_vec)
 end
 
 display(plot(plt_m_x...))
-
-
-
-
-
-
-
-
-#############################################################
-#############################################################
-#############################################################
-
-
-
-
-
-###### k-space plots (kind of old)
-if false
-
-    function bareSeries_k(L::SimpleGraph,k::Float64,m::Int,max_order::Int)::Polynomial
-        """ k in BZ """
-        return sum([2*cos(k*r)*bareSeries_r(L,[20,20+r],m,max_order) for r in 0:max_order])-bareSeries_r(L,[20,20],m,max_order)
-    end
-    
-    
-    k_vec = [0.0,0.8*π,π]
-    ### m=0 plot
-    m=0
-    plt=plot([0,maximum(x_vec)],[0,0],color=:black,xlims=(0,maximum(x_vec)),ylims=(0.0,0.75),xformatter=:none,ylabel=L"TG_{k}(i\nu_{m=0})", label="",legend=:topleft)
-    for k_pos in eachindex(k_vec)
-        k = k_vec[k_pos]          
-        p = bareSeries_k(L,k,m,max_order)
-        pade_vec = [Polynomials.PolyCompat.PadeApproximation.Pade(p,padeNM[1],padeNM[2]) for padeNM in padeNM_vec]
-        plot!(plt,x_vec_bare,p.(x_vec_bare),label="bare n="*string(max_order),color=:grey)
-        for pade_pos in eachindex(padeNM_vec)
-            pade = pade_vec[pade_pos]
-            padeNM = padeNM_vec[pade_pos]
-            plot!(plt,x_vec,pade.(x_vec),label="",color=:darkblue,linestyle=linestyle_vec[pade_pos])
-        end
-    end
-    for l in eachindex(plt.series_list)
-        if l>1+length(padeNM_vec)+1
-            plt.series_list[l][:label]=""
-        end
-    end
-    ### QMC data 
-    for k_pos in eachindex(k_vec)
-        k = k_vec[k_pos] 
-        Gk_x_vec = sum([2*cos(k*r)*TGiip_m[:,1+r,1] for r in 0:length(TGiip_m[1,:,1])-1])-TGiip_m[:,1,1]
-        scatter!(plt,x_QMC_vec,Gk_x_vec,color=color_vec[end-k_pos],markershape=:rect,label="",markersize=5)
-        annotate!(plt,x_QMC_vec[3],Gk_x_vec[2],text("k/π="*string(k/π),7,color_vec[end-k_pos]))
-    end
-    plt_k_m0 = plt
-
-    ### m=1 plot (avoid k=0 due to total Sz conservation)
-    m=1
-    plt=plot([0,maximum(x_vec)],[0,0],color=:black,xlims=(0,maximum(x_vec)),ylims=(0.0,0.1),xformatter=:none,ylabel=L"TG_{k}(i\nu_{m=1})", label="",legend=:topleft)
-    for k_pos in 2:3
-        k = k_vec[k_pos]          
-        p = bareSeries_k(L,k,m,max_order)
-        pade_vec = [Polynomials.PolyCompat.PadeApproximation.Pade(p,padeNM[1],padeNM[2]) for padeNM in padeNM_vec]
-        plot!(plt,x_vec_bare,p.(x_vec_bare),label="",color=:grey)
-        for pade_pos in eachindex(padeNM_vec)
-            pade = pade_vec[pade_pos]
-            padeNM = padeNM_vec[pade_pos]
-            plot!(plt,x_vec,pade.(x_vec),label="Padé ["*string(padeNM[1])*","*string(padeNM[2])*"]",color=:darkblue,linestyle=linestyle_vec[pade_pos])
-        end
-
-    end
-    for l in eachindex(plt.series_list)
-        if l>1+length(padeNM_vec)+1
-            plt.series_list[l][:label]=""
-        end
-    end
-    ### QMC data 
-    for k_pos in 2:3
-        k = k_vec[k_pos] 
-        Gk_x_vec = sum([2*cos(k*r)*TGiip_m[:,1+r,2] for r in 0:length(TGiip_m[1,:,2])-1])-TGiip_m[:,1,2]
-        scatter!(plt,x_QMC_vec,Gk_x_vec,color=color_vec[end-k_pos],markershape=:rect,label="",markersize=5)
-    end
-    plt_k_m1 = plt
-
-    ### m=2 plot (avoid k=0 due to total Sz conservation)
-    m=2
-    plt=plot([0,maximum(x_vec)],[0,0],color=:black,xlims=(0,maximum(x_vec)),ylims=(0.0,0.04),xlabel=L"x=\beta / J",ylabel=L"TG_{k}(i\nu_{m=2})", label="",legend=:topleft)
-    for k_pos in 2:3
-        k = k_vec[k_pos]          
-        p = bareSeries_k(L,k,m,max_order)
-        pade_vec = [Polynomials.PolyCompat.PadeApproximation.Pade(p,padeNM[1],padeNM[2]) for padeNM in padeNM_vec]
-        plot!(plt,x_vec_bare,p.(x_vec_bare),label="",color=:grey)
-        for pade_pos in eachindex(padeNM_vec)
-            pade = pade_vec[pade_pos]
-            padeNM = padeNM_vec[pade_pos]
-            plot!(plt,x_vec,pade.(x_vec),label="",color=:darkblue,linestyle=linestyle_vec[pade_pos])
-        end
-    end
-    for l in eachindex(plt.series_list)
-        if l>1+length(padeNM_vec)+1
-            plt.series_list[l][:label]=""
-        end
-    end
-    ### QMC data 
-    for k_pos in 2:3
-        k = k_vec[k_pos] 
-        Gk_x_vec = sum([2*cos(k*r)*TGiip_m[:,1+r,3] for r in 0:length(TGiip_m[1,:,3])-1])-TGiip_m[:,1,3]
-        scatter!(plt,x_QMC_vec,Gk_x_vec,color=color_vec[end-k_pos],markershape=:rect,label="",markersize=5)
-    end
-    plt_k_m2 = plt    
-
-    ### put panels together
-    xPlots,yPlots=1,3
-    plt_final = plot(plt_k_m0,plt_k_m1,plt_k_m2,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.42*aps_width*yPlots))
-    display(plt_final)
-    savefig(plt_final,"HeisenbergAFMSpinHalfChain_Gk_m_withQMC_n"*string(max_order)*".svg")
-end
-
 
