@@ -11,17 +11,6 @@
 
 ###InteractionMatrix.jl
 
-struct InteractionMatrix
-    m11::Float64
-    m12::Float64
-    m13::Float64
-    m21::Float64
-    m22::Float64
-    m23::Float64
-    m31::Float64
-    m32::Float64
-    m33::Float64
-end
 
 function InteractionMatrix()
     return InteractionMatrix(zeros(Float64,9)...)
@@ -34,19 +23,6 @@ function InteractionMatrix(M::T) where T<:AbstractMatrix
 end
 
 
-#### UnitCell.jl
-struct UnitCell{D}
-    primitive::NTuple{D,NTuple{D,Float64}}
-    basis::Vector{NTuple{D,Float64}}
-    interactions::Vector{Tuple{Int,Int,NTuple{D,Int},Matrix{Float64}}} #interactions specified as (basis1,basis2,offsetPrimitive,M)
-    interactionsOnsite::Vector{Matrix{Float64}}
-    interactionsField::Vector{Vector{Float64}}
-
-    UnitCell(a1::NTuple{1,Float64}) = new{1}((a1,), Vector{NTuple{1,Float64}}(undef,0), Vector{Tuple{Int,Int,NTuple{1,Int},Matrix{Float64}}}(undef,0), Vector{Matrix{Float64}}(undef,0), Vector{Vector{Float64}}(undef,0))
-    UnitCell(a1::NTuple{2,Float64}, a2::NTuple{2,Float64}) = new{2}((a1,a2), Vector{NTuple{2,Float64}}(undef,0), Vector{Tuple{Int,Int,NTuple{2,Int},Matrix{Float64}}}(undef,0), Vector{Matrix{Float64}}(undef,0), Vector{Vector{Float64}}(undef,0))
-    UnitCell(a1::NTuple{3,Float64}, a2::NTuple{3,Float64}, a3::NTuple{3,Float64}) = new{3}((a1,a2,a3), Vector{NTuple{3,Float64}}(undef,0), Vector{Tuple{Int,Int,NTuple{3,Int},Matrix{Float64}}}(undef,0), Vector{Matrix{Float64}}(undef,0), Vector{Vector{Float64}}(undef,0))
-    UnitCell(primitives...) = new{length(primitives)}(primitives, Vector{NTuple{length(primitives),Float64}}(undef,0), Vector{Tuple{Int,Int,NTuple{length(primitives),Int},Matrix{Float64}}}(undef,0), Vector{Matrix{Float64}}(undef,0), Vector{Vector{Float64}}(undef,0))
-end
 
 """
 Adds an interaction between spin1 located at basis site `b1` of the given `unitcell` and spin2 at basis site `b2` in a unit cell that is offset by `offset` lattice vectors. 
@@ -77,21 +53,7 @@ function addBasisSite!(unitcell::UnitCell{D}, position::NTuple{D,Float64}) where
     return length(unitcell.basis)
 end
 
-#### Lattice.jl
-mutable struct Lattice{D,N}
-    size::NTuple{D, Int} #linear extent of the lattice in number of unit cells
-    length::Int #Number of sites N_sites
-    unitcell::UnitCell{D}
-    sitePositions::Vector{NTuple{D,Float64}}
 
-    spins::Matrix{Float64} #3*N_sites matrix containing the spin configuration
-
-    interactionSites::Vector{NTuple{N,Int}} #list of length N_sites, for every site contains all interacting sites
-    interactionMatrices::Vector{NTuple{N,InteractionMatrix}} #list of length N_sites, for every site contains all interaction matrices
-    interactionOnsite::Vector{InteractionMatrix} #list of length N_sites, for every site contains the local onsite interaction matrix
-    interactionField::Vector{NTuple{3,Float64}} #list of length N_sites, for every site contains the local field
-    Lattice(D,N) = new{D,N}()
-end
 
 function Lattice(uc::UnitCell{D}, L::NTuple{D,Int}) where D
     #parse interactions

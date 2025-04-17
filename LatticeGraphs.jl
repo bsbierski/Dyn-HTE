@@ -1,5 +1,6 @@
 using Graphs, GraphRecipes, Plots
 #include Lattice support from SpinMC.jl
+include("Structs.jl")
 include("Lattice.jl")
 include("LatticeSymmetries.jl")
 
@@ -52,6 +53,21 @@ function get_finite_Lattice(L::Int,geometry::String; PBC::Bool = true)
 
         l = (L, L)
 
+    elseif geometry == "simple_cubic" ### Square lattice
+        a1 = (1, 0, 0)
+        a2 = (0, 1 ,0)
+        a3 = (0, 0, 1)
+        uc = UnitCell(a1,a2,a3)
+
+        b0 = addBasisSite!(uc, (0.0, 0.0, 0.0))
+
+        addInteraction!(uc, b0, b0, (1, 0, 0))
+        addInteraction!(uc, b0, b0, (0, 1 ,0))
+        addInteraction!(uc, b0, b0, (0, 0, 1))
+
+        l = (L, L ,L)
+
+        
     elseif geometry == "triang"  ### Triangular lattice
         a1 = (1/2, sqrt(3)/2)
         a2 = (1/2, -sqrt(3)/2)
