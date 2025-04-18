@@ -8,7 +8,7 @@ include("../../ConvenienceFunctions.jl")
 n_max = 12
 spin_length = 1
 
-### define lattice for embedding
+### define lattice for embedding (here: all-to-all with N=4 sites)
 Lgraph = complete_graph(4)
 #display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.11,fontsize=4,nodeshape=:rect,curves=false))
 
@@ -16,7 +16,7 @@ Lgraph = complete_graph(4)
 hte_graphs = load_dyn_hte_graphs(spin_length,n_max);
 
 if true ### plot the C_n vs graphG index
-    plt=plot(yscale=:log10,xlabel="graph index",ylabel="denom C_n",title="spin length $spin_length")
+    plt=plot(yscale=:log10,xlabel="graph index",ylabel="denom C_n",title="spin length S=$spin_length")
     for n in n_max:-1:8
         tmp = hte_graphs.c_dict[n+1]
         #tmp = load_object("GraphEvaluations/Spin_"*spin_string*"/Vac_"*string(n)*".jld2")
