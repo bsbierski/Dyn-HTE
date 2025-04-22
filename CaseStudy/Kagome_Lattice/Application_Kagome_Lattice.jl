@@ -8,13 +8,16 @@ include("../../ConvenienceFunctions.jl")
 #specify max order
 
 
-L = 10
+L = 0
 spin_length = 1/2
 hte_graphs = load_dyn_hte_graphs(spin_length,L);
 hte_lattice = getLattice(L,"kagome");
+display(graphplot(hte_lattice.graph,names=1:nv(hte_lattice.graph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
 @time c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs);
 
-
+hte_lattice.lattice.sitePositions
+scatter(hte_lattice.lattice.sitePositions)
+scatter!([(0.5, 0.8660254037844387)])
 #test uniform susceptibility with /10.1103/PhysRevB.89.014415 
 (brillouin_zone_cut([(0.0,0.0) (0.0,0.0) ;(0.0,0.0)  (0.0,0.0)],Correlators,lattice,center_sites)[1]*4/3)[:,1].*[factorial(n)*4^n for n in 0:max_order]
 

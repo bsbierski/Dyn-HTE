@@ -1,32 +1,41 @@
 using JLD2
 #using RobustPad
 
-include("../../Embedding.jl")
 include("../../LatticeGraphs.jl")
+include("../../Embedding.jl")
 include("../../ConvenienceFunctions.jl") 
 
 
 
 L = 12
+
 spin_length = 1/2
 hte_graphs = load_dyn_hte_graphs(spin_length,L);
-hte_lattice = getLattice(L,"triang");
+hte_lattice = getLattice(L,"pyrochlore");
 @time c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs);
+@time c_iipDyn_mat2 = get_c_iipDyn_mat(hte_lattice.graph,hte_lattice.basis_positions,hte_graphs);
+c_iipDyn_mat == c_iipDyn_mat2
+
+@save "CaseStudy/Pyrochlore_Lattice/c_iipDyn_mat_L12_S1half.jld2" c_iipDyn_mat
 
 
 display(graphplot(hte_lattice.graph,names=1:nv(hte_lattice.graph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
 
 #2.Compute all correlations in the lattice
 @time c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs; verbose =false, max_order = L);
-@save "CaseStudy/Triang_Lattice/c_iipDyn_mat_L12.jld2" c_iipDyn_mat
+@load "CaseStudy/Triang_Lattice/c_iipDyn_mat_L12.jld2" c_iipDyn_mat
 
 #check the susceptibility with 10.1103/PhysRevB.53.14228
 (brillouin_zone_cut([(0.0,0.0) (0.0,0.0) ;(0.0,0.0)  (0.0,0.0)],c_iipDyn_mat,lattice,center_sites)[1]*4)[:,1].*[factorial(n)*4^n for n in 0:max_order]
 
+findall(x-> x == 0 ,c_iipDyn_mat[:] .==  c_iipDyn_mat2[:])
 
-c_EqualTime = get_c_iipEqualTime_mat(c_iipDyn_mat)
-structurefactor =get_c_kDyn_mat(kmat,c_EqualTime,hte_lattice);
+52*3+12
+c_iipDyn_mat[12,4]
+c_iipDyn_mat2[12,4]
 
+c_iipDyn_mat2
+c_iipDyn_mat
 #3. Fourier Transform
 
 ### Compute A 2D Brillouin zone cut: 
@@ -35,7 +44,7 @@ kx = range(-0+0.001,2pi+0.001,length=N)
 ky = range(-0+0.001,2pi+0.001,length=N) 
 kmat = [[1,1/sqrt(3)].*x .+  [1,-1/sqrt(3)].*y for x in kx, y in ky ]
 kmat = [(y,x) for x in kx, y in ky ]
-c_kDyn_mat =  get_c_kDyn_mat(kmat,c_iipDyn_mat,hte_lattice);
+c_kDyn_mat =  get_c_kDyn(kmat,c_iipDyn_mat,hte_lattice);
 
 ### Evaluate the correlators at a frequency and plot the 2D Brillouin zone cut
 x = -10.0
@@ -73,9 +82,18 @@ Plots.heatmap(kx,ky,Swk[:,:,w_ind], title = L"$S(\omega,k)$ at $\omega$ ="*strin
 
 ############# Brillouin zone path
 #1. Define a high symmetry path through the brillouin zone
+
 #---triangular
-path = [(0+0.001,0+0.001),(0,2pi/(sqrt(3))),(2pi/(3),2pi/(sqrt(3))),(0+0.001,0+0.001)]
+path = [(0,0),(0,2pi/(sqrt(3))),(2pi/(3),2pi/(sqrt(3))),(0.,0.)]
 pathticks = ["Γ","M","K","Γ"]
+
+#---triangular Sherman 1
+path = [(0,2pi/(sqrt(3))),(0.001,0.001),(4pi/(3),0),(1.0*pi,pi/sqrt(3)),(2pi/(3),0),(pi/2,pi/(2*sqrt(3)))]
+pathticks = ["M","Γ","K","M","Y1","Y"]
+
+#---triangular Sherman 2
+path = [(0.1,0),(4pi/(3),0),(1.0*pi,pi/sqrt(3)),(4pi/(3),0),(0.1,0)]
+pathticks = ["Γ","K","M","K","Γ"]
 
 
 
@@ -286,3 +304,23 @@ test2 = rand([0,1],1000,1000);
 @time  test^2
 
 eigen(test)
+
+
+
+
+
+
+
+L = 12
+spin_length = 1/2
+hte_graphs = load_dyn_hte_graphs(spin_length,L);
+hte_lattice = getLattice(L,"triang");
+display(graphplot(hte_lattice.graph,names=1:nv(hte_lattice.graph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
+@time c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs);
+
+### Compute A 2D Brillouin zone cut: 
+N = 100
+kx = range(-0+0.001,2pi+0.001,length=N)
+ky = range(-0+0.001,2pi+0.001,length=N) 
+kmat = [(y,x) for x in kx, y in ky ]
+c_kDyn_mat =  get_c_kDyn(kmat,c_iipDyn_mat,hte_lattice);

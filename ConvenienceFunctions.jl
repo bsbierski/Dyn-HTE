@@ -64,12 +64,17 @@ function get_c_iipDyn_mat(hte_lattice::Dyn_HTE_Lattice,hte_graphs::Dyn_HTE_Graph
         println("Symmetry for lattice "*hte_lattice.name*"not implemented, continue without using symmetries:" )
         return get_c_iipDyn_mat(hte_lattice.graph,hte_lattice.basis_positions,hte_graphs; verbose = verbose, max_order = max_order)
     end
+
+    println("Calculating symmetry relations")
     sym_G,transl_G = getSymmetryGroup(hte_lattice.name) 
 
     lattice = hte_lattice.lattice
     #use symmetries to reduce necessary bond calculations. 
     reduction_dict,bond_vec_red,position_dict = sym_reduced_lattice(lattice,hte_lattice.basis_positions,sym_G,transl_G)
     
+    println("Symmetry relations calculated")
+    println("Calculating c_iipDyn_mat")
+
     ##preallocate output matrix 
     GiipDyn_mat = Array{Matrix{Rational{Int128}}}(undef, lattice.length,length(lattice.unitcell.basis));
     reduced_Giip = Vector{Matrix{Rational{Int128}}}(undef, length(bond_vec_red));
