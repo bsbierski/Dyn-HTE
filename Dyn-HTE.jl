@@ -8,48 +8,32 @@ Pkg.activate(@__DIR__) #activates the environment in the folder of the current f
 include("Embedding.jl")
 include("LatticeGraphs.jl")
 include("ConvenienceFunctions.jl") 
-#specify max order
-max_order = 12
-
-#LOAD FILES 
-#-------------------------------------------------------------------------------------
-#load list of unique graphs
-gG_vec_unique = give_unique_gG_vec(max_order);
-
-#create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,max_order+1) ;
-#load dictionaries of all lower orders C_Dict_vec 
-for ord = 0:max_order
-    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
-end 
-#-----------------------------------
 
 #1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
-L = 3
+L = 10
 spin_length = 1/2
 hte_graphs = load_dyn_hte_graphs(spin_length,L);
-hte_lattice = getLattice(L,"honeycomb");
+hte_lattice = getLattice(L,"simple_cubic");
 display(graphplot(hte_lattice.graph,names=1:nv(hte_lattice.graph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
 
-@time Correlators = get_c_iipDyn_mat(hte_lattice,hte_graphs; verbose =false, max_order = 12);
+@time c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs; verbose =false, max_order = 12);
 
-
-
-#2.Compute all correlations in the lattice
-@time Correlators3 = compute_lattice_correlations(hte_lattice.graph,hte_lattice.lattice,hte_lattice.basis_positions,L,gG_vec_unique,C_Dict_vec);
-
-@time Correlators = get_c_iipDyn_mat(hte_lattice,hte_graphs; verbose =false, max_order = 12);
-@time Correlators2 = get_c_iipDyn_mat(hte_lattice.graph,hte_lattice.basis_positions,hte_graphs; verbose =false, max_order = 12);
-
-Correlators == Correlators2
 #3. Fourier Transform
 
 ### Compute A 2D Brillouin zone cut: 
-N = 100
-kx = range(-8pi,8pi,length=N)
-ky = range(-8pi,8pi,length=N) #[0.] #for chains
-kmat = [(y,x,x) for x in kx, y in ky ]
-structurefactor =  brillouin_zone_cut(kmat,Correlators,lattice,center_sites);
+N = 50
+kx = range(-2pi,2pi,length=N)
+ky = range(-2pi,2pi,length=N) #[0.] #for chains
+kmat = [(y,x,0.) for x in kx, y in ky ];
+c_kDyn_mat =  get_c_kDyn(kmat,c_iipDyn_mat,hte_lattice);
+
+x = -1.0
+padetype = [5,5]
+evaluate(y) = eval_correlator_LR_continuous_pad(y, x, padetype); #define evaluation function
+struc = real.(evaluate.(c_kDyn_mat));
+p = Plots.heatmap(kx,ky,struc)
+
+
 
 ### Evaluate the correlators at a frequency and plot the 2D Brillouin zone cut
 iomega = 0
