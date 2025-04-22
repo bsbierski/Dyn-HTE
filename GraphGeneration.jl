@@ -11,30 +11,25 @@ include("vf2_edited.jl")
 
 ####### various helper functions ################### 
 function load_dyn_hte_graphs(spin_length::Number,max_order::Int)::Dyn_HTE_Graphs
+    S = rationalize(spin_length)
+    if S == 1//2
+        S_string = "Spin_S1half"
+    elseif S == 1//1
+        S_string = "Spin_S1"
+    else
+        throw(error("Spinlength "*string(spin_length)*" is not yet implemented"))
+    end
 
-S = rationalize(spin_length)
+    #load list of unique graphs
+    gG_vec_unique = give_unique_gG_vec(max_order);
 
-if S == 1//2
-    S_string = "Spin_S1half"
-elseif S == 1//1
-    S_string = "Spin_S1"
-else
-    throw(error("Spinlength "*string(spin_length)*" is not yet implemented"))
-end
-
-#load list of unique graphs
-gG_vec_unique = give_unique_gG_vec(max_order);
-
-#create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,max_order+1) ;
-#load dictionaries of all lower orders C_Dict_vec 
-for ord = 0:max_order
-    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/"*S_string*"/C_"*string(ord)*".jld2")
-end 
-
-
+    #create vector of all lower order dictionaries
+    C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,max_order+1) ;
+    #load dictionaries of all lower orders C_Dict_vec 
+    for ord = 0:max_order
+        C_Dict_vec[ord+1]  = load_object("GraphEvaluations/"*S_string*"/C_"*string(ord)*".jld2")
+    end 
     Dyn_HTE_Graphs(S,gG_vec_unique,C_Dict_vec)
-
 end
 
 
@@ -471,117 +466,6 @@ function getGraphsG(graphs_vec::Vector{Vector{Graph}})::Vector{Vector{GraphG}}
     return graphsG_vec
 end
 
-###### V-con subtraction (edge based!) ########################################
-function getVconSubtractions(gG::GraphG,graphsG_vec::Vector{Vector{GraphG}},graphsVac_vec::Vector{Vector{Graph}})::Vector{VconSub}
-    """ get V-con subtraction by keeping subsets of edges of gG to form gG_sub """
-    ### obtain vector of all edges (for multi-edges this contains multiples)
-    edge_vec = Vector{Int}[]
-    for j = 1:nv(gG.g)
-        for i in j+1:nv(gG.g)
-            for _ in 1:gG.g.weights[i,j]
-                push!(edge_vec,[i,j])
-            end
-        end
-    end
-
-    ### prepare results vec
-    res_vec = []
-    
-    ### iterate true subset V' of bonds, subtract them from gc and put them to g
-    for Vp in Iterators.drop(unique(powerset(edge_vec)),1)
-        # initialize sub-graphs: gG as parent, g with all edges removes
-        gG_SWG_sub,g_SWG_sub = copy(gG.g),copy(gG.g)
-        for e in edges(g_SWG_sub)
-            rem_edge!(g_SWG_sub,e)
-        end
-
-        ### for each edge b from V': move b from gc to g ### TODO: speed-up here by checking that j-j' still remains connected
-        for b in Vp
-            if !add_edge!(gG_SWG_sub,b...,get_weight(gG_SWG_sub,b...)-1) 
-                rem_edge!(gG_SWG_sub,b...)
-            end
-            add_edge!(g_SWG_sub ,b...,get_weight(g_SWG_sub ,b...)+1)
-        end
-
-        ### gG_SWG_sub: keep only connected components which are not isolated vertices or isolated and connected to gG.jjp 
-        conComp_gG = [v for v in connected_components(gG_SWG_sub) if (length(v)>1 || issubset(gG.jjp,v))]
-
-        ### require: only one connected component also connected to terminals is left 
-        gG_sub = nothing
-        if length(conComp_gG)==1 && issubset(gG.jjp,conComp_gG[1])
-            vs = conComp_gG[1]
-            gG_SWG_sub_part = SimpleWeightedGraph(gG_SWG_sub.weights[vs,vs])
-            gG_sub = GraphG(gG_SWG_sub_part,[findfirst(x->x==gG.jjp[1],vs),findfirst(x->x==gG.jjp[2],vs)])
-        end
-        
-        ### proceed only if gG_sub is connected & has no generalized leaves and is thus isomorphic to one in list
-        if !isnothing(gG_sub) && !hasGeneralizedLeaves(gG_sub)
-            p = findg(gG_sub,graphsG_vec[1+totalEdges(gG_sub.g)])
-            @assert(p>0)
-
-            ###### treatment of product of vacuum graphs (it it is)
-            ### split to connected component and prepare last entry of VconSub  
-            g_sub_vec_candidate = splitToConnectedComp(g_SWG_sub)
-            gVac_sub_vec = Tuple{Int,Int}[]
-                    
-            ### continue only if all g in g_sub_vec_candidate have no generalized leaves
-            if maximum([hasGeneralizedLeaves(g) for g in g_sub_vec_candidate])==0
-                ### find the isomorphic vacuum graphs
-                for gVac_sub in g_sub_vec_candidate
-                    m = totalEdges(gVac_sub.g)
-                    for k in 1:length(graphsVac_vec[m+1])
-                        if isIsomorph(gVac_sub,graphsVac_vec[m+1][k])
-                            push!(gVac_sub_vec,(m,k))
-                            break
-                        end
-                        if k==length(graphsVac_vec[m+1]) 
-                            display(gplot(gVac_sub))
-                            error("vacuum graph not found!") 
-                        end
-                    end
-                end
-            end
-
-            ### push subtraction to res_vec
-            if length(gVac_sub_vec)>0 
-                res = [ (totalEdges(gG_sub.g),p) , gVac_sub_vec]
-                push!(res_vec,res)
-            end
-
-        end
-    end
-    
-    ### find multiplicity factors and return
-    return [VconSub(count(x->x==sub,res_vec),sub[1],sub[2]) for sub in unique(res_vec)]
-end
-
-function plotVconSubtractions(gG::GraphG,subs::Vector{VconSub},graphsG_vec::Vector{Vector{GraphG}},graphsVac_vec::Vector{Vector{Graph}};save::Bool=false)
-    
-    if length(subs)==0
-        maxNumberOfVacuumGraphs = 0
-    else
-        maxNumberOfVacuumGraphs = maximum([length(sub.g_sub_vec) for sub in subs])
-    end
-    plt_vec = append!([gplot(gG,title="subtract from:")],[gplot(graphsG_vec[sub.gG_sub[1]+1][sub.gG_sub[2]],title="factor="*string(sub.factor)) for sub in subs])
-
-    for g_sub_pos in 1:maxNumberOfVacuumGraphs
-        append!(plt_vec,[plt_empty])
-        for sub in subs
-            if length(sub.g_sub_vec)>=g_sub_pos
-                append!(plt_vec,[ gplot(graphsVac_vec[sub.g_sub_vec[g_sub_pos][1]+1][sub.g_sub_vec[g_sub_pos][2]]) ] )
-            else
-                append!(plt_vec,[plt_empty])
-            end
-        end
-    end
-
-    fig = plot(plt_vec..., layout=(1+maxNumberOfVacuumGraphs,1+length(subs)),dpi=300,size=(400*(1+length(subs)),400*(1+maxNumberOfVacuumGraphs)),plot_title="V-con subtraction")
-    if save
-        savefig("figs/"*"VConSub.png")
-    end
-    return fig
-end
-
 ### if GraphFiles/graphs12.jld2 has not yet been merged from its <100Mb parts a,b, then merge and save it
 if !isfile("GraphFiles/graphs_12.jld2")
     println("merging graphs12 ...")
@@ -589,23 +473,23 @@ if !isfile("GraphFiles/graphs_12.jld2")
 end
 
 ### if GraphEvaluations C_11.jld2 and C_12.jld2 do not yet exist, merge it from its parts
-for sstring in [] #= ["S1half","S1"] =#
+for sstring in ["S1half"] #= ["S1"] =#
 
     if !isfile("GraphEvaluations/Spin_"*sstring*"/C_11.jld2")
-        println("merging C_11 ...")
-        save_object("GraphEvaluations/Spin_"*sstring*"/C_11.jld2",vcat(  load_object("GraphEvaluations/Spin_"*sstring*"/C_11a.jld2"),
-                                                                    load_object("GraphEvaluations/Spin_"*sstring*"/C_11b.jld2")            
+        println(sstring*": merging C_11 ...")
+        save_object("GraphEvaluations/Spin_"*sstring*"/C_11.jld2",vcat(     load_object("GraphEvaluations/Spin_"*sstring*"/C_11a.jld2"),
+                                                                            load_object("GraphEvaluations/Spin_"*sstring*"/C_11b.jld2")            
                                                                     ))
     end
 
     if !isfile("GraphEvaluations/Spin_"*sstring*"/C_12.jld2")
-        println("merging C_12 ...")
-        save_object("GraphEvaluations/Spin_"*sstring*"/C_12.jld2",vcat(  load_object("GraphEvaluations/Spin_"*sstring*"/C_12a.jld2"),
-                                                                    load_object("GraphEvaluations/Spin_"*sstring*"/C_12b.jld2"),
-                                                                    load_object("GraphEvaluations/Spin_"*sstring*"/C_12c.jld2"),
-                                                                    load_object("GraphEvaluations/Spin_"*sstring*"/C_12d.jld2"),
-                                                                    load_object("GraphEvaluations/Spin_"*sstring*"/C_12e.jld2"),
-                                                                    load_object("GraphEvaluations/Spin_"*sstring*"/C_12f.jld2")            
+        println(sstring*": merging C_12 ...")
+        save_object("GraphEvaluations/Spin_"*sstring*"/C_12.jld2",vcat( load_object("GraphEvaluations/Spin_"*sstring*"/C_12a.jld2"),
+                                                                        load_object("GraphEvaluations/Spin_"*sstring*"/C_12b.jld2"),
+                                                                        load_object("GraphEvaluations/Spin_"*sstring*"/C_12c.jld2"),
+                                                                        load_object("GraphEvaluations/Spin_"*sstring*"/C_12d.jld2"),
+                                                                        load_object("GraphEvaluations/Spin_"*sstring*"/C_12e.jld2"),
+                                                                        load_object("GraphEvaluations/Spin_"*sstring*"/C_12f.jld2")            
                                                                     ))
     end
 
@@ -642,49 +526,6 @@ graphsVac_vec = getVacGraphs(graphs_vec)
 graphsG_vec = getGraphsG(graphs_vec)
 
 
-
-
-###### plot low order graphs and some dedicated figs for paper
-if false
-    for nn in 2:5
-        gplot(graphsG_vec[1+nn],title="graphsG_"*string(nn),save=true)
-        gplot(graphsVac_vec[1+nn],title="graphsVac_"*string(nn),save=true)
-    end
-    gplot(union(graphsG_vec[0+1],graphsG_vec[1+1],graphsG_vec[2+1],graphsG_vec[3+1]),save=true,title="",subtitle_vec=["(n=0,r=1)","(1,1)","(2,1)","(2,2)","(2,3)","(3,1)","(3,2)","(3,3)","(3,4)","(3,5)","(3,6)","(3,7)"])
-end
-
-####### test the V-con subtraction with graphG [example from manuscript with gG labeled by (6,90)]
-if false
-    #gG = graphsG_vec[4+1][6]
-    #gG = graphsG_vec[7+1][156]
-    gG = graphsG_vec[6+1][6]
-    #gG = graphsG_vec[5+1][36]
-
-    gplot(gG)
-    subs=getVconSubtractions(gG,graphsG_vec,graphsVac_vec)
-    plotVconSubtractions(gG,subs,graphsG_vec,graphsVac_vec,save=true)
-end
-
-###### test tetramer g12 embeddings and subtractions
-if false
-    i,ip=1,1
-    L = getLattice(4,"all-to-all")
-    display(graphplot(L,names=1:nv(L),markersize=0.14,fontsize=10,nodeshape=:rect,curves=false))
-
-    es=[e(L,i,ip,graphsG_vec[1+5][r]) for r in 1:length(graphsG_vec[1+5])]'
-    ds=[degeneracy(graphsG_vec[1+5][r].g) for r in 1:length(graphsG_vec[1+5])]'
-
-    gTest_vec = [graphsG_vec[1+5][r] for r in 1:length(graphsG_vec[1+5]) if e(L,i,ip,graphsG_vec[1+5][r])>0]
-    display(gplot(gTest_vec;subtitle_vec=(["e="*string(es[r])*", d="*string(ds[r]) for r in 1:length(graphsG_vec[1+5]) if es[r]>0]),title="N=4 cycle"))
-
-    #C_5=load_object("GraphFiles/GraphG_Lists/C_5.jld2")
-    #[C_5[r] for r in 1:length(gG_vec[1+5]) if e(L,1,2,gG_vec[1+5][r])>0]
-
-    #for gG in gTest_vec
-    #    subs=getVconSubtractions(gG,graphsG_vec,graphsVac_vec)
-    #    display(plotVconSubtractions(gG,subs,graphsG_vec,graphsVac_vec))
-    #end
-end
 
 
 function whichParts(parts::Int,vec,miss::Vector{Int})::Vector{Int}
