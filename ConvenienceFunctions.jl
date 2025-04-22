@@ -307,7 +307,7 @@ end
 
 
 #Fourier Transforms
-function get_c_kDyn(k::NTuple{D,Float64},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {D,T}
+function get_c_kDyn(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
     """ computes the spatial FT of c_iipDyn for momentum k """
     """ assumes inversion symmetry of the lattice to get real FT transform """
     """ sums over all basis states:  """
@@ -335,9 +335,9 @@ end
 
 
 function get_c_kDyn(kvec::Union{
-    AbstractVector{NTuple{D,Float64}},
-    AbstractMatrix{NTuple{D,Float64}},
-    AbstractArray{NTuple{D,Float64}}
+    AbstractVector{Tuple{Vararg{<:Real}}},
+    AbstractMatrix{Tuple{Vararg{<:Real}}},
+    AbstractArray{Tuple{Vararg{<:Real}}}
     }
     ,c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {D,T}
 
@@ -348,9 +348,9 @@ end
 
 
 function inverse_fourier_transform(kvals::Union{
-    AbstractVector{NTuple{D,Float64}},
-    AbstractMatrix{NTuple{D,Float64}},
-    AbstractArray{NTuple{D,Float64}}
+    AbstractVector{Tuple{Vararg{<:Real}}},
+    AbstractMatrix{Tuple{Vararg{<:Real}}},
+    AbstractArray{Tuple{Vararg{<:Real}}}
     }
     ,c_kDyn_subl::Union{
     AbstractVector{Matrix{T}},
@@ -394,7 +394,7 @@ end
 
 #Sublattice Resolved Fourier Transforms
 
-function get_c_kDyn_subl(k::NTuple{D,Float64},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {D,T}
+function get_c_kDyn_subl(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {D,T}
     """ computes the sublattice resolved spatial FT of c_iipDyn for momentum k """
     """ assumes inversion symmetry of the lattice to get real FT transform """
     lattice = hte_lattice.lattice
@@ -428,9 +428,9 @@ end
 
 function get_c_kDyn_subl(
     kvals::Union{
-        AbstractVector{NTuple{D,Float64}},
-        AbstractMatrix{NTuple{D,Float64}},
-        AbstractArray{NTuple{D,Float64}}
+        AbstractVector{Tuple{Vararg{<:Real}}},
+        AbstractMatrix{Tuple{Vararg{<:Real}}},
+        AbstractArray{Tuple{Vararg{<:Real}}}
     }
     ,c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {D,T}
 
@@ -440,9 +440,9 @@ function get_c_kDyn_subl(
 end
 
 function inverse_fourier_transform_subl(kvals::Union{
-    AbstractVector{NTuple{D,Float64}},
-    AbstractMatrix{NTuple{D,Float64}},
-    AbstractArray{NTuple{D,Float64}}
+    AbstractVector{Tuple{Vararg{<:Real}}},
+    AbstractMatrix{Tuple{Vararg{<:Real}}},
+    AbstractArray{Tuple{Vararg{<:Real}}}
     }
     ,c_kDyn_subl::Union{
     AbstractVector{Matrix{T}},
