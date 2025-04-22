@@ -9,121 +9,15 @@ include(path_DynHTSE*"plotConventions.jl")
 include(path_DynHTSE*"Embedding.jl")
 
 
-L = 10
-spin_length = 1/2
-hte_graphs = load_dyn_hte_graphs(spin_length,L)
-hte_lattice = getLattice(L,"triang")
-@time c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs)
-
-
-1+1
-
-#specify max order
-max_order = 12
-
-#LOAD FILES -------------------------
-#generate list of graphs
-graphs_vec = [load_object(path_DynHTSE*"GraphFiles/graphs_"*string(nn)*".jld2") for nn in 0:max_order]
-gG_vec = getGraphsG(graphs_vec)
-gG_vec_unique = give_unique_gG_vec(max_order)
- 
-#create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int64}}}}(undef,max_order+1) 
-   
-#load dictionaries of all lower orders C_Dict_vec 
-for ord = 0:max_order
-    C_Dict_vec[ord+1]  = load_object(path_DynHTSE*"GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
-end 
-#-----------------------------------
-
-### Define Lattice
-lattice,LatGraph,center_sites = getLattice_Ball(max_order,"chain");
-display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
-
-##### Compute all non-zero G-coefficients c_ii'(m) 
-c_iipDyn_mat = get_c_iipDyn_mat(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)
-
-
-
-
-###### load QMC data at m=0,1,2 (have x=βJ=[1,2,...,8]; but one can use less) 
-x_QMC_vec = collect(1:8)
-imax=20
-m_vec = [0,1,2]
-TGiip_m = zeros((length(x_QMC_vec),imax+1,length(m_vec)))
-TGiip_m_err = zeros((length(x_QMC_vec),imax+1,length(m_vec)))
-
-for x_QMC_pos in eachindex(x_QMC_vec) 
-    x_QMC=x_QMC_vec[x_QMC_pos]
-    fid = h5open("/home/bjoern/Dropbox/Desktop/39_KopietzSpinfRG/Num_DynHTE_results/QMC_Worm/SpinHalfAFMHeisenbergChain/job_BSb_beta"*string(x_QMC)*".out.h5", "r")
-    for (m_pos,m) in enumerate(m_vec)
-        TGiip_m[x_QMC_pos,:,m_pos] = read(fid["simulation"]["results"]["DensDens_CorrFun_w$m"]["mean"]["value"])[1:imax+1]
-        TGiip_m_err[x_QMC_pos,:,m_pos] = read(fid["simulation"]["results"]["DensDens_CorrFun_w$m"]["mean"]["error"])[1:imax+1]
-    end
-end
-
-
-###### plot QMC data against Dyn-HTE (r-space)
-x_vec = collect(0:0.05:8.1)
-x_vec_bare = collect(0:0.05:2)
-
-
-### PLOT m=0,1,2 Matsubara data against QMC
-if true
-    di_vec = [0,1,2,4]
-    
-    ### prepare panels for m=0,1,2
-    plt_m0=plot([0,maximum(x_vec)],[0,0],color=:black,lw=0.5,xlims=(0,maximum(x_vec)),ylims=(-0.11,0.26),xformatter=:none,ylabel=L"TG_{ii^\prime}(i\nu_{m=0})", label="",legend=:topright)
-    plt_m1=plot([0,maximum(x_vec)],[0,0],color=:black,lw=0.5,xlims=(0,maximum(x_vec)),ylims=(-0.025,0.04),xformatter=:none,ylabel=L"TG_{ii^\prime}({i\nu_{m=1}})", label="",legend=:topleft)
-    plt_m2=plot([0,maximum(x_vec)],[0,0],color=:black,lw=0.5,xlims=(0,maximum(x_vec)),ylims=(-0.01,0.017),xlabel=L"x=\beta / J",ylabel=L"TG_{ii^\prime}(i\nu_{m=2})", label="",legend=:topleft)
-    plt_vec = [plt_m0,plt_m1,plt_m2]
-
-    ### plot QMC data
-    for di in di_vec, (m_pos,m) in enumerate(m_vec)
-        scatter!(plt_vec[m_pos],x_QMC_vec,TGiip_m[:,1+di,1+m],color=color_vec[di+1],label="",markersize=5)
-        if m==0 annotate!(plt_vec[m_pos],x_QMC_vec[1]+0.5,TGiip_m[3,1+di,1+m],text("i-i'="*string(di),7,color_vec[di+1])) end
-    end
-
-    ### plot Dyn-HTE results
-    for di in di_vec, (m_pos,m) in enumerate(m_vec)
-        
-        ### prepare series as polynomial in x
-        p = get_TGiip_m_bare(c_iipDyn_mat,m,12)[center_sites[1]+di,1]
-        
-        ### plot bare truncated series
-        label=""
-        if (di==0 && m==0)  label = "bare n="*string(max_order) end    
-        plot!(plt_vec[m_pos],x_vec_bare,p.(x_vec_bare),label=label,color=:grey)
-
-        ### Padé approximants
-        for (pades_pos,pades) in enumerate([[6,6],[5,5]])
-            label=""
-            if (m_pos==2 && di==0) label="Padé "*string(pades) end
-            plot!(plt_vec[m_pos],x_vec,get_pade(p,pades...).(x_vec),linestyle=linestyle_vec[pades_pos],label=label,color=:darkblue,alpha=0.5)
-        end
-    end
-
-    ### integrated-differential approximants
-    for di in di_vec, (m_pos,m) in enumerate(m_vec[2])
-
-        p = get_TGiip_m_bare(c_iipDyn_mat,m,12)[center_sites[1]+di,1]
-        
-        for (IDA_pos,IDA) in enumerate([[2,4,4]])
-            label=""
-            if (m_pos==0 && di==0) label="IDA "*string(IDA) end
-            plot!(plt_vec[m_pos],x_vec,get_intDiffApprox(p,x_vec,IDA...),linestyle=linestyle_vec[IDA_pos],label=label,color=:magenta,alpha=0.5)
-        end
-    end
-
-
-
-    ### put panels together
-    xPlots,yPlots=1,3
-    plt_final = plot(plt_vec...,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.42*aps_width*yPlots))
-    display(plt_final)
-    #savefig(plt_final,"HeisenbergAFMSpinHalfChain_Gr_m_withQMC_n"*string(max_order)*"_tmp.svg")
-end
-
+#DEFINE THE SYSTEM
+n_max = 12                   #max order in perturbation theory (currently 12 are available)
+spin_length = 1/2            #spin length (currently only S=1/2,1 are available)
+#load graphs
+hte_graphs = load_dyn_hte_graphs(spin_length,n_max)
+#define the lattice geometry
+hte_lattice = getLattice(n_max,"chain")
+#calculate the correlation function for all site combinations
+c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs)
 
 
 
@@ -140,13 +34,13 @@ plot_lst = []
 for (k_idx,k) in enumerate([ 0.2*pi,pi])
 
 betas = 0:0.01:4.5
-#k= 2.350798079#0.699*pi
+# k= 2.350798079#0.699*pi
 
 
 
 #calculate delta for respective x
-c_kDyn_mat = get_c_kDyn_mat([(k,0)],c_iipDyn_mat,lattice,center_sites)[1]
-m_vec = get_moments_from_c_kDyn_mat(c_kDyn_mat)
+c_kDyn_mat = get_c_kDyn([(k,0.0)],c_iipDyn_mat,hte_lattice)[1]
+m_vec = get_moments_from_c_kDyn(c_kDyn_mat)
 
 # #BASIC PADE 
 # m_vec_extrapolated_pade_basic = []
@@ -350,7 +244,7 @@ k_step_size = 1/41
 w_step_size = 0.025
 k_vec = vcat(vcat((0.0001,0.0),[(k*pi,0.0) for k in 0:k_step_size:2][2:end-1] ),(1.999*pi,0.0))#[(k,0.0) for k in 0.01:0.0039*2.4:(2*π-0.01)]
 w_vec = collect(-3:w_step_size:3)# for reliable sigma: collect(-5:0.05*0.1:5)
-JSkw_mat = get_JSkw_mat_finitex(f,"pade",x,k_vec,w_vec,0.01,6,6,1000,false,c_iipDyn_mat,lattice,center_sites)
+JSkw_mat = get_JSkw_mat_finitex(f,"pade",x,k_vec,w_vec,0.01,6,6,1000,false,c_iipDyn_mat,hte_lattice)
 
 
 fig = Figure(size=(400,400),fontsize=20)
