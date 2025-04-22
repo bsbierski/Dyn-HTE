@@ -339,7 +339,7 @@ function get_c_kDyn(kvec::Union{
     AbstractMatrix{Tuple{Vararg{<:Real}}},
     AbstractArray{Tuple{Vararg{<:Real}}}
     }
-    ,c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {D,T}
+    ,c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
 
         fourier_transform(k) = get_c_kDyn(k,c_iipDyn_mat,hte_lattice) 
 
@@ -357,7 +357,7 @@ function inverse_fourier_transform(kvals::Union{
     AbstractMatrix{Matrix{T}},
     AbstractArray{Matrix{T}}
     },
-    hte_lattice::Dyn_HTE_Lattice)::Matrix{Matrix{T}} where {D,T<:Number}
+    hte_lattice::Dyn_HTE_Lattice)::Matrix{Matrix{T}} where {T<:Number}
     """computes the inverse fourier transform for sublattice resolved fourier transforms"""
 
     #check if kvals and c_kDyn_subl have same dimensions
@@ -394,7 +394,7 @@ end
 
 #Sublattice Resolved Fourier Transforms
 
-function get_c_kDyn_subl(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {D,T}
+function get_c_kDyn_subl(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
     """ computes the sublattice resolved spatial FT of c_iipDyn for momentum k """
     """ assumes inversion symmetry of the lattice to get real FT transform """
     lattice = hte_lattice.lattice
@@ -432,7 +432,7 @@ function get_c_kDyn_subl(
         AbstractMatrix{Tuple{Vararg{<:Real}}},
         AbstractArray{Tuple{Vararg{<:Real}}}
     }
-    ,c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {D,T}
+    ,c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
 
     fourier_transform(k) = get_c_kDyn_subl(k,c_iipDyn_mat,hte_lattice) 
 
@@ -449,7 +449,7 @@ function inverse_fourier_transform_subl(kvals::Union{
     AbstractMatrix{Matrix{T}},
     AbstractArray{Matrix{T}}
     },
-    hte_lattice::Dyn_HTE_Lattice)::Matrix{T} where {D,T}
+    hte_lattice::Dyn_HTE_Lattice)::Matrix{T} where {T}
     """computes the inverse fourier transform for sublattice resolved fourier transforms"""
 
     #check if kvals and c_kDyn_subl have same dimensions
