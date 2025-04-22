@@ -23,7 +23,7 @@ if true ### plot the C_n vs graphG index
         plot!(plt,[abs(denominator(c[1]))+1 for c in tmp],label="n=$n")
     end
     display(plt)
-    #savefig(plt,"C_n_"*spin_string*".png")
+    savefig(plt,"C_n_S"*string(spin_length)*".png")
 end
 
 ### compute all correlations in the lattice 
