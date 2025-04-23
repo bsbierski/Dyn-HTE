@@ -30,7 +30,7 @@ end
 
 ###### dynamical Matsubara correlator (k-space)
 k,k_label = (1.0*π,0.0), "(pi,0)"
-c_kDyn = get_c_kDyn(k,c_iipDyn_mat,hte_lattice)
+c_kDyn = get_c_k(k,c_iipDyn_mat,hte_lattice)
 m_vec = get_moments_from_c_kDyn(c_kDyn)
 poly_x = Polynomial([0,1],:x)
 
@@ -141,7 +141,7 @@ if true
     for k_pos in eachindex(k_vec)
         k = k_vec[k_pos]
 
-        c_kDyn = get_c_kDyn(k,c_iipDyn_mat,hte_lattice)
+        c_kDyn = get_c_k(k,c_iipDyn_mat,hte_lattice)
         m_vec = get_moments_from_c_kDyn(c_kDyn)
         m0 = Float64[]
 

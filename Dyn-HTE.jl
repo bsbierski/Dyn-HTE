@@ -25,7 +25,7 @@ N = 50
 kx = range(-2pi,2pi,length=N)
 ky = range(-2pi,2pi,length=N) #[0.] #for chains
 kmat = [(y,x,0.) for x in kx, y in ky ];
-c_kDyn_mat =  get_c_kDyn(kmat,c_iipDyn_mat,hte_lattice);
+c_kDyn_mat =  get_c_k(kmat,c_iipDyn_mat,hte_lattice);
 
 x = -1.0
 padetype = [5,5]

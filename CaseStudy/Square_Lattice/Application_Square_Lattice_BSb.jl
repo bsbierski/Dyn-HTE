@@ -220,7 +220,7 @@ end
 
 ###### dynamical Matsubara correlator (k-space)
 k,k_label = X,"X"
-c_kDyn = get_c_kDyn(k,c_iipDyn_mat,lattice,center_sites)
+c_kDyn = get_c_k(k,c_iipDyn_mat,lattice,center_sites)
 m_vec = get_moments_from_c_kDyn_mat(c_kDyn)
 poly_x = Polynomial([0,1],:x)
 

@@ -28,7 +28,7 @@ N = 40
 kx = range(-2pi,2pi,length=N)
 ky = range(-2pi,2pi,length=N) #[0.] #for chains
 kmat = [(y,x) for x in kx, y in ky ]
-c_kDyn =  get_c_kDyn(kmat,c_iipDyn_mat,hte_lattice);
+c_kDyn =  get_c_k(kmat,c_iipDyn_mat,hte_lattice);
 ### Evaluate the correlators at a frequency and plot the 2D Brillouin zone cut
 x = -2
 padetype = [2,2]

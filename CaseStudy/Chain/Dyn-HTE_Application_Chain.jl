@@ -29,7 +29,7 @@ c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs)
 k= 0.2*pi            #define fixed k 
 x_vec = 0:0.01:4.5   #define temperature range of interest
 #Fourier transform the correlation functions at k
-c_kDyn_mat = get_c_kDyn([(k,0.0)],c_iipDyn_mat,hte_lattice)[1]
+c_kDyn_mat = get_c_k([(k,0.0)],c_iipDyn_mat,hte_lattice)[1]
 #calculate the moments 
 m_vec = get_moments_from_c_kDyn(c_kDyn_mat)
 #rescale moments 
