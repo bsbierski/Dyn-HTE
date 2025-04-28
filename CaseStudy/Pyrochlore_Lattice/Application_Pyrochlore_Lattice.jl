@@ -1,35 +1,22 @@
 using JLD2
 #using RobustPad
 
-include("../../Embedding.jl")
 include("../../LatticeGraphs.jl")
+include("../../Embedding.jl")
 include("../../ConvenienceFunctions.jl") 
-#specify max order
-max_order = 5
-
-#LOAD FILES 
-#-------------------------------------------------------------------------------------
-#load list of unique graphs
-gG_vec_unique = give_unique_gG_vec(max_order);
-
-#create vector of all lower order dictionaries
-C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,max_order+1) ;
-#load dictionaries of all lower orders C_Dict_vec 
-for ord = 0:max_order
-    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_S1half/C_"*string(ord)*".jld2")
-end 
-#-----------------------------------
 
 
 
-#1. Define lattice ball for embedding (it is enough for embedding of max_order graphs to have ball radius L=max_order)
-L = max_order
-lattice,LatGraph,center_sites = getLattice_Ball(L,"pyrochlore");
-#display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
+L = 12
 
-
-
-
+spin_length = 1
+hte_graphs = load_dyn_hte_graphs(spin_length,L);
+hte_lattice = getLattice(L,"pyrochlore");
+@time c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs);
+#= @time c_iipDyn_mat2 = get_c_iipDyn_mat(hte_lattice.graph,hte_lattice.basis_positions,hte_graphs);
+c_iipDyn_mat == c_iipDyn_mat2
+ =#
+@save "CaseStudy/Pyrochlore_Lattice/c_iipDyn_mat_L12_S1.jld2" c_iipDyn_mat
 #2.Compute all correlations in the lattice
 #@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
 @load "CaseStudy/Pyrochlore_Lattice/Correlation_DataS=S1half_L12.jld2" Correlators
@@ -42,7 +29,7 @@ using Plots
 
 
 ### Compute A 2D Brillouin zone cut: 
-N = 100
+N = 10
 kx = range(-8pi,8pi,length=N)
 ky = range(-8pi,8pi,length=N) #[0.] #for chains
 kmat = [(x,x,y) for x in kx, y in ky ]

@@ -202,6 +202,7 @@ function getLattice(L::Int,geometry::String)::Dyn_HTE_Lattice
     if geometry == "chain" #shortcut for chain
         lattice,LatGraph = get_finite_Lattice(2*L+1,"chain"; PBC = false)
         center_sites = [L+1]
+        lattice.sitePositions = [lattice.sitePositions[i] .- lattice.sitePositions[L+1] for i in 1:2*L+1] #shift center site to zero coordinate
         return Dyn_HTE_Lattice(geometry ,lattice, LatGraph, center_sites)
     end
 
