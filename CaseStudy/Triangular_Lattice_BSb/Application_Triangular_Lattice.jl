@@ -86,7 +86,7 @@ end
 #########################################################################################
 
 ###### dynamical Matsubara correlator (k-space)
-k,k_label = K,"K"
+k,k_label = M,"M"
 c_kDyn = get_c_k(k,c_iipDyn_mat,hte_lattice)
 m_vec = get_moments_from_c_kDyn(c_kDyn)
 poly_x = Polynomial([0,1],:x)
@@ -141,7 +141,7 @@ if true
 
     ###### δ_r, JS and A for x ∈ x0_vec
     plt_δ=plot([0],[0],label="",xlabel=L"r",ylabel=L"\delta_{\mathbf{k},r}",legend=:bottomright)
-    plt_JS = plot(xlims=(0,w_vec[end]),xlabel=L"\omega/J=w",ylabel=L"J \, S(\mathbf{k}="*k_label*L",\omega)",legendfontsize=5.5,legend=:topright)
+    plt_JS = plot(xlims=(0,w_vec[end]),xlabel=L"\omega/J=w",ylabel=L"J \, S(\mathbf{k}="*k_label*L",\omega)",legendfontsize=5.0,legend=:topright)
     plt_JAo2π = plot(xlabel=L"\omega/J=w",ylabel=L"J \, A(\mathbf{k}="*k_label*L",\omega)",legend=:topleft)
 
     #plt_JSw0=plot([0.55,0.55],[0.0,0.09],xscale=:log10,xlims=(0.1,1.02/x0_vec[1]),label="roton-like energy [Zheng2006]",color=:grey,xlabel=L"T/J=1/x",ylabel=L"J \, S(\mathbf{k}="*k_label*L",\omega \rightarrow 0)",legend=:bottomright)
@@ -174,9 +174,27 @@ if true
     savefig(plt_final,"CaseStudy/Triangular_Lattice_BSb/Triangular_DSF_k"*k_label*".png")
 end
 
-if k_label=="K" plot!(plt_JS,inset=bbox(0.62,0.03,0.36,0.49),subplot=2) end
-if k_label=="M" plot!(plt_JS,xlabel="",xformatter=_->"") end
-
+### prepare insets
+if k_label=="K" 
+    plot!(plt_JS,inset=bbox(0.62,0.03,0.36,0.49),subplot=2) 
+end
+if k_label=="M" 
+    plot!(plt_JS,xlabel="",xformatter=_->"") 
+    plot!(plt_JS,inset=bbox(0.2,0.65,0.3,0.3),subplot=2)
+    plot!(plt_JS[2],xlims=(-1.3,1.3),ylims=(-1.2,1.2),aspect_ratio = :equal,xaxis=false,yaxis=false)
+    a1 = [1/2, sqrt(3)/2]
+    a2 = [1, 0]
+    a3 = [-1/2, sqrt(3)/2]
+    for x in -5:1:5, y in -5:1:5
+        r = x*a1 .+ y*a2
+        r1 = r .+ a1
+        r2 = r .+ a2
+        r3 = r .+ a3
+        plot!(plt_JS[2],[r[1],r1[1]],[r[2],r1[2]],markers=:dot,color=:black,label="")
+        plot!(plt_JS[2],[r[1],r2[1]],[r[2],r2[2]],markers=:dot,color=:black,label="")
+        plot!(plt_JS[2],[r[1],r3[1]],[r[2],r3[2]],markers=:dot,color=:black,label="")
+    end
+end
 
 ### scaling plot of DSF at k=K (as inset)
 if k_label=="K" && true
@@ -185,7 +203,7 @@ if k_label=="K" && true
     α = 1.1
 
     annotate!(plt_JS[2],1,0.1,text(L"\alpha="*string(α)*"0(2)",7))
-    plot!(plt_JS[2],xlims=(0,2.7),ylims=(0.08,0.165),xlabel=L"\omega/T\;\;(\omega \leq"*string(w_max)*L" \,J)",ylabel=L"J\, S(\mathbf{k}="*k_label*L",\omega) \times (T/J)^\alpha")
+    plot!(plt_JS[2],xlims=(0,2.7),ylims=(0.08,0.165),xlabel=L"\omega/T\;\;(\omega \leq"*string(w_max)*L" \,J)",ylabel=L"J\, S(\mathbf{k}="*k_label*L",\omega) \cdot (T/J)^\alpha")
 
     for x0_pos in eachindex(x0_vec)
         x0 = x0_vec[x0_pos]
@@ -204,16 +222,20 @@ if k_label=="K" && true
 end
 
 ### final plot for paper
-#plt_JS_M = deepcopy(plt_JS)
-plt_JS_K = deepcopy(plt_JS)
+if k_label=="K" plt_JS_K = deepcopy(plt_JS) end
+if k_label=="M" plt_JS_M = deepcopy(plt_JS) end
 
+
+### run the above for K and M and then put together
 xPlots,yPlots=1,2
-plt_final = plot(plt_JS_M,plt_JS_K, layout=(yPlots,xPlots), size=(aps_width*xPlots,(0.55)*aps_width*yPlots))
+plt_final = plot(plt_JS_M,plt_JS_K, layout=(yPlots,xPlots), size=(aps_width*xPlots,(0.48)*aps_width*yPlots))
 display(plt_final)
 savefig(plt_final,"CaseStudy/Triangular_Lattice_BSb/Triangular_DSF.png")
 
 
-### scaling plot of DSF at k=K at three different α (in quantum critical T-regime?)
+
+
+### background: scaling plot of DSF at k=K at three different α (in quantum critical T-regime?)
 if k_label=="K" && false
     w_max = 1.0
     w_vec = collect(0.0:0.02:w_max)

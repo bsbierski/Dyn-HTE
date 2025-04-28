@@ -15,7 +15,7 @@ Lgraph = complete_graph(4)
 ### load graphG evaluations 
 hte_graphs = load_dyn_hte_graphs(spin_length,n_max);
 
-if true ### plot the C_n vs graphG index
+if false ### plot the C_n vs graphG index
     plt=plot(yscale=:log10,xlabel="graph index",ylabel="denom C_n",title="spin length S=$spin_length")
     for n in n_max:-1:8
         tmp = hte_graphs.c_dict[n+1]
@@ -23,10 +23,14 @@ if true ### plot the C_n vs graphG index
         plot!(plt,[abs(denominator(c[1]))+1 for c in tmp],label="n=$n")
     end
     display(plt)
-    savefig(plt,"C_n_S"*string(spin_length)*".png")
+    #savefig(plt,"C_n_S"*string(spin_length)*".png")
 end
 
 ### compute all correlations in the lattice 
 c_iipDyn_mat = get_c_iipDyn_mat(Lgraph,[1],hte_graphs)
+
+### test if uniform susceptibility is pureyl static (m=0 only)
+c_iipDyn_mat[1,1]+c_iipDyn_mat[2,1]+c_iipDyn_mat[3,1]+c_iipDyn_mat[4,1]+c_iipDyn_mat[5,1]+c_iipDyn_mat[6,1]+c_iipDyn_mat[7,1]+c_iipDyn_mat[8,1]
+
 c_iipDyn_mat[1,1]
 c_iipDyn_mat[2,1]
