@@ -179,5 +179,5 @@ if true
     resize_to_layout!(fig);
     display(fig)
 
-    save("Square_Lattice_JSkw.pdf",fig)
+    save("Square_Lattice_JSkw.png",fig; px_per_unit=6.0)
 end
