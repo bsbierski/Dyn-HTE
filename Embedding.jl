@@ -302,29 +302,29 @@ function e(L::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
     return numSubIsos / symmetryFactor(gG)
 end
 
-function Calculate_Correlator(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order,gG_vec::Vector{Vector{GraphG}},C_Dict_vec::Vector{Vector{Vector{Rational{Int64}}}})::Vector{Vector{Rational{Int64}}}
+function Calculate_Correlator(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order,gG_vec::Vector{Vector{GraphG}},C_Dict_vec::Vector{Vector{Vector{Rational{Int128}}}})::Vector{Vector{Rational{Int128}}}
     """OLD FUNCTION: use Calculate_Correlator_fast"""
 
     #initialize result array
-    result_array = Vector{Vector{Rational{Int64}}}(undef, max_order+1)
+    result_array = Vector{Vector{Rational{Int128}}}(undef, max_order+1)
 
 
     #for every order we get result vector representing Delta^2 prefactors
     for ord = 1:max_order+1
-        result_array[ord] = zeros(Rational{Int64},10)
+        result_array[ord] = zeros(Rational{Int128},10)
     end
 
 
     #now calculate order for order the correlator
 
-    for gG_arr in gG_vec
+    Threads.@threads for gG_arr in gG_vec[1:max_order+1]
 
         for gG_idx in eachindex(gG_arr)
             g_order = Int(sum(gG_arr[gG_idx].g.weights)/2)
 
             #now we sum over all graphG
 
-            look_up_dict =C_Dict_vec[g_order+1][gG_idx]
+            look_up_dict = C_Dict_vec[g_order+1][gG_idx]
 
             emb_fac = e(L,ext_j1,ext_j2,gG_arr[gG_idx])
 
