@@ -30,7 +30,7 @@ end
 c_iipDyn_mat = get_c_iipDyn_mat(Lgraph,[1],hte_graphs)
 
 ### test if uniform susceptibility is pureyl static (m=0 only)
-c_iipDyn_mat[1,1]+c_iipDyn_mat[2,1]+c_iipDyn_mat[3,1]+c_iipDyn_mat[4,1]+c_iipDyn_mat[5,1]+c_iipDyn_mat[6,1]+c_iipDyn_mat[7,1]+c_iipDyn_mat[8,1]
+c_iipDyn_mat[1,1]+c_iipDyn_mat[2,1]+c_iipDyn_mat[3,1]+c_iipDyn_mat[4,1]#+c_iipDyn_mat[5,1]+c_iipDyn_mat[6,1]+c_iipDyn_mat[7,1]+c_iipDyn_mat[8,1]
 
 c_iipDyn_mat[1,1]
 c_iipDyn_mat[2,1]
