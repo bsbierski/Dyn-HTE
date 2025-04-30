@@ -205,11 +205,19 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
         end
 
         #calculate the embedding factor
-       
+        
+        
+
         emb_fac = e_fast(L,ext_j1,ext_j2,gg)
 
+        emb_fac_assym = 0
+        if all(x -> !x.is_symmetric, unique_Gg.gG_vec)
+            emb_fac_assym = e_fast(L,ext_j2,ext_j1,gg)
+        else
+            emb_fac_assym = emb_fac
+        end
+
        # println("$index th graph embeding factor = $emb_fac")
-        
 
         #### now we sum overall graphG eqivalent to the unique Gg
         for graph in unique_Gg.gG_vec
@@ -218,23 +226,21 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
             symmetry_factor = graph.symmetry_factor#symmetry factor
             is_symmetric = graph.is_symmetric  #bool if the graph is symmetric
            
-            fac = 2
+            fac = emb_fac + emb_fac_assym
             if  is_symmetric
-                fac = 1
+                fac = emb_fac
             end
 
             #look up the value of the graph from C_Dict_vec
             look_up_dict = C_Dict_vec[g_order+1][gG_vec_index]
-
             
             
-            result_array[g_order+1] .+= look_up_dict.*Int128(emb_fac/symmetry_factor*fac)
+            result_array[g_order+1] .+= look_up_dict.*Int128(fac/symmetry_factor)
         end
     end
 
     return result_array
 end
-
 
 ###### LEGACY FUNCTIONS
 function e(L::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
