@@ -731,8 +731,6 @@ function extrapolate_series(series,method::String,parameters)
     end
 
 end
-
-
 ################################# BJÖRN STOPPED HERE ##################################
 
 
