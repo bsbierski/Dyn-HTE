@@ -29,15 +29,16 @@ end
 #########################################################################################
 
 ###### dynamical Matsubara correlator (k-space)
-k,k_label = (1.0*π,0.0), "(pi,0)"
-c_kDyn = get_c_kDyn(k,c_iipDyn_mat,hte_lattice)
+#k,k_label = (1.0*π,0.0), "(pi,0)"
+k,k_label = (π,π), "(pi,pi)"
+c_kDyn = get_c_k(k,c_iipDyn_mat,hte_lattice)
 m_vec = get_moments_from_c_kDyn(c_kDyn)
 poly_x = Polynomial([0,1],:x)
 
 x_vec_bare = collect(0:0.025:1.4)
-x_vec = collect(0.0:0.1:4.0)
+x_vec = collect(0.0:0.1:2.5)
 
-x0_vec = [1.0,2.0,3.0]      # for these x the DSF will be computed
+x0_vec = [1.0,1.25,1.5,1.75]      # for these x the DSF will be computed
 
 ### with u-series
 if true
@@ -49,10 +50,10 @@ if true
     u0_vec = tanh.(f .* x0_vec)
     m0_vec = [Float64[] for _ in x0_vec]
 
-    plt_m = plot([0],[0],xlims=(0,x_vec[end]),ylims=(0,4.5),label="",xlabel=L"x=J/T",ylabel=L"x \cdot m_{\mathbf{k},2r}(x) \, / \, m_{\mathbf{k},2r}(0)",legend=:topleft);
-    plot!(plt_m,x_vec,-x_vec,color=:grey,label="x bare");
-    plot!(plt_m,x_vec,-x_vec,color=:grey,linestyle=linestyle_vec[2],label="u Padé [7-r,6-r]");
-    plot!(plt_m,x_vec,-x_vec,color=:grey,linestyle=linestyle_vec[3],label="u Padé [6-r,5-r]");
+    plt_m = plot([0],[0],xlims=(0,x_vec[end]),label="",xlabel=L"x=J/T",ylabel=L"x \cdot m_{\mathbf{k},2r}(x) \, / \, m_{\mathbf{k},2r}(0)",legend=:topleft);
+    plot!(plt_m,-x_vec,x_vec,color=:grey,label="x bare");
+    plot!(plt_m,-x_vec,x_vec,color=:grey,linestyle=linestyle_vec[2],label="u Padé [7-r,6-r]");
+    plot!(plt_m,-x_vec,x_vec,color=:grey,linestyle=linestyle_vec[3],label="u Padé [6-r,5-r]");
     annotate!(plt_m,3,2,text(L"\mathbf{k}="*string(k_label)*",  f="*string(f),7));
     
     plot!(plt_m,title="SquareLattice AFM S=1/2: moment at k="*k_label*" (f=$f)")
@@ -103,8 +104,8 @@ if true
         plot!(plt_δ,r_max:7,δ_vec_ext[r_max+1:7+1],label="",color=thermalCol4_vec[x0_pos])
         plot!(plt_JS,w_vec,[JS(δ_vec_ext,1.0*x0,w,0.02) for w in w_vec],color=thermalCol4_vec[x0_pos],label="")
 
-        ### plot experimetnal data from DallaPiazza
-        fileName = "DallaPiazza_exp_S(pi,0).csv"
+        ### plot experimental data from DallaPiazza
+        fileName = "DallaPiazza_exp_S"*k_label*".csv"
         factor = 1200
         if isfile(fileName)
             data = readdlm(fileName,',',Float64)
@@ -141,7 +142,7 @@ if true
     for k_pos in eachindex(k_vec)
         k = k_vec[k_pos]
 
-        c_kDyn = get_c_kDyn(k,c_iipDyn_mat,hte_lattice)
+        c_kDyn = get_c_k(k,c_iipDyn_mat,hte_lattice)
         m_vec = get_moments_from_c_kDyn(c_kDyn)
         m0 = Float64[]
 
@@ -178,5 +179,5 @@ if true
     resize_to_layout!(fig);
     display(fig)
 
-    save("Square_Lattice_JSkw.pdf",fig)
+    save("Square_Lattice_JSkw.png",fig; px_per_unit=6.0)
 end

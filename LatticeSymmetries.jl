@@ -543,10 +543,6 @@ position_dict
 #= 
 sym_G,transl_G = getSymmetryGroup("triang")
 sym_G,transl_G = getSymmetryGroup("square")
-sym_G,transl_G =  getSymmetryGroup("test")
-
-
-
 
 reduction_dict,bond_vec_red,position_dict = sym_reduced_lattice(hte_lattice.lattice,center_sites,sym_G,transl_G)
 

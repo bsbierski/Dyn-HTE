@@ -7,6 +7,7 @@ color_vec = [palette(:tab10)[c%10+1] for c in 0:50] #
 #color_vec = ["blue","green","red","cyan","brown","purple","magenta","orange","teal","aquamarine2","steelblue1","darkorchid","grey56","olive","blue","green","red","cyan","brown","purple","magenta","orange","teal","aquamarine2","steelblue1","darkorchid","grey56","olive"]
 grey_vec = ["black","grey","darkblue","olive","brown","steelblue1"]
 thermalCol4_vec = reverse(ColorSchemes.thermal[1:70:end])
+thermalCol13_vec = reverse(ColorSchemes.thermal[1:20:end])
 marker_vec = [:dot,:cross,:diamond,:dtriangle,:square,:star4,:utriangle]
 linestyle_vec = [:solid, :dash, :dot, :dashdot, :solid, :dash, :dot, :dashdot]
 

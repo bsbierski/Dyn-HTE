@@ -44,7 +44,10 @@ kx = range(-0+0.001,2pi+0.001,length=N)
 ky = range(-0+0.001,2pi+0.001,length=N) 
 kmat = [[1,1/sqrt(3)].*x .+  [1,-1/sqrt(3)].*y for x in kx, y in ky ]
 kmat = [(y,x) for x in kx, y in ky ]
-c_kDyn_mat =  get_c_kDyn(kmat,c_iipDyn_mat,hte_lattice);
+c_kDyn_mat =  get_c_k(kmat,c_iipDyn_mat,hte_lattice);
+
+
+get_c_k((pi,pi,0),c_iipDyn_mat,hte_lattice)
 
 ### Evaluate the correlators at a frequency and plot the 2D Brillouin zone cut
 x = -10.0
@@ -102,7 +105,7 @@ pathticks = ["Γ","K","M","K","Γ"]
 
 Nk = 100
 kvec,kticks_positioins = create_brillouin_zone_path(path, Nk)
-BrillPath = get_c_kDyn_mat(kvec,c_iipDyn_mat,hte_lattice);
+BrillPath = get_c_k_mat(kvec,c_iipDyn_mat,hte_lattice);
 
 
 
@@ -127,7 +130,7 @@ display(fig)
 #Generate the path 
 Nk = 100
 kvec,kticks_positioins = create_brillouin_zone_path(path, Nk)
-BrillPath = get_c_kDyn_mat(kvec,c_iipDyn_mat,hte_lattice);
+BrillPath = get_c_k_mat(kvec,c_iipDyn_mat,hte_lattice);
 
 
 #Compare Static susceptibility to QMC
@@ -166,7 +169,7 @@ pathticks = ["Γ","K","M","Γ"]
 p = plot()
 Nk = 100;
 kvec,kticks_positioins = create_brillouin_zone_path(path, Nk);
-BrillPath = get_c_kDyn_mat(kvec,c_iipDyn_mat,hte_lattice);
+BrillPath = get_c_k_mat(kvec,c_iipDyn_mat,hte_lattice);
 BrillPath[38][:,1]
 #Plot the path
 Tvec = [0.375,0.25];
@@ -323,4 +326,4 @@ N = 100
 kx = range(-0+0.001,2pi+0.001,length=N)
 ky = range(-0+0.001,2pi+0.001,length=N) 
 kmat = [(y,x) for x in kx, y in ky ]
-c_kDyn_mat =  get_c_kDyn(kmat,c_iipDyn_mat,hte_lattice);
+c_kDyn_mat =  get_c_k(kmat,c_iipDyn_mat,hte_lattice);

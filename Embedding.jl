@@ -205,11 +205,19 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
         end
 
         #calculate the embedding factor
-       
+        
+        
+
         emb_fac = e_fast(L,ext_j1,ext_j2,gg)
 
+        emb_fac_assym = 0
+        if all(x -> !x.is_symmetric, unique_Gg.gG_vec)
+            emb_fac_assym = e_fast(L,ext_j2,ext_j1,gg)
+        else
+            emb_fac_assym = emb_fac
+        end
+
        # println("$index th graph embeding factor = $emb_fac")
-        
 
         #### now we sum overall graphG eqivalent to the unique Gg
         for graph in unique_Gg.gG_vec
@@ -218,23 +226,21 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
             symmetry_factor = graph.symmetry_factor#symmetry factor
             is_symmetric = graph.is_symmetric  #bool if the graph is symmetric
            
-            fac = 2
+            fac = emb_fac + emb_fac_assym
             if  is_symmetric
-                fac = 1
+                fac = emb_fac
             end
 
             #look up the value of the graph from C_Dict_vec
             look_up_dict = C_Dict_vec[g_order+1][gG_vec_index]
-
             
             
-            result_array[g_order+1] .+= look_up_dict.*Int128(emb_fac/symmetry_factor*fac)
+            result_array[g_order+1] .+= look_up_dict.*Int128(fac/symmetry_factor)
         end
     end
 
     return result_array
 end
-
 
 ###### LEGACY FUNCTIONS
 function e(L::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
@@ -296,29 +302,29 @@ function e(L::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
     return numSubIsos / symmetryFactor(gG)
 end
 
-function Calculate_Correlator(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order,gG_vec::Vector{Vector{GraphG}},C_Dict_vec::Vector{Vector{Vector{Rational{Int64}}}})::Vector{Vector{Rational{Int64}}}
+function Calculate_Correlator(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order,gG_vec::Vector{Vector{GraphG}},C_Dict_vec::Vector{Vector{Vector{Rational{Int128}}}})::Vector{Vector{Rational{Int128}}}
     """OLD FUNCTION: use Calculate_Correlator_fast"""
 
     #initialize result array
-    result_array = Vector{Vector{Rational{Int64}}}(undef, max_order+1)
+    result_array = Vector{Vector{Rational{Int128}}}(undef, max_order+1)
 
 
     #for every order we get result vector representing Delta^2 prefactors
     for ord = 1:max_order+1
-        result_array[ord] = zeros(Rational{Int64},10)
+        result_array[ord] = zeros(Rational{Int128},10)
     end
 
 
     #now calculate order for order the correlator
 
-    for gG_arr in gG_vec
+    Threads.@threads for gG_arr in gG_vec[1:max_order+1]
 
         for gG_idx in eachindex(gG_arr)
             g_order = Int(sum(gG_arr[gG_idx].g.weights)/2)
 
             #now we sum over all graphG
 
-            look_up_dict =C_Dict_vec[g_order+1][gG_idx]
+            look_up_dict = C_Dict_vec[g_order+1][gG_idx]
 
             emb_fac = e(L,ext_j1,ext_j2,gG_arr[gG_idx])
 
