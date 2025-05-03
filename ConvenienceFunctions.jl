@@ -304,7 +304,7 @@ function create_brillouin_zone_path(points, num_samples::Int)
     return NTuple{length(points[1]),Float64}.(interpolated_points), input_indices
 end
 
-1/4
+
 
 
 #Fourier Transforms
@@ -322,7 +322,7 @@ function get_c_k(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dy
                 z += cos(dot(k,getSitePosition(lattice,i).-getSitePosition(lattice,center_sites[b]))) *  c_iipDyn_mat[i,b]
             end
         end
-        c_kDyn = z / length(center_sites) 
+        c_kDyn = z / length(lattice.unitcell.basis) 
     
        #=  #set everything below 1e-12 to zero.
         for c_pos in  eachindex(c_kDyn)
@@ -335,7 +335,11 @@ function get_c_k(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dy
 end
 
 
-function get_c_k(kvec::AbstractArray{<:Tuple{Vararg{<:Real}}}
+function get_c_k(kvec::Union{
+    AbstractVector{Tuple{Vararg{<:Real}}},
+    AbstractMatrix{Tuple{Vararg{<:Real}}},
+    AbstractArray{Tuple{Vararg{<:Real}}}
+    }
     ,c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
 
         fourier_transform(k) = get_c_k(k,c_iipDyn_mat,hte_lattice) 
@@ -344,7 +348,11 @@ function get_c_k(kvec::AbstractArray{<:Tuple{Vararg{<:Real}}}
 end
 
 
-function inverse_fourier_transform(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
+function inverse_fourier_transform(kvals::Union{
+    AbstractVector{Tuple{Vararg{<:Real}}},
+    AbstractMatrix{Tuple{Vararg{<:Real}}},
+    AbstractArray{Tuple{Vararg{<:Real}}}
+    }
     ,c_kDyn_subl::Union{
     AbstractVector{Matrix{T}},
     AbstractMatrix{Matrix{T}},
@@ -420,7 +428,11 @@ function get_c_k_subl(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattic
 end
 
 function get_c_k_subl(
-    kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
+    kvals::Union{
+        AbstractVector{Tuple{Vararg{<:Real}}},
+        AbstractMatrix{Tuple{Vararg{<:Real}}},
+        AbstractArray{Tuple{Vararg{<:Real}}}
+    }
     ,c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
 
     fourier_transform(k) = get_c_k_subl(k,c_iipDyn_mat,hte_lattice) 
@@ -428,7 +440,11 @@ function get_c_k_subl(
     return fourier_transform.(kvals)
 end
 
-function inverse_fourier_transform_subl(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
+function inverse_fourier_transform_subl(kvals::Union{
+    AbstractVector{Tuple{Vararg{<:Real}}},
+    AbstractMatrix{Tuple{Vararg{<:Real}}},
+    AbstractArray{Tuple{Vararg{<:Real}}}
+    }
     ,c_kDyn_subl::Union{
     AbstractVector{Matrix{T}},
     AbstractMatrix{Matrix{T}},
@@ -623,134 +639,79 @@ function JS(δ_vec::Vector{Float64},x::Float64,w::Float64,η::Float64)::Float64
 end 
 
 
-###Ruben: Beide Funktionen zusammenlegen
-function get_JSkw_mat_x0(k_vec::Vector,w_vec::Vector{Float64},η::Float64,r_min::Int,r_max::Int,r_ext::Int,intercept0::Bool,c_iipDyn_mat::Array{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)
+
+
+function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},c_iipDyn_mat::Array{Matrix{Rational{Int128}}},lattice::Dyn_HTE_Lattice;f::Float64=0.48,η::Float64=0.01,r_min::Int=3,r_max::Int=3,r_ext::Int=1000,intercept0::Bool=false)
+    """ get the dynamical spin structure factor from the correlation matrix c_iipDyn_mat 
+    using pade approximants for the moments either in the variable x = J/T ("pade") or in the variable
+    u = tanh(f*x) ("u_pade")   """
+
+
     JSkw_mat = 1.0*zeros(length(k_vec),length(w_vec))
 
-    for (k_pos,k) in enumerate(k_vec)
-        c_kDyn_mat = get_c_k_mat([k],c_iipDyn_mat,lattice,center_sites)[1]
-        m_vec = get_moments_from_c_kDyn(c_kDyn_mat)
-
-        ### pick x=0 for now (later check x>0, use PADE or IDA), get δs and plot them
-        x=0.0
-        δ_vec,r_vec = fromMomentsToδ([m(x) for m in m_vec])
-
-        δ_vec_ext = extrapolate_δvec(δ_vec,r_min,r_max,r_ext,intercept0)
-
-        JSkw_mat[k_pos,:] = [JS(δ_vec_ext ,x,w,η) for w in w_vec]
+    #pre-calculate the substitution matrix
+    if method== "u_pade"
+        substitution_matrix_arr = []
+        for m_idx=1:6
+            push!(substitution_matrix_arr, get_LinearTrafoToCoeffs_u(15-2*m_idx,f))
+        end
     end
 
-    return JSkw_mat
-end
-
-
-function get_JSkw_mat_finitex(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},η::Float64,r_min::Int,r_max::Int,r_ext::Int,intercept0::Bool,c_iipDyn_mat::Array{Matrix{Rational{Int128}}},lattice::Dyn_HTE_Lattice)
-    JSkw_mat = 1.0*zeros(length(k_vec),length(w_vec))
-    max_order = Int((size(c_iipDyn_mat[1])[1]-1))
 
     for (k_pos,k) in enumerate(k_vec)
-        #println(k_pos,"/",length(k_vec))
-        c_kDyn_mat = get_c_k(k,c_iipDyn_mat,lattice)
-        m_vec = get_moments_from_c_kDyn(c_kDyn_mat)[1:1+Int(floor(max_order/2))]
+        println(k_pos,"/",length(k_vec))
+        c_kDyn_mat = get_c_kDyn([k],c_iipDyn_mat,lattice)[1]
+        m_vec = get_moments_from_c_kDyn(c_kDyn_mat)[1:7]
 
-        ###PADE
+        ###pade in x=J/T 
         if method=="pade"
-            m_vec_extrapolated_pade = Array{Any}(undef,length(m_vec))
+            m_vec_extrapolated_pade = []
             for m_idx=1:length(m_vec)
-              #  println(m_vec[m_idx])
-                m_vec_extrapolated_pade[m_idx] = get_pade(m_vec[m_idx],1+Int(floor(max_order/2))-m_idx,1+Int(floor(max_order/2))-m_idx)
+                push!(m_vec_extrapolated_pade, get_pade(m_vec[m_idx],7-m_idx,7-m_idx))
             end
             δ_vec,r_vec = fromMomentsToδ([m(x) for m in m_vec_extrapolated_pade])
-           println("Delta_vec (pade) for "*string(k)*"is:",δ_vec)
+        
         end
 
-        if method=="padetanh"
-            f = 2
-            m_vec_extrapolated_pade = Array{Any}(undef,length(m_vec))
-            for m_idx=1:length(m_vec)
 
-                mfun = y -> (f*atanh(y)) * m_vec[m_idx](f*atanh(y))
-                pad = robustpade(mfun,1+Int(floor(max_order/2))-m_idx,1+Int(floor(max_order/2))-m_idx)
-                m_vec_extrapolated_pade[m_idx] = pad
-            end
-            δ_vec,r_vec = fromMomentsToδ([m(tanh(x/f))/x for m in m_vec_extrapolated_pade])
-           println("Delta_vec (pade) for "*string(k)*"is:",δ_vec)
-        end
 
-        ###IDA
-        if method =="ida"
-            int_step_size = 0.01
-            m_vec_extrapolated_ida = []
-            for m_idx=1:2
-                for idx=0:length(m_vec[m_idx])-1
-                    if abs(m_vec[m_idx][idx])< 0.0000000001
-                        m_vec[m_idx][idx] =0
-                    end
+        ##pade with u=tanh(f*x) substitution
+        if method == "u_pade"
+            #if x= 0 we have to be careful with the substitution but case is trivial
+            if x == 0
+                m_vec_extrapolated_pade = []
+                for m_idx=1:length(m_vec)
+                    push!(m_vec_extrapolated_pade, get_pade(m_vec[m_idx],7-m_idx,7-m_idx))
                 end
-                IDA_parameters=[2,3-m_idx,3-m_idx] 
-                IDA_approximant = get_intDiffApprox(m_vec[m_idx],collect(0:int_step_size:x+0.5),IDA_parameters[1],IDA_parameters[2],IDA_parameters[3])
-                push!(m_vec_extrapolated_ida, Float64(IDA_approximant[round(Integer,1+1/int_step_size*x)]))
-            end
+                δ_vec,r_vec = fromMomentsToδ([m(x) for m in m_vec_extrapolated_pade])
+            else
 
-            
-            δ_vec,r_vec = fromMomentsToδ(Float64[float(m_vec_extrapolated_ida[i]) for i =1:length(m_vec_extrapolated_ida)])
-
-            #println("Delta_vec (ida) for "*string(k)*"is:",δ_vec)
-        end
+                m_vec_times_x =[m_vec[i]*Polynomial([0,1]) for i=1:length(m_vec)]
+                m_vec_extrapolated_pade = []
 
 
-        ###DIRECT DELTA EXTRAPOLATION VIA IDA
-        if method=="directdelta"
-            δ_vec_raw = fromMomentsToδ(m_vec)
-
-            δ_vec = zeros(length(m_vec))
-
-            for m_idx=1:2
-                t = Taylor1(2*length(m_vec)-2)
-                taylor_exp = δ_vec_raw[m_idx](t)
-                taylor_coefficients = [taylor_exp[i] for i=0:length(taylor_exp)-1]
-
-                taylor_poly = Polynomial(taylor_coefficients)
+                for m_idx=1:length(m_vec)-1
+                    p_u = Polynomial(substitution_matrix_arr[m_idx]*coeffs(m_vec_times_x[m_idx]))
+                    push!(m_vec_extrapolated_pade, get_pade(p_u,8-m_idx,7-m_idx))
+                end
                 
-                #IDA extrapolation
-                int_step_size = 0.01
-                IDA_parameters=[2,3-m_idx,3-m_idx] 
-                #println(taylor_poly)
-
-                #println("m=",m_idx)
-                IDA_approximant = get_intDiffApprox(taylor_poly,collect(0:int_step_size:x+0.5),IDA_parameters[1],IDA_parameters[2],IDA_parameters[3])
-
-                δ_vec[m_idx] = IDA_approximant[round(Integer,1+1/int_step_size*x)]
-
-                #pade extrapolation
-                #δ_vec[m_idx] = get_pade(taylor_poly,6,6)(x)
-
+                δ_vec,r_vec = fromMomentsToδ([m(tanh(f*x))/x for m in m_vec_extrapolated_pade])
             end
-
-            #println("Delta_vec (direct delta) for "*string(k)*"is:",δ_vec)
         end
 
-
-        ###DIRECT DELTA EXTRAPOLATION VIA IDA
-        if method=="padedelta"
-            δ_vec_raw = fromMomentsToδ(m_vec)
-
-            δ_vec = zeros(length(m_vec))
-
-            for δ_idx=1:length(δ_vec)
-                t =  Taylor1(Float64, max_order)
-                δ_poly= δ_vec_raw[δ_idx](t)
-                println(δ_poly[:])
-                δ_vec[δ_idx] = robustpade(δ_poly,6,6)(x)
-            end
-
-            println("Delta_vec (direct delta) for "*string(k)*"is:",δ_vec)
-        end
 
         ###Now extrapolte deltas
         δ_vec_ext = extrapolate_δvec(δ_vec,r_min,r_max,r_ext,intercept0)
 
-        JSkw_mat[k_pos,:] .= [JS(δ_vec_ext ,x,w,η) for w in w_vec]
+
+        #if deltas have negative slope give warning
+        if δ_vec_ext[end] <0
+            δ_vec_ext = extrapolate_δvec(δ_vec,2,2,r_ext,false)
+            println("WARNING: NEGATIVE δ parameters (pade might fail)")
+            
+        else
+            JSkw_mat[k_pos,:] = [JS(δ_vec_ext ,x,w,η) for w in w_vec]
+        end
 
         
     end
@@ -760,4 +721,203 @@ end
 
 
 
+function extrapolate_series(series,method::String,parameters)
+    
+    if method == "pade"
+        return get_pade(series,parameters[1],parameters[2])
+    elseif method == "u_pade"
+        substitution_matrix = get_LinearTrafoToCoeffs_u(length(coeffs(series))-1,parameters[3])
+        p_u = Polynomial(substitution_matrix*coeffs(series))
+        return get_pade(p_u,parameters[1],parameters[2])
+    end
 
+end
+
+
+
+
+
+################################# BJÖRN STOPPED HERE ##################################
+
+
+####Kann Weg: Redundant, multiple dispatch
+#= function get_c_kEqualTime(k,c_iipEqualTime_mat::Array{Rational{Int64}},lattice::Lattice,center_sites)::Vector{Float64}
+    """ computes the spatial FT of c_iipEqualTime for momentum k """
+    """ assumes inversion symmetry of the lattice to get real FT transform """
+    c_kEqualTime = zeros(Float64, length(c_iipEqualTime_mat[1,1,:]))
+    for b in 1:length(lattice.unitcell.basis)
+        for j in 1:length(lattice)
+            r = getSitePosition(lattice,j).-getSitePosition(lattice,center_sites[b])
+            c_kEqualTime[:] += cos(dot(k,r)) *  c_iipEqualTime_mat[j,b,:]
+        end
+    end
+    
+    return c_kEqualTime / length(lattice.unitcell.basis)
+end
+
+function get_c_k(k,c_iipDyn::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Matrix{Float64}
+    """ computes the spatial FT of c_iipDyn for momentum k """
+    """ assumes inversion symmetry of the lattice to get real FT transform """
+    c_kDyn = 0.0*c_iipDyn[1,1]
+    for b in 1:length(lattice.unitcell.basis)
+        for j in 1:length(lattice)
+            r = getSitePosition(lattice,j).-getSitePosition(lattice,center_sites[b])
+            c_kDyn[:,:] += cos(dot(k,r)) *  c_iipDyn[j,b][:,:]
+        end
+    end
+    
+    for c_pos in  eachindex(c_kDyn)
+        if abs(c_kDyn[c_pos]) < 1e-12
+            c_kDyn[c_pos] = 0.0
+        end
+    end
+
+    return c_kDyn / length(lattice.unitcell.basis)
+end
+
+
+function get_c_k_mat(kvec,c_iipDyn_mat::Array{Matrix{Rational{Int}}},lattice::Lattice,center_sites)::Vector{Matrix{Float64}}
+    """computes the expansion coefficients c_k for the k-points in k_vec """
+    BrillPath = Array{Matrix{Float64}}(undef,length(kvec));
+    for i in eachindex(kvec)
+        z = zeros(size(c_iipDyn_mat[1]))
+        # Compute Fourier transformation at momentum k. The real-space position of the i-th spin is obtained via getSitePosition(lattice,i). 
+        for b in 1:length(lattice.unitcell.basis)
+            for k in 1:length(lattice)
+                z += cos(dot(kvec[i],getSitePosition(lattice,k).-getSitePosition(lattice,center_sites[b]))) *  c_iipDyn_mat[k,b]
+            end
+        end
+        BrillPath[i] = z 
+    end
+    
+    return BrillPath
+end
+ =#
+#Keep
+#= 
+function brillouin_zone_cut_inverse(kmat::Matrix{NTuple{D,Float64}},Brillouin_zone_cut::Matrix{T},lattice::Lattice,center_sites)::Matrix{T} where {T,D}
+    """computes the fourier transform along a 2D cut through the 2D or 3D k-space
+        given the Correlation Matrix computet from compute_lattice_correlations """
+    (nx,ny) = size(kmat)
+    Correlators = Array{T}(undef, length(lattice),length(lattice.unitcell.basis));
+    Threads.@threads for k in 1:length(lattice)
+        for b in 1:length(lattice.unitcell.basis)
+        
+            if T == Taylor1{Float64}
+                z = Taylor1(0)
+            elseif T == Float64
+                z = 0.
+            else
+                z = zeros(size(Brillouin_zone_cut[1]))
+                end 
+
+
+        for i in 1:nx,j in 1:ny
+            # Compute Fourier transformation at momentum (kx, ky). The real-space position of the i-th spin is obtained via getSitePosition(lattice,i). 
+                z += cos(dot(kmat[i,j], getSitePosition(lattice,k).-getSitePosition(lattice,center_sites[b]))) *  Brillouin_zone_cut[i,j]
+        end
+        Correlators[k,b] = z/(nx*ny)
+    end
+    end
+    return Correlators
+end
+
+
+
+function brillouin_zone_cut_inverse_Matrix(kmat::Union{Matrix{Tuple{Float64,Float64}},Matrix{Tuple{Float64,Float64,Float64}}},Brillouin_zone_cut::Array{Matrix{T}},lattice::Lattice,center_sites) where {T}
+    """computes the fourier transform along a 2D cut through the 2D or 3D k-space
+        given the Correlation Matrix computed from compute_lattice_correlations """
+        (nx,ny) = size(kmat)
+        struc_vec = Array{T}(undef, nx,ny,length(lattice.unitcell.basis));
+
+        for i in 1:nx,j in 1:ny, b in 1:length(lattice.unitcell.basis)
+
+            struc_vec[i,j,b] = sum(Brillouin_zone_cut[i,j][:,b])
+        end
+
+        return brillouin_zone_cut_inverse_vector(kmat,struc_vec,lattice,center_sites)
+        
+end
+
+function brillouin_zone_cut_Matrix(kmat::Union{Matrix{Tuple{Float64,Float64}},Matrix{Tuple{Float64,Float64,Float64}}},Correlators::Matrix{Matrix{Rational{Int128}}},lattice::Lattice,center_sites)::Matrix{Matrix{Matrix{ComplexF64}}}
+    """computes the fourier transform along a 2D cut through the 2D or 3D k-space
+        given the Correlation Matrix computed from compute_lattice_correlations """
+    (nx,ny) = size(kmat)
+
+    structurefactor = Array{Matrix{Matrix{ComplexF64}}}(undef, nx,ny);
+    Threads.@threads for i in 1:nx
+        for j in 1:ny
+            z = fourier_transform(kmat[i,j],Correlators,lattice,center_sites)
+            structurefactor[i,j] = z #= / (length(lattice) * length(lattice.unitcell.basis)) =#
+        end
+    end
+    return structurefactor
+end
+
+function fourier_transform(k,Correlators::Matrix{Matrix{Rational{Int128}}},lattice::Lattice,center_sites)::Matrix{Matrix{ComplexF64}}
+    """computes the fourier transform along a 2D cut through the 2D or 3D k-space
+        given the Correlation Matrix computed from compute_lattice_correlations """
+   
+    basis_size = length(lattice.unitcell.basis)
+    label = find_site_basis_label(lattice)
+
+
+    structurefactor = Array{Matrix{ComplexF64}}(undef, basis_size,basis_size);
+            
+            # Compute Fourier transformation at momentum (kx, ky). The real-space position of the i-th spin is obtained via getSitePosition(lattice,i). 
+            for b1 in 1:basis_size
+                for b2 in 1:basis_size
+                
+                    z = zeros(size(Correlators[1]))
+
+                #find all indices that correspond to basis b2
+                indexlist = findall(x->x==b2,label)
+
+                # calculate correlator between the center site of b1 and all sites of b2 
+                for index in indexlist
+                    z += exp(-1im*dot(k, getSitePosition(lattice,index).-getSitePosition(lattice,center_sites[b1]))) *  Correlators[index,b1]
+                end
+                structurefactor[b1,b2] = z
+                end
+
+             end
+
+    return structurefactor
+end
+
+function inverse_fourier_transform(kmat,Correlators::Matrix{Matrix{T}},lattice::Lattice,center_sites)::Matrix{T} where {T}
+    """computes the fourier transform along a 2D cut through the 2D or 3D k-space
+        given the Correlation Matrix computet from compute_lattice_correlations """
+   
+    basis_size = length(lattice.unitcell.basis)
+    label = find_site_basis_label(lattice)
+
+
+    (nx,ny) = size(kmat)
+    structurefactor = Array{T}(undef, length(lattice),length(lattice.unitcell.basis));
+
+        for b1 in 1:basis_size
+            for b2 in 1:basis_size
+                    indexlist = findall(x->x==b2,label)
+
+
+                for index in indexlist
+                    if T == Taylor1{ComplexF64}||T == Taylor1{Float64}
+                        z = Taylor1(0)
+                        else
+                        z = zeros(size(Correlators[1][1]))
+                    end 
+                   
+
+                    for i in 1:nx,j in 1:ny
+                        z += exp(1im*dot(kmat[i,j], getSitePosition(lattice,index).-getSitePosition(lattice,center_sites[b1]))) *  Correlators[i,j][b1,b2]
+                    end
+                  
+                    structurefactor[index,b1] = real(z/(nx*ny))
+                end
+            end
+
+        end
+    return structurefactor
+end
+ =#
