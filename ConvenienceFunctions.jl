@@ -3,21 +3,6 @@ using TaylorSeries
 
 
 
-### Depricated
-#= ###### get expansion of real-space G_ii' (dynamic-Matsubara "Dyn" and "Equal-time") 
-function get_c_iipDyn_mat(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec)::Array{Matrix{Rational{Int64}}}
-    """compute all non-trivial coefficients G_ii' on lattice L from the center_sites i to all other sites i' of the lattice"""
-    GiipDyn_mat = Array{Matrix{Rational{Int64}}}(undef, lattice.length,length(lattice.unitcell.basis));
-    Threads.@threads :dynamic for jp = 1:lattice.length
-        println("bond "*string(jp)*" of "*string(lattice.length))
-        for b = 1:length(lattice.unitcell.basis)
-            GiipDyn_mat[jp,b] = mapreduce(permutedims, vcat, Calculate_Correlator_fast(LatGraph,center_sites[b],jp,max_order,gG_vec_unique,C_Dict_vec))
-        end
-    end
-    return GiipDyn_mat
-end
- =#
-
 """get expansion of real-space G_ii' between the sites in basis_positions and all sites in the Graph
     optional arguments:
 
@@ -106,21 +91,6 @@ function get_c_iipDyn_mat(hte_lattice::Dyn_HTE_Lattice,hte_graphs::Dyn_HTE_Graph
 
     return GiipDyn_mat
 end
-
-
-##Derpicated
-#= 
-function get_c_iipDyn_mat_slow(LatGraph,lattice,center_sites,max_order,gG_vec,C_Dict_vec)::Array{Matrix{Rational{Int64}}}
-    """slow version of get_c_iipDyn_mat not using gG_vec_unique but gG_vec (legacy, for chain)"""
-    c_iipDyn_mat = Array{Matrix{Rational{Int64}}}(undef, lattice.length,length(lattice.unitcell.basis));
-    for jp = 1:lattice.length
-        for b = 1:length(lattice.unitcell.basis)
-            c_iipDyn_mat[jp,b] = mapreduce(permutedims, vcat, Calculate_Correlator(LatGraph,center_sites[b],jp,max_order,gG_vec,C_Dict_vec))
-        end
-    end
-    return c_iipDyn_mat
-end
- =#
 
 function get_c_iipEqualTime_mat(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}})::Array{Vector{Rational{Int128}}}
     """ perform frequency sum over real-space dynamic correlators to obtain equal time correlators """
@@ -306,7 +276,6 @@ end
 
 
 
-
 #Fourier Transforms
 function get_c_k(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
     """ computes the spatial FT of c_iipDyn for momentum k """
@@ -322,7 +291,7 @@ function get_c_k(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dy
                 z += cos(dot(k,getSitePosition(lattice,i).-getSitePosition(lattice,center_sites[b]))) *  c_iipDyn_mat[i,b]
             end
         end
-        c_kDyn = z / length(lattice.unitcell.basis) 
+        c_kDyn = z / length(center_sites) 
     
        #=  #set everything below 1e-12 to zero.
         for c_pos in  eachindex(c_kDyn)
@@ -335,11 +304,7 @@ function get_c_k(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dy
 end
 
 
-function get_c_k(kvec::Union{
-    AbstractVector{Tuple{Vararg{<:Real}}},
-    AbstractMatrix{Tuple{Vararg{<:Real}}},
-    AbstractArray{Tuple{Vararg{<:Real}}}
-    }
+function get_c_k(kvec::AbstractArray{<:Tuple{Vararg{<:Real}}}
     ,c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
 
         fourier_transform(k) = get_c_k(k,c_iipDyn_mat,hte_lattice) 
@@ -348,11 +313,7 @@ function get_c_k(kvec::Union{
 end
 
 
-function inverse_fourier_transform(kvals::Union{
-    AbstractVector{Tuple{Vararg{<:Real}}},
-    AbstractMatrix{Tuple{Vararg{<:Real}}},
-    AbstractArray{Tuple{Vararg{<:Real}}}
-    }
+function inverse_fourier_transform(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
     ,c_kDyn_subl::Union{
     AbstractVector{Matrix{T}},
     AbstractMatrix{Matrix{T}},
@@ -428,11 +389,7 @@ function get_c_k_subl(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattic
 end
 
 function get_c_k_subl(
-    kvals::Union{
-        AbstractVector{Tuple{Vararg{<:Real}}},
-        AbstractMatrix{Tuple{Vararg{<:Real}}},
-        AbstractArray{Tuple{Vararg{<:Real}}}
-    }
+    kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
     ,c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
 
     fourier_transform(k) = get_c_k_subl(k,c_iipDyn_mat,hte_lattice) 
@@ -440,11 +397,7 @@ function get_c_k_subl(
     return fourier_transform.(kvals)
 end
 
-function inverse_fourier_transform_subl(kvals::Union{
-    AbstractVector{Tuple{Vararg{<:Real}}},
-    AbstractMatrix{Tuple{Vararg{<:Real}}},
-    AbstractArray{Tuple{Vararg{<:Real}}}
-    }
+function inverse_fourier_transform_subl(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
     ,c_kDyn_subl::Union{
     AbstractVector{Matrix{T}},
     AbstractMatrix{Matrix{T}},
@@ -640,7 +593,6 @@ end
 
 
 
-
 function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},c_iipDyn_mat::Array{Matrix{Rational{Int128}}},lattice::Dyn_HTE_Lattice;f::Float64=0.48,η::Float64=0.01,r_min::Int=3,r_max::Int=3,r_ext::Int=1000,intercept0::Bool=false)
     """ get the dynamical spin structure factor from the correlation matrix c_iipDyn_mat 
     using pade approximants for the moments either in the variable x = J/T ("pade") or in the variable
@@ -735,189 +687,3 @@ end
 
 
 
-
-
-################################# BJÖRN STOPPED HERE ##################################
-
-
-####Kann Weg: Redundant, multiple dispatch
-#= function get_c_kEqualTime(k,c_iipEqualTime_mat::Array{Rational{Int64}},lattice::Lattice,center_sites)::Vector{Float64}
-    """ computes the spatial FT of c_iipEqualTime for momentum k """
-    """ assumes inversion symmetry of the lattice to get real FT transform """
-    c_kEqualTime = zeros(Float64, length(c_iipEqualTime_mat[1,1,:]))
-    for b in 1:length(lattice.unitcell.basis)
-        for j in 1:length(lattice)
-            r = getSitePosition(lattice,j).-getSitePosition(lattice,center_sites[b])
-            c_kEqualTime[:] += cos(dot(k,r)) *  c_iipEqualTime_mat[j,b,:]
-        end
-    end
-    
-    return c_kEqualTime / length(lattice.unitcell.basis)
-end
-
-function get_c_k(k,c_iipDyn::Matrix{Matrix{Rational{Int64}}},lattice::Lattice,center_sites)::Matrix{Float64}
-    """ computes the spatial FT of c_iipDyn for momentum k """
-    """ assumes inversion symmetry of the lattice to get real FT transform """
-    c_kDyn = 0.0*c_iipDyn[1,1]
-    for b in 1:length(lattice.unitcell.basis)
-        for j in 1:length(lattice)
-            r = getSitePosition(lattice,j).-getSitePosition(lattice,center_sites[b])
-            c_kDyn[:,:] += cos(dot(k,r)) *  c_iipDyn[j,b][:,:]
-        end
-    end
-    
-    for c_pos in  eachindex(c_kDyn)
-        if abs(c_kDyn[c_pos]) < 1e-12
-            c_kDyn[c_pos] = 0.0
-        end
-    end
-
-    return c_kDyn / length(lattice.unitcell.basis)
-end
-
-
-function get_c_k_mat(kvec,c_iipDyn_mat::Array{Matrix{Rational{Int}}},lattice::Lattice,center_sites)::Vector{Matrix{Float64}}
-    """computes the expansion coefficients c_k for the k-points in k_vec """
-    BrillPath = Array{Matrix{Float64}}(undef,length(kvec));
-    for i in eachindex(kvec)
-        z = zeros(size(c_iipDyn_mat[1]))
-        # Compute Fourier transformation at momentum k. The real-space position of the i-th spin is obtained via getSitePosition(lattice,i). 
-        for b in 1:length(lattice.unitcell.basis)
-            for k in 1:length(lattice)
-                z += cos(dot(kvec[i],getSitePosition(lattice,k).-getSitePosition(lattice,center_sites[b]))) *  c_iipDyn_mat[k,b]
-            end
-        end
-        BrillPath[i] = z 
-    end
-    
-    return BrillPath
-end
- =#
-#Keep
-#= 
-function brillouin_zone_cut_inverse(kmat::Matrix{NTuple{D,Float64}},Brillouin_zone_cut::Matrix{T},lattice::Lattice,center_sites)::Matrix{T} where {T,D}
-    """computes the fourier transform along a 2D cut through the 2D or 3D k-space
-        given the Correlation Matrix computet from compute_lattice_correlations """
-    (nx,ny) = size(kmat)
-    Correlators = Array{T}(undef, length(lattice),length(lattice.unitcell.basis));
-    Threads.@threads for k in 1:length(lattice)
-        for b in 1:length(lattice.unitcell.basis)
-        
-            if T == Taylor1{Float64}
-                z = Taylor1(0)
-            elseif T == Float64
-                z = 0.
-            else
-                z = zeros(size(Brillouin_zone_cut[1]))
-                end 
-
-
-        for i in 1:nx,j in 1:ny
-            # Compute Fourier transformation at momentum (kx, ky). The real-space position of the i-th spin is obtained via getSitePosition(lattice,i). 
-                z += cos(dot(kmat[i,j], getSitePosition(lattice,k).-getSitePosition(lattice,center_sites[b]))) *  Brillouin_zone_cut[i,j]
-        end
-        Correlators[k,b] = z/(nx*ny)
-    end
-    end
-    return Correlators
-end
-
-
-
-function brillouin_zone_cut_inverse_Matrix(kmat::Union{Matrix{Tuple{Float64,Float64}},Matrix{Tuple{Float64,Float64,Float64}}},Brillouin_zone_cut::Array{Matrix{T}},lattice::Lattice,center_sites) where {T}
-    """computes the fourier transform along a 2D cut through the 2D or 3D k-space
-        given the Correlation Matrix computed from compute_lattice_correlations """
-        (nx,ny) = size(kmat)
-        struc_vec = Array{T}(undef, nx,ny,length(lattice.unitcell.basis));
-
-        for i in 1:nx,j in 1:ny, b in 1:length(lattice.unitcell.basis)
-
-            struc_vec[i,j,b] = sum(Brillouin_zone_cut[i,j][:,b])
-        end
-
-        return brillouin_zone_cut_inverse_vector(kmat,struc_vec,lattice,center_sites)
-        
-end
-
-function brillouin_zone_cut_Matrix(kmat::Union{Matrix{Tuple{Float64,Float64}},Matrix{Tuple{Float64,Float64,Float64}}},Correlators::Matrix{Matrix{Rational{Int128}}},lattice::Lattice,center_sites)::Matrix{Matrix{Matrix{ComplexF64}}}
-    """computes the fourier transform along a 2D cut through the 2D or 3D k-space
-        given the Correlation Matrix computed from compute_lattice_correlations """
-    (nx,ny) = size(kmat)
-
-    structurefactor = Array{Matrix{Matrix{ComplexF64}}}(undef, nx,ny);
-    Threads.@threads for i in 1:nx
-        for j in 1:ny
-            z = fourier_transform(kmat[i,j],Correlators,lattice,center_sites)
-            structurefactor[i,j] = z #= / (length(lattice) * length(lattice.unitcell.basis)) =#
-        end
-    end
-    return structurefactor
-end
-
-function fourier_transform(k,Correlators::Matrix{Matrix{Rational{Int128}}},lattice::Lattice,center_sites)::Matrix{Matrix{ComplexF64}}
-    """computes the fourier transform along a 2D cut through the 2D or 3D k-space
-        given the Correlation Matrix computed from compute_lattice_correlations """
-   
-    basis_size = length(lattice.unitcell.basis)
-    label = find_site_basis_label(lattice)
-
-
-    structurefactor = Array{Matrix{ComplexF64}}(undef, basis_size,basis_size);
-            
-            # Compute Fourier transformation at momentum (kx, ky). The real-space position of the i-th spin is obtained via getSitePosition(lattice,i). 
-            for b1 in 1:basis_size
-                for b2 in 1:basis_size
-                
-                    z = zeros(size(Correlators[1]))
-
-                #find all indices that correspond to basis b2
-                indexlist = findall(x->x==b2,label)
-
-                # calculate correlator between the center site of b1 and all sites of b2 
-                for index in indexlist
-                    z += exp(-1im*dot(k, getSitePosition(lattice,index).-getSitePosition(lattice,center_sites[b1]))) *  Correlators[index,b1]
-                end
-                structurefactor[b1,b2] = z
-                end
-
-             end
-
-    return structurefactor
-end
-
-function inverse_fourier_transform(kmat,Correlators::Matrix{Matrix{T}},lattice::Lattice,center_sites)::Matrix{T} where {T}
-    """computes the fourier transform along a 2D cut through the 2D or 3D k-space
-        given the Correlation Matrix computet from compute_lattice_correlations """
-   
-    basis_size = length(lattice.unitcell.basis)
-    label = find_site_basis_label(lattice)
-
-
-    (nx,ny) = size(kmat)
-    structurefactor = Array{T}(undef, length(lattice),length(lattice.unitcell.basis));
-
-        for b1 in 1:basis_size
-            for b2 in 1:basis_size
-                    indexlist = findall(x->x==b2,label)
-
-
-                for index in indexlist
-                    if T == Taylor1{ComplexF64}||T == Taylor1{Float64}
-                        z = Taylor1(0)
-                        else
-                        z = zeros(size(Correlators[1][1]))
-                    end 
-                   
-
-                    for i in 1:nx,j in 1:ny
-                        z += exp(1im*dot(kmat[i,j], getSitePosition(lattice,index).-getSitePosition(lattice,center_sites[b1]))) *  Correlators[i,j][b1,b2]
-                    end
-                  
-                    structurefactor[index,b1] = real(z/(nx*ny))
-                end
-            end
-
-        end
-    return structurefactor
-end
- =#
