@@ -133,3 +133,149 @@ ax=Axis(fig[1,1],limits=(0,2,-3,3),xlabel=L"k/ \pi",ylabel=L"\omega/J=w",title="
 hm=CairoMakie.heatmap!(ax,[k[1]/π for k in k_vec],w_vec,JSkw_mat,colormap=:viridis,colorrange=(0.0,0.45),highclip=:white)
 display(fig)
 
+
+
+
+
+
+
+########################################################
+########################################################
+########################################################
+########################################################
+########################################################
+#ONLY FOR PAPER PLOTS FROM HERE ON 
+
+#DMRG DYN-HTE COMPARISON
+
+
+######NOW THE COMPARISON OF Dyn-HTE and DMRG
+#S_dyn_HTE= load_object("DSF_with_DynHTE_differnt_temperatures.jdl2")
+using MAT
+betas = [0,2,4]
+
+title_string =["","","","","","","","",""] 
+
+xPlots,yPlots=3,3
+
+fig = CairoMakie.Figure(layout=(yPlots,xPlots), size=(aps_width*2,0.60*aps_width*2),fontsize=7)
+
+grid = fig[1,1]= GridLayout()
+
+plotsDMRG = []
+plotsDynHTE = []
+plotsKslices = []
+hm= 0
+for (i,beta) in enumerate(betas)
+    data = matread("SF_beta_"*string(beta)*".mat")
+
+    #DMRG
+    k_DMRG = data["kk"]
+    w_DMRG = data["om"]
+    S_DMRG = data["Skw"]
+
+    #dyn-HTE
+    k_step_size = 1/41
+    w_step_size = 0.025
+    k_vec = vcat(vcat((0.0001,0.0),[(k*pi,0.0) for k in 0:k_step_size:2][2:end-1] ),(1.999*pi,0.0))#[(k,0.0) for k in 0.01:0.0039*2.4:(2*π-0.01)]
+    w_vec = collect(-3:w_step_size:3)# for reliable sigma: collect(-5:0.05*0.1:5)
+    
+
+    #blur data
+    using ImageFiltering
+    sigma = 2.1
+    kernel = Kernel.gaussian(sigma)
+    S_DMRG_blurred = imfilter(S_DMRG, kernel)
+
+
+
+
+    ax=CairoMakie.Axis(grid[2,i],limits=(0,2,-2.5,2.5),xlabel=L"k/ \pi",ylabel=L"\omega/J=w",title=title_string[i],titlesize=10,xlabelsize=8,ylabelsize=8)
+    
+    
+
+    #DMRG
+    ax_dynHTE=CairoMakie.Axis(grid[1,i],limits=(0,2,-2.5,2.5),xlabel=L"k/ \pi",ylabel=L"\omega/J=w",title=title_string[i+3],titlesize=10,xlabelsize=8,ylabelsize=8)
+
+    hm=CairoMakie.heatmap!(ax,vec(k_DMRG)[1:3:end],vec(w_DMRG)[1:2:end],S_DMRG_blurred[1:3:end,1:2:end],colormap=:viridis,colorrange=(0.0,0.45),highclip=:white)
+    
+    push!(plotsDMRG, ax)
+    #dynHTE spot
+    CairoMakie.heatmap!(ax_dynHTE,vec([k[1]/π for k in k_vec])[1:end],vec(w_vec)[1:end],S_dyn_HTE[i][1:end,1:end],colormap=:viridis,colorrange=(0.0,0.45),highclip=:white)
+    push!(plotsDynHTE, ax_dynHTE)
+
+    ###annotate
+    CairoMakie.text!(ax_dynHTE, 0.03, 2.42, text=[L"x=0",L"x=2",L"x=4"][i], fontsize=13, color=:white, align=(:left, :top) )
+    CairoMakie.text!(ax, 0.03, 2.42, text=[L"x=0",L"x=2",L"x=4"][i], fontsize=13, color=:white, align=(:left, :top) )
+    CairoMakie.text!(ax_dynHTE, 0.03, -1.8, text="Dyn-HTE", fontsize=12, color=:white, align=(:left, :top) )
+    CairoMakie.text!(ax, 0.03, -1.8, text="DMRG", fontsize=12, color=:white, align=(:left, :top) )
+    CairoMakie.text!(ax_dynHTE, 1.29, -1.81, text=[L"\Sigma=0.251",L"\Sigma=0.251",L"\Sigma=0.248"][i], fontsize=13, color=:white, align=(:left, :top) )
+    CairoMakie.text!(ax, 1.29, -1.81, text=L"\Sigma=0.250", fontsize=13, color=:white, align=(:left, :top) )
+
+    #k slices 
+    k_slice_values=[(0.2*π,0.0),(1*π,0.0)]
+    
+
+    if i==1
+        ax_k_sliced =CairoMakie.Axis(grid[3,i],xlabel=L"\omega/J=w",ylabel=L"JS(k,\omega)",title=title_string[i+6],titlesize=10,xlabelsize=8,ylabelsize=8 ,limits=(-3,3,-0.01,0.27))
+
+        for (k_pos,k) in enumerate([k_slice_values[i][1] for i=1:length(k_slice_values)])
+            CairoMakie.scatter!(ax_k_sliced,w_DMRG[1:2:191],S_DMRG_blurred[round(Integer,k/(pi*0.00390625)),:][1:2:191],color = color_vec[k_pos],markersize =5, alpha =0.6,label=["DMRG \n (k=0.2π)","DMRG \n (k=π)"][k_pos])
+            CairoMakie.lines!(ax_k_sliced,w_vec,S_dyn_HTE[i][round(Int,(k)/(k_step_size*pi))+1,:],color = color_vec[k_pos],label=["Dyn-HTE \n (k=0.2π)","Dyn-HTE \n (k=π)"][k_pos] )
+        end
+        subgrid = GridLayout(grid[3, 4], tellheight = false)
+        legend =Legend(subgrid[1,2],ax_k_sliced, position  = (0, 1),   tellwidth = false, backgroundcolor = :white, framevisible = false, labelsize = 7  ,anchor = :TopRight          )
+
+        CairoMakie.text!(ax_k_sliced,-2.84, 0.237, text=L"x=0", fontsize=10, color=:black)
+    else
+        ax_k_sliced =CairoMakie.Axis(grid[3,i],xlabel=L"\omega/J=w",title=title_string[i+6],titlesize=10,xlabelsize=8,ylabelsize=8 ,limits=[(-3,3,-0.012,0.31),(-3,3,-0.03,0.64)][i-1])
+
+        for (k_pos,k) in enumerate([k_slice_values[i][1] for i=1:length(k_slice_values)])
+            CairoMakie.scatter!(ax_k_sliced,w_DMRG[1:2:191],S_DMRG_blurred[round(Integer,k/(pi*0.00390625)),:][1:2:191],color = color_vec[k_pos],markersize =5, alpha =0.6)
+            CairoMakie.lines!(ax_k_sliced,w_vec,S_dyn_HTE[i][round(Int,(k)/(k_step_size*pi))+1,:],color = color_vec[k_pos])
+        end
+
+        CairoMakie.text!(ax_k_sliced, -2.84, [0.269,0.563][i-1], text=[L"x=2",L"x=4"][i-1], fontsize=10, color=:black )
+    end
+
+    ax_k_sliced.xgridvisible =false
+    ax_k_sliced.ygridvisible =false
+    push!(plotsKslices, ax_k_sliced)
+end 
+
+
+
+
+subgrid = GridLayout(grid[1, 4], tellheight = false)
+subgrid2 = GridLayout(grid[2, 4], tellheight = false)
+
+Label(subgrid[1, 1], L"JS(k,\omega)",fontsize=10)
+Label(subgrid2[1, 1],L"JS(k,\omega)",fontsize=10)
+
+
+cb1=CairoMakie.Colorbar(subgrid[2, 1],hm,size=11,labelsize = 10) 
+cb2= CairoMakie.Colorbar(subgrid2[2, 1],hm,size=11,labelsize = 10)
+
+hideydecorations!(plotsDMRG[2])
+hideydecorations!(plotsDMRG[3])
+hidedecorations!(plotsDynHTE[2], grid = false)
+hidedecorations!(plotsDynHTE[3], grid = false)
+hidexdecorations!(plotsDynHTE[1])
+hidedecorations!(plotsDynHTE[3], grid = false)
+# hideydecorations!(plotsKslices[2])
+# hideydecorations!(plotsKslices[3])
+
+colgap!(subgrid, 0)
+rowgap!(subgrid, 0)
+
+colgap!(subgrid2, 0)
+rowgap!(subgrid2, 0)
+
+colgap!(grid, 7)
+rowgap!(grid, 8)
+
+
+resize_to_layout!(fig)
+# Plots.savefig("dynHTE_dmrg_test.pdf")
+display(fig)
+save("chain_dynHTE_DMRG_comparison.png",fig;px_per_unit=2.0)
