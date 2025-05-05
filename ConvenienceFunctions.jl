@@ -612,7 +612,7 @@ function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Floa
 
     for (k_pos,k) in enumerate(k_vec)
         println(k_pos,"/",length(k_vec))
-        c_kDyn_mat = get_c_kDyn([k],c_iipDyn_mat,lattice)[1]
+        c_kDyn_mat = get_c_k([k],c_iipDyn_mat,lattice)[1]
         m_vec = get_moments_from_c_kDyn(c_kDyn_mat)[1:7]
 
         ###pade in x=J/T 
