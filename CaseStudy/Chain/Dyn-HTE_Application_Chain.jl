@@ -2,7 +2,7 @@
 using Polynomials, HDF5, Measurements
 
 
-path_DynHTSE="C:/Users/ruben/Documents/GitHub/Projects/Master/Dyn-HTE/Dyn-HTE/"
+path_DynHTSE="../../"
 include(path_DynHTSE*"LatticeGraphs.jl")
 include(path_DynHTSE*"ConvenienceFunctions.jl")
 include(path_DynHTSE*"plotConventions.jl") 
@@ -117,7 +117,7 @@ display(plt_dsf)
 ###SPIN STRUCTURE FACTOR HEATMAPS
 using CairoMakie
 
-x = 0.0                #define temperature (x=J/T)
+x = 4.0                #define temperature (x=J/T)
 k_step_size = 1/41     #define k step size (in 1/π)
 w_step_size = 0.025    #define ω step size (in 1/J)
 #define k and ω vectors 
@@ -125,7 +125,7 @@ k_vec = vcat(vcat((0.0001,0.0),[(k*pi,0.0) for k in 0:k_step_size:2][2:end-1] ),
 w_vec = collect(-3:w_step_size:3)
 
 #calculate the spin structure factor for the given k and ω 
-JSkw_mat = get_JSkw_mat("u_pade",x,k_vec,w_vec,c_iipDyn_mat,hte_lattice)
+JSkw_mat = get_JSkw_mat("u_pade",x,k_vec,w_vec,c_iipDyn_mat,hte_lattice,f=0.48)
 
 #plot the result
 fig = Figure(size=(400,400),fontsize=20)
