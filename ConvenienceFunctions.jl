@@ -218,7 +218,8 @@ function get_p_u(coeffs_x::Vector{Float64},f::Float64)
     p_u = Polynomial(Symbolics.value.(taylor_coeff(p_u_ext,u,0:12,rationalize=false)),:u)
     return p_u
 end
-
+#= 
+Deprecated (Super Slow)
 function get_LinearTrafoToCoeffs_u(max_order::Int,f::Float64)::Matrix{Float64}
     """ get linear transform polynomial coeffs from x to u=tanh(fx) """ 
     """ to be used as res*coeffs_x """
@@ -231,6 +232,33 @@ function get_LinearTrafoToCoeffs_u(max_order::Int,f::Float64)::Matrix{Float64}
         res[:,n+1] = Symbolics.value.(taylor_coeff(xpn,u,0:max_order,rationalize=false))
     end
     return res
+end =#
+
+function get_LinearTrafoToCoeffs_u(max_order::Int, f::Float64)::Matrix{Float64}
+    data = [
+        [1],
+        [0, 1/f, 0,  (1/(3f)), 0, 2/(15f), 0,  (17/(315f)), 0, 62/(2835f), 0,  (1382/(155925f))],
+        [0, 0, 1/f^2, 0,  (2/(3f^2)), 0, 17/(45f^2), 0,  (62/(315f^2)), 0, 1382/(14175f^2), 0,  (21844/(467775f^2))],
+        [0, 0, 0, 1/f^3, 0,  (1/f^3), 0, 11/(15f^3), 0,  (88/(189f^3)), 0, 1282/(4725f^3)],
+        [0, 0, 0, 0, 1/f^4, 0,  (4/(3f^4)), 0, 6/(5f^4), 0,  (848/(945f^4)), 0, 8507/(14175f^4)],
+        [0, 0, 0, 0, 0, 1/f^5, 0,  (5/(3f^5)), 0, 16/(9f^5), 0,  (289/(189f^5))],
+        [0, 0, 0, 0, 0, 0, 1/f^6, 0,  (2/f^6), 0, 37/(15f^6), 0,  (2266/(945f^6))],
+        [0, 0, 0, 0, 0, 0, 0, 1/f^7, 0,  (7/(3f^7)), 0, 49/(15f^7)],
+        [0, 0, 0, 0, 0, 0, 0, 0, 1/f^8, 0,  (8/(3f^8)), 0, 188/(45f^8)],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^9, 0,  (3/f^9)],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^10, 0,  (10/(3f^10))],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^11],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^12]
+    ]
+
+    mat = zeros(Float64, 13, 13)
+    for i in 1:13
+        for j in 1:length(data[i])
+            mat[j, i] = data[i][j]
+        end
+    end
+
+    return mat[1:max_order+1,1:max_order+1]
 end
 
 ###### k-space functions
