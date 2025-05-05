@@ -108,20 +108,18 @@ end
 
 ###### bare series polynomial in Gii'(x,m) at Matsubara integer m truncated at n 
 
-#Kann weg
-function get_TGiip_m_bare(c_iipDyn_mat::Matrix{Matrix{Rational{Int64}}},m::Int,n::Int)::Matrix{Polynomial}
-    TGiip_bare = Array{Polynomial}(undef, lattice.length,length(lattice.unitcell.basis));
-    for jp = 1:lattice.length
-        for b = 1:length(lattice.unitcell.basis)
-            if m==0
-                TGiip_bare[jp,b] = Polynomial([1.0*c_iipDyn_mat[jp,b][nn+1,1]*(-1)^nn for nn in 0:n])
-            else
-                TGiip_bare[jp,b] = Polynomial([sum(c_iipDyn_mat[jp,b][nn+1,2:end] .* [1/(2*pi*m)^(2*l) for l in eachindex(c_iipDyn_mat[jp,b][1,2:end])])*(-1)^nn for nn in 0:n])
-            end
-        end
+""" get the expansion of the Matsubara correlator TGii'(iνm) as x-Polyomial for spatial entries i,ip of c_iipDyn_mat"""
+function get_TGiip_Matsubara_xpoly(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}},i::Int,ip::Int,m::Int)
+    if m==0
+        p_x = 1.0*Polynomial(flipEvenIndexEntries(c_iipDyn_mat[i,ip][:,1]))
+    else
+        coeffs_m = [sum([c_iipDyn_mat[i,ip][n+1,lhalf+1] * 1/(2*π*m)^(2*lhalf) for lhalf in 1:9]) for n in 0:n_max]
+        p_x = 1.0*Polynomial(flipEvenIndexEntries(coeffs_m))
     end
-    return TGiip_bare
+
+    return p_x
 end
+
 
 function flipEvenIndexEntries(v)
     """ v=[a,b,c,d,...] -> [+a,-b,+c,-d,...] """
@@ -218,9 +216,10 @@ function get_p_u(coeffs_x::Vector{Float64},f::Float64)
     p_u = Polynomial(Symbolics.value.(taylor_coeff(p_u_ext,u,0:12,rationalize=false)),:u)
     return p_u
 end
+
 #= 
-Deprecated (Super Slow)
-function get_LinearTrafoToCoeffs_u(max_order::Int,f::Float64)::Matrix{Float64}
+#Deprecated (Super Slow)
+function get_LinearTrafoToCoeffs_u_old(max_order::Int,f::Float64)::Matrix{Float64}
     """ get linear transform polynomial coeffs from x to u=tanh(fx) """ 
     """ to be used as res*coeffs_x """
     res = zeros(max_order+1,max_order+1)
@@ -261,6 +260,7 @@ function get_LinearTrafoToCoeffs_u(max_order::Int, f::Float64)::Matrix{Float64}
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^16]
     ]
 
+    
     mat = zeros(Float64, 17, 17)
     for i in 1:17
         for j in 1:length(data[i])
@@ -270,6 +270,7 @@ function get_LinearTrafoToCoeffs_u(max_order::Int, f::Float64)::Matrix{Float64}
 
     return mat[1:max_order+1,1:max_order+1]
 end
+
 
 ###### k-space functions
 
