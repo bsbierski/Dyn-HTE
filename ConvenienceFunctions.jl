@@ -108,20 +108,18 @@ end
 
 ###### bare series polynomial in Gii'(x,m) at Matsubara integer m truncated at n 
 
-#Kann weg
-function get_TGiip_m_bare(c_iipDyn_mat::Matrix{Matrix{Rational{Int64}}},m::Int,n::Int)::Matrix{Polynomial}
-    TGiip_bare = Array{Polynomial}(undef, lattice.length,length(lattice.unitcell.basis));
-    for jp = 1:lattice.length
-        for b = 1:length(lattice.unitcell.basis)
-            if m==0
-                TGiip_bare[jp,b] = Polynomial([1.0*c_iipDyn_mat[jp,b][nn+1,1]*(-1)^nn for nn in 0:n])
-            else
-                TGiip_bare[jp,b] = Polynomial([sum(c_iipDyn_mat[jp,b][nn+1,2:end] .* [1/(2*pi*m)^(2*l) for l in eachindex(c_iipDyn_mat[jp,b][1,2:end])])*(-1)^nn for nn in 0:n])
-            end
-        end
+""" get the expansion of the Matsubara correlator TGii'(iνm) as x-Polyomial for spatial entries i,ip of c_iipDyn_mat"""
+function get_TGiip_Matsubara_xpoly(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}},i::Int,ip::Int,m::Int)
+    if m==0
+        p_x = 1.0*Polynomial(flipEvenIndexEntries(c_iipDyn_mat[i,ip][:,1]))
+    else
+        coeffs_m = [sum([c_iipDyn_mat[i,ip][n+1,lhalf+1] * 1/(2*π*m)^(2*lhalf) for lhalf in 1:9]) for n in 0:n_max]
+        p_x = 1.0*Polynomial(flipEvenIndexEntries(coeffs_m))
     end
-    return TGiip_bare
+
+    return p_x
 end
+
 
 function flipEvenIndexEntries(v)
     """ v=[a,b,c,d,...] -> [+a,-b,+c,-d,...] """
@@ -218,21 +216,6 @@ function get_p_u(coeffs_x::Vector{Float64},f::Float64)
     p_u = Polynomial(Symbolics.value.(taylor_coeff(p_u_ext,u,0:12,rationalize=false)),:u)
     return p_u
 end
-#= 
-Deprecated (Super Slow)
-function get_LinearTrafoToCoeffs_u(max_order::Int,f::Float64)::Matrix{Float64}
-    """ get linear transform polynomial coeffs from x to u=tanh(fx) """ 
-    """ to be used as res*coeffs_x """
-    res = zeros(max_order+1,max_order+1)
-    @variables x u
-    x = taylor((atanh(u)/f), u, 0:max_order, rationalize=false)
-
-    for n in 0:max_order
-        xpn = simplify(x^n;expand=true)
-        res[:,n+1] = Symbolics.value.(taylor_coeff(xpn,u,0:max_order,rationalize=false))
-    end
-    return res
-end =#
 
 function get_LinearTrafoToCoeffs_u(max_order::Int, f::Float64)::Matrix{Float64}
 """ get linear transform polynomial coeffs from x to u=tanh(fx) """ 
@@ -242,25 +225,27 @@ function get_LinearTrafoToCoeffs_u(max_order::Int, f::Float64)::Matrix{Float64}
     end
 
     data = [
-        [1],
-        [0, 1/f, 0,  (1/(3f)), 0, 2/(15f), 0,  (17/(315f)), 0, 62/(2835f), 0,  (1382/(155925f)), 0, 21844/(6081075f), 0,  (929569/(638512875f))],
-        [0, 0, 1/f^2, 0,  (2/(3f^2)), 0, 17/(45f^2), 0,  (62/(315f^2)), 0, 1382/(14175f^2), 0,  (21844/(467775f^2)), 0, 929569/(42567525f^2), 0,  (6404582/(638512875f^2))],
-        [0, 0, 0, 1/f^3, 0,  (1/f^3), 0, 11/(15f^3), 0,  (88/(189f^3)), 0, 1282/(4725f^3), 0,  (133/(891f^3)), 0, 16769029/(212837625f^3)],
-        [0, 0, 0, 0, 1/f^4, 0,  (4/(3f^4)), 0, 6/(5f^4), 0,  (848/(945f^4)), 0, 8507/(14175f^4), 0,  (3868/(10395f^4)), 0, 46471426/(212837625f^4)],
-        [0, 0, 0, 0, 0, 1/f^5, 0,  (5/(3f^5)), 0, 16/(9f^5), 0,  (289/(189f^5)), 0, 467/(405f^5), 0,  (24779/(31185f^5))],
-        [0, 0, 0, 0, 0, 0, 1/f^6, 0,  (2/f^6), 0, 37/(15f^6), 0,  (2266/(945f^6)), 0, 1901/(945f^6), 0,  (79214/(51975f^6))],
-        [0, 0, 0, 0, 0, 0, 0, 1/f^7, 0,  (7/(3f^7)), 0, 49/(15f^7), 0,  (478/(135f^7)), 0, 2207/(675f^7)],
-        [0, 0, 0, 0, 0, 0, 0, 0, 1/f^8, 0,  (8/(3f^8)), 0, 188/(45f^8), 0,  (944/(189f^8)), 0, 23782/(4725f^8)],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^9, 0,  (3/f^9), 0, 26/(5f^9), 0,  (2141/(315f^9))],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^10, 0,  (10/(3f^10)), 0, 19/(3f^10), 0,  (566/(63f^10))],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^11, 0,  (11/(3f^11)), 0, 341/(45f^11)],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^12, 0,  (4/f^12), 0, 134/(15f^12)],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^13, 0,  (13/(3f^13))],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^14, 0,  (14/(3f^14))],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^15],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1/f, 0, 1/(3f), 0, 1/(5f), 0, 1/(7f), 0, 1/(9f), 0, 1/(11f), 0, 1/(13f), 0, 1/(15f), 0],
+        [0, 0, 1/f^2, 0, 2/(3f^2), 0, 23/(45f^2), 0, 44/(105f^2), 0, 563/(1575f^2), 0, 3254/(10395f^2), 0, 88069/(315315f^2), 0, 11384/(45045f^2)],
+        [0, 0, 0, 1/f^3, 0, 1/f^3, 0, 14/(15f^3), 0, 818/(945f^3), 0, 141/(175f^3), 0, 13063/(17325f^3), 0, 16774564/(23648625f^3), 0],
+        [0, 0, 0, 0, 1/f^4, 0, 4/(3f^4), 0, 22/(15f^4), 0, 1436/(945f^4), 0, 21757/(14175f^4), 0, 11368/(7425f^4), 0, 35874836/(23648625f^4)],
+        [0, 0, 0, 0, 0, 1/f^5, 0, 5/(3f^5), 0, 19/(9f^5), 0, 457/(189f^5), 0, 7474/(2835f^5), 0, 261502/(93555f^5), 0],
+        [0, 0, 0, 0, 0, 0, 1/f^6, 0, 2/f^6, 0, 43/(15f^6), 0, 680/(189f^6), 0, 3982/(945f^6), 0, 147668/(31185f^6)],
+        [0, 0, 0, 0, 0, 0, 0, 1/f^7, 0, 7/(3f^7), 0, 56/(15f^7), 0, 688/(135f^7), 0, 12926/(2025f^7), 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 1/f^8, 0, 8/(3f^8), 0, 212/(45f^8), 0, 6568/(945f^8), 0, 18778/(2025f^8)],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^9, 0, 3/f^9, 0, 29/(5f^9), 0, 2897/(315f^9), 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^10, 0, 10/(3f^10), 0, 7/f^10, 0, 748/(63f^10)],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^11, 0, 11/(3f^11), 0, 374/(45f^11), 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^12, 0, 4/f^12, 0, 146/(15f^12)],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^13, 0, 13/(3f^13), 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^14, 0, 14/(3f^14)],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^15, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^16]
     ]
 
+
+    
     mat = zeros(Float64, 17, 17)
     for i in 1:17
         for j in 1:length(data[i])
@@ -270,6 +255,7 @@ function get_LinearTrafoToCoeffs_u(max_order::Int, f::Float64)::Matrix{Float64}
 
     return mat[1:max_order+1,1:max_order+1]
 end
+
 
 ###### k-space functions
 
