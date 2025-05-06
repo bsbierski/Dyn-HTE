@@ -146,7 +146,187 @@ display(fig)
 ########################################################
 #ONLY FOR PAPER PLOTS FROM HERE ON 
 
-#DMRG DYN-HTE COMPARISON
+##Delta extrapolations and structure factor
+###### S(k,w): few k points, plot δ_vec and show robustness of δ-extrapolation
+### pick x=0 for now (later check x>0, use PADE or IDA), get δs and plot them
+x=0.0
+k_vec=[0.2*π,0.8*π]
+
+w_vec = collect(-3.0:0.01:3.0)
+η=0.01
+ext_vec = [[2,3,true],[2,3,false],[2,4,true],[2,4,false]]
+
+title=""#"AFM Heisenberg chain, J/T=x=$x"
+plt_δ = plot([0],[0],label="",xlabel=L"r",ylabel=L"\delta_r",title="X="*string(x),legend=:topleft,xlim=(-0.2,10.2),ylim=(0,8))
+plt_S = plot(xlabel=L"w=\omega/J",ylabel=L"JS(k,\omega)",title="X="*string(x))
+#plt_m = plot([0],[0],label="",xlabel=L"r",ylabel=L"m_r",xlim=(-0.2,10.2))
+
+for (k_pos,k) in enumerate(k_vec)
+
+    c_kDyn_mat = get_c_k([(k,0)],c_iipDyn_mat,hte_lattice)[1]
+    m_vec = get_moments_from_c_kDyn(c_kDyn_mat)
+    δ_vec,r_vec = fromMomentsToδ([m(x) for m in m_vec])
+
+    Plots.scatter!(plt_δ,0:(length(δ_vec)-1),δ_vec,color=color_vec[k_pos],label=L"k/\pi="*string(k/π),markersize=7.0,markeralpha=0.6)
+    
+    #scatter!(plt_m,0:(length(δ_vec)-1),[m(x) for m in m_vec],color=color_vec[k_pos],label=L"k/\pi="*string(k/π),markersize=7.0,markeralpha=0.6)
+
+    for (ext_pos,ext) in enumerate(ext_vec)
+        δ_vec_ext =  extrapolate_δvec(δ_vec,ext[1],ext[2],2000,Bool(ext[3]))
+        Plots.scatter!(plt_δ,0:length(δ_vec_ext)-1,δ_vec_ext,markersize=3,label="",marker=marker_vec[ext_pos],color=color_vec[k_pos])
+        Plots.plot!(plt_S,w_vec,[JS(δ_vec_ext ,x,w,η) for w in w_vec],label="",color=color_vec[k_pos],linestyle=linestyle_vec[ext_pos])
+    end
+end
+
+xPlots,yPlots=2,1
+plt_final = plot(plt_δ,plt_S , layout=(yPlots,xPlots), size=(aps_width*xPlots,0.62*aps_width*yPlots))
+display(plt_final)
+savefig(plt_final,"HeisenbergAFMSpinHalfChain_Tinf_Skw_various_k.svg")
+
+
+
+##MOMENTS AND DELTAS CHAIN 
+#PLOT DELTA PARAMETERS FOR DIFFERENT TEMPERATURES
+###### delta(beta)
+
+f= 0.48
+
+plot_lst = []
+for (k_idx,k) in enumerate([ 0.2*pi,pi])
+
+betas = 0:0.01:4.5
+#k= 2.350798079#0.699*pi
+
+
+
+#calculate delta for respective x
+c_kDyn_mat = get_c_k([(k,0)],c_iipDyn_mat,hte_lattice)[1]
+m_vec = get_moments_from_c_kDyn(c_kDyn_mat)
+
+# #BASIC PADE 
+# m_vec_extrapolated_pade_basic = []
+# for m_idx=1:length(m_vec)-2
+#     push!(m_vec_extrapolated_pade_basic, get_pade(m_vec[m_idx],7-m_idx,7-m_idx))
+# end
+
+#SUBSTITUTION 
+     #0.76
+pade_orders = [(8,7),(7,8)]
+m_vec_times_x = [m_vec[i]*Polynomial([0,1]) for i=1:length(m_vec)]
+m_vec_times_x_normalized = [m_vec[i]*Polynomial([0,1])/m_vec[i](0) for i=1:length(m_vec)]
+m_vec_extrapolated_pade = [[] for i=1:length(pade_orders)]
+for (idx,pade_order) in enumerate(pade_orders)
+    for m_idx=1:4
+        substitution_matrix = get_LinearTrafoToCoeffs_u(15-2*m_idx,f)
+        p_u = Polynomial(substitution_matrix*coeffs(m_vec_times_x[m_idx]))
+        push!(m_vec_extrapolated_pade[idx], get_pade(p_u,pade_order[1]-m_idx,pade_order[2]-m_idx))
+    end
+end
+
+delta_T = [[[],[],[],[],[],[]]  for i=1:length(pade_orders)]
+
+for (idx,pade_order) in enumerate(pade_orders)
+    for x in [0.5,1.0,2.0,4.0]
+        #PADE
+        #δ_vec_basic,r_vec_basic = fromMomentsToδ([m(x) for m in m_vec_extrapolated_pade_basic])
+        #SUBS
+        δ_vec,r_vec = fromMomentsToδ([m(tanh(f*x))/x for m in m_vec_extrapolated_pade[idx]])
+
+        #deltas 
+        push!(delta_T[idx][1],δ_vec[1])
+        push!(delta_T[idx][2],δ_vec[2])
+        push!(delta_T[idx][3],δ_vec[3])
+        push!(delta_T[idx][4],δ_vec[4])
+        #push!(delta_T[idx][5],δ_vec[5])
+
+    end
+end
+
+
+# #BASIC PADE
+# delta_T_basic = [[],[],[],[],[],[]]
+# for x in betas
+#     #PADE
+#     δ_vec,r_vec = fromMomentsToδ([m(x) for m in m_vec_extrapolated_pade_basic])
+
+#     #deltas 
+#     push!(delta_T_basic[1],δ_vec[1])
+#     push!(delta_T_basic[2],δ_vec[2])
+#     push!(delta_T_basic[3],δ_vec[3])
+#     push!(delta_T_basic[4],δ_vec[4])
+#     #push!(delta_T_basic[5],δ_vec[5])
+
+# end
+
+if k_idx ==1
+    plt_δ = plot([0],[0],label="",xlabel=L"r",ylabel=[L"\delta_r",""][k_idx],legend=:topleft,xlim=(-0.2,3.1),ylim=[(-0.1,5),(-0.1,4.1),(-0.1,3.7)][k_idx])
+    plt_m = plot([0],[0],label="",xlabel=L"x",ylabel=[L"x \cdot m_{\mathbf{k},r}(x)/m_{\mathbf{k},r}(0)",""][k_idx],title=[L"k=0.2 \pi",L"k=\pi"][k_idx],legend=:topleft,xlim=(-0.2,4.5),ylim=[(-0.05,5.1),(-0.05,5.1),(-0.05,2.5)][k_idx])
+else 
+    plt_δ = plot([0],[0],label="",xlabel=L"r",ylabel=[L"\delta_r",""][k_idx],legend=:topleft,xlim=(-0.2,3.1),ylim=[(-0.1,5),(-0.1,5),(-0.1,3.7)][k_idx] ,yticks=([ 0,1,2,3,4], ["", "", "","", ""]))
+    plt_m = plot([0],[0],label="",xlabel=L"x",ylabel=[L"x \cdot m_{\mathbf{k},r}(x)/m_{\mathbf{k},r}(0)",""][k_idx],title=[L"k=0.2 \pi",L"k=\pi"][k_idx],legend=:topleft,xlim=(-0.2,4.5),ylim=[(-0.05,5.1),(-0.05,5.1),(-0.05,2.5)][k_idx] ,yticks=([ 0, 1,2,3,4,5], ["", "", "", "", "", ""]))
+end
+
+if k_idx ==1 
+    Plots.scatter!(plt_δ,[0],[0],label="x=0.5",color = thermalCol4_vec[1])
+    Plots.scatter!(plt_δ,[0],[0],label="x=1.0",color = thermalCol4_vec[2])
+    Plots.scatter!(plt_δ,[0],[0],label="x=2.0",color = thermalCol4_vec[3])
+    Plots.scatter!(plt_δ,[0],[0],label="x=4.0",color = thermalCol4_vec[4])
+
+    Plots.plot!(plt_m,[0],[0],label="x bare",color = "grey",linestyle = linestyle_vec[1],linewidth=0.4)
+    Plots.plot!(plt_m,[0],[0],label="u Padé [7-r,6-r]",color = "grey",linestyle = linestyle_vec[2],alpha =0.5)
+    Plots.plot!(plt_m,[0],[0],label="u Padé [6-r,7-r]",color = "grey",linestyle = linestyle_vec[3])
+    #Plots.plot!(plt_m,[0],[0],label="u Padé [6-r,5-r]",color = "grey",linestyle = linestyle_vec[4])
+    #Plots.plot!(plt_m,[0],[0],label="x Padé [6-r,6-r]",color = "grey",linestyle = linestyle_vec[4])
+
+
+    Plots.plot!(plt_m,[0],[0],label="r=0",color = color_vec[1],linestyle = linestyle_vec[1])
+    Plots.plot!(plt_m,[0],[0],label="r=1",color = color_vec[2],linestyle = linestyle_vec[1])
+    Plots.plot!(plt_m,[0],[0],label="r=2",color = color_vec[3],linestyle = linestyle_vec[1])
+    Plots.plot!(plt_m,[0],[0],label="r=3",color = color_vec[4],linestyle = linestyle_vec[1])
+end
+
+#BARE SERIES
+for i=1:4
+    Plots.plot!(plt_m,betas[1:180],m_vec_times_x_normalized[i].(betas[1:180]),label = nothing,alpha= 0.7,color = color_vec[i],linestyle = linestyle_vec[1],linewidth=0.5)
+end
+
+#U PADE
+for (idx,pade_order) in enumerate(pade_orders)
+    for i=1:4
+        #Plots.plot!(plt_δ,betas,delta_T[idx][i],label = nothing,alpha= [0.5,1][idx],color = color_vec[i],linestyle = linestyle_vec[idx+1])
+        Plots.plot!(plt_m,betas,m_vec_extrapolated_pade[idx][i].(tanh.(f.*betas))/(m_vec_extrapolated_pade[idx][i].(tanh.(f.*0.001))/0.001),label = nothing,alpha= [0.5,1,1][idx],color = color_vec[i],linestyle = linestyle_vec[idx+1])
+    end
+end
+# #BASIC PADE
+# for i=1:4
+#     #Plots.plot!(plt_δ,betas,delta_T_basic[i],label=nothing,color = color_vec[i],linestyle = linestyle_vec[4])
+#     Plots.plot!(plt_m,betas,m_vec_extrapolated_pade_basic[i].(betas).*betas/(m_vec_extrapolated_pade_basic[i].(0.0)),color = color_vec[i],linestyle = linestyle_vec[4],label = nothing)
+# end
+
+#DELTAS 
+i=0
+for beta_idx in 1:4
+    i+=1
+    Plots.scatter!(plt_δ,0:3,[delta_T[1][1][beta_idx],delta_T[1][2][beta_idx],delta_T[1][3][beta_idx],delta_T[1][4][beta_idx]],label = nothing,color = thermalCol4_vec[i],markersize=7)
+end
+
+push!(plot_lst, plt_δ)
+push!(plot_lst, plt_m)
+
+end
+xPlots,yPlots=2,2
+# display(Plots.plot(plot_lst[2],plot_lst[1],  layout=(yPlots,xPlots), size=(aps_width*2,0.60*aps_width*yPlots)))
+display(Plots.plot(plot_lst[2],plot_lst[4],plot_lst[1],plot_lst[3],  layout=(yPlots,xPlots), size=(aps_width*2,0.46*aps_width*yPlots)))
+
+
+
+savefig("chain_moments_and_deltas.pdf")
+
+
+
+
+
+##DMRG DYN-HTE COMPARISON
 
 
 ######NOW THE COMPARISON OF Dyn-HTE and DMRG
