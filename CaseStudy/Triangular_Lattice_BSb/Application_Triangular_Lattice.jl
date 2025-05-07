@@ -41,10 +41,10 @@ if true #test uniform χ against HTE literature
     println( [coeffs_HTE[1+n]*(-1)^n//4^(n+1)//factorial(Int128(n+1)) for n in 0:n_max]' )
 end
 
-###### equal-time correlations (k-space)
+###### equal-time correlations (k-space) and comparison to XTRG of [ChenPRB2019]
 if true ### Gk for special k vs x with u-Pade
     k,k_label = K,"K"
-    f=0.2
+    f=0.2  #f=0.3 for k=M, f=0.2 for k=K.
     ufromx_mat = get_LinearTrafoToCoeffs_u(n_max,f)
     x_vec = collect(0:0.05:5.1)
     u_vec = tanh.(f .* x_vec)
@@ -57,8 +57,8 @@ if true ### Gk for special k vs x with u-Pade
     p_u = Polynomial(ufromx_mat*coeffs_x)
 
     plot!(plt,x_vec[x_vec .< 1.15], Polynomial(coeffs_x).(x_vec[x_vec .< 1.15]),color=:blue,label="x-series",linewidth=0.5)
-    plot!(plt,x_vec,get_pade(p_u,6,6).(u_vec),color=:blue,linestyle=linestyle_vec[2],label="u-Padé[6,6]")
-    plot!(plt,x_vec,get_pade(p_u,5,5).(u_vec),color=:blue,linestyle=linestyle_vec[3],label="u-Padé[5,5]")
+    plot!(plt,x_vec,get_pade(p_u,6,6).(u_vec),color=:blue,linestyle=linestyle_vec[2],label="u-Padé[6,6] (f=$f)")
+    plot!(plt,x_vec,get_pade(p_u,5,5).(u_vec),color=:blue,linestyle=linestyle_vec[3],label="u-Padé[5,5] (f=$f)")
     #plot!(plt,x_vec,get_pade(p_u,4,4).(u_vec),color=:blue,linestyle=linestyle_vec[4],label="u-Padé[4,4]")
     #plot!(plt,x_vec,get_pade(p_u,6,5).(u_vec),color=:blue,linestyle=linestyle_vec[5],label="u-Padé[6,5]")
 
@@ -67,7 +67,7 @@ if true ### Gk for special k vs x with u-Pade
     #plot!(plt,x_vec,get_pade(p_x,4,4).(x_vec),color=:green,linestyle=linestyle_vec[4],label="x-Padé[4,4]")
 
 
-    ### plot Gk from [ChenPRB2025]
+    ### plot Gk from [ChenPRB2019]
     fileNameXTRG = "CaseStudy/Triangular_Lattice_BSb/Triangular_ThreeGk"*k_label*"_Chen.csv"
     if isfile(fileNameXTRG)
         data = readdlm(fileNameXTRG,',',Float64)
@@ -79,6 +79,8 @@ if true ### Gk for special k vs x with u-Pade
     display(plt_final)
     savefig(plt_final,"CaseStudy/Triangular_Lattice_BSb/Triangular_EqualTime_Gk"*k_label*".png")
 end
+
+
 
 
 #########################################################################################
@@ -226,24 +228,20 @@ if k_label=="K" plt_JS_K = deepcopy(plt_JS) end
 if k_label=="M" plt_JS_M = deepcopy(plt_JS) end
 
 
-### run the above for K and M and then put together
+###### run the above for K and M and then put together
 xPlots,yPlots=1,2
-plt_final = plot(plt_JS_M,plt_JS_K, layout=(yPlots,xPlots), size=(aps_width*xPlots,(0.48)*aps_width*yPlots))
+plt_final = plot(plt_JS_M,plt_JS_K, layout=(yPlots,xPlots), size=(aps_width*xPlots,(0.48)*aps_width*yPlots),dpi=600)
 display(plt_final)
 savefig(plt_final,"CaseStudy/Triangular_Lattice_BSb/Triangular_DSF.png")
 
 
 
 
-### background: scaling plot of DSF at k=K at three different α (in quantum critical T-regime?)
+### background information: scaling plot of DSF at k=K at three different α (in quantum critical T-regime?)
 if k_label=="K" && false
     w_max = 1.0
     w_vec = collect(0.0:0.02:w_max)
     α1,α2,α3 = [1.0,1.1,1.2]
-
-    plt_JS[2] = plot(ylims=(0.08,0.17),legend=:topright)
-    plot!(plt_JS[2],xlabel=L"\omega/T\;\;(\omega \leq"*string(w_max)*L" \,J)",ylabel=L"J\, S(\mathbf{k}="*k_label*L",\omega) \times (T/J)^\alpha  \;\;\; \alpha="*string(α3))
-
 
     plt_JS_scaled1 = plot(ylims=(0.08,0.17),legend=:topright)
     plt_JS_scaled2 = plot(ylims=(0.08,0.17),legend=:topright)
