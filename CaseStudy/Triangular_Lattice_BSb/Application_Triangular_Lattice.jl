@@ -81,6 +81,153 @@ if true ### Gk for special k vs x with u-Pade
 end
 
 
+#########################################################################################
+###### Static structure factor (iν_m=0) #################################################
+#########################################################################################
+if true ### plot χT at k=K vs T
+    k,k_label = K,"K"
+    x_vec_bare = collect(0:0.01:1.2)
+    x_vec = collect(0:0.01:3)
+
+
+    plt_TχK_vs_x = plot(xlims=(0,x_vec[end]),ylims=(0.25,0.7),xlabel=L"x=J/T",ylabel=L"TG_{k=K}(i\nu_{m=0}) = Tχ_{k=K}",  label="",legend=:topleft)
+
+
+    ### plot k=K data from [KulaginPRB2013]
+    fileNameKulagin = "CaseStudy/Triangular_Lattice_BSb/Triangular_StaticSusc_Kulagin_atK.csv"
+    if isfile(fileNameKulagin)
+        data = readdlm(fileNameKulagin,',',Float64)
+        scatter!(plt_TχK_vs_x, 1 ./ data[:,1], data[:,2] .* data[:,1] , color=:black,label="[Kulagin2013]")
+    end
+
+    ### x-Padé and u-Padé approximants
+    m = 0
+    p_x = sum([cos(dot(k,getSitePosition(hte_lattice.lattice,i).-getSitePosition(hte_lattice.lattice,hte_lattice.basis_positions[1])))*get_TGiip_Matsubara_xpoly(c_iipDyn_mat,i,1,m) for i in 1:hte_lattice.lattice.length])
+
+    pade_vec = [[6,6],[7,5],[5,7],[5,5]]
+    label=""
+    for  (pade_pos,pade) in enumerate(pade_vec)
+        label="x-Padé "*string(pade)
+        y_vec = get_pade(p_x,pade[1],pade[2]).(x_vec)  
+        plot!(plt_TχK_vs_x,x_vec,y_vec,color=:darkblue,alpha=0.6,linestyle=linestyle_vec[pade_pos],label=label)
+    end
+    for  (pade_pos,pade) in enumerate(pade_vec)
+        f=0.25
+        ufromx_mat = get_LinearTrafoToCoeffs_u(n_max,f)
+        p_u = Polynomial(ufromx_mat*coeffs(p_x))
+        u_vec = tanh.(f .* x_vec)
+        if pade_pos==1 label="u-Padé (f=$f)" else label="" end
+        plot!(plt_TχK_vs_x,x_vec,get_pade(p_u,pade[1],pade[2]).(u_vec),color=:purple,alpha=0.6,linestyle=linestyle_vec[pade_pos],label=label)
+    end
+    display(plt_TχK_vs_x)
+end
+
+if true
+    ###### χ vs k #########
+    x_vec = 1 ./ [2, 1, 0.5, 0.375]
+
+    ### define and generate k-path 
+    path = [Γ,K,M,Γ]
+    pathticks = ["Γ","K","M","Γ"]
+
+    Nk = 200  #75
+    k_vec,kticks_positioins = create_brillouin_zone_path(path, Nk)
+
+    plt_Tχk_vs_k=plot(xlims=(0,1),xlabel="",ylabel=L"Tχ_\mathbf{k} = TG_\mathbf{k}(i\nu_{m=0})", legendfontsize=5.4,  label="",legend=:topright,xticks=((kticks_positioins .- 1)/(Nk),pathticks))
+
+    ### plot Dyn-HTE
+    for (x_pos,x) in enumerate(x_vec)
+        TGm0k_vec = zeros(length(k_vec))
+
+        for (k_pos,k) in enumerate(k_vec)
+            m = 0
+            p_x = sum([cos(dot(k,getSitePosition(hte_lattice.lattice,i).-getSitePosition(hte_lattice.lattice,hte_lattice.basis_positions[1])))*get_TGiip_Matsubara_xpoly(c_iipDyn_mat,i,1,m) for i in 1:hte_lattice.lattice.length])
+
+            pade_vec = [[6,6]]
+
+            ### u-Padé approximants
+            label=""
+            for  (pade_pos,pade) in enumerate(pade_vec)
+                
+                f=0.25
+                ufromx_mat = get_LinearTrafoToCoeffs_u(n_max,f)
+                p_u = Polynomial(ufromx_mat*coeffs(p_x))
+                u = tanh.(f .* x)
+
+                TGm0k_vec[k_pos] = get_pade(p_u,pade[1],pade[2]).(u)
+            end
+        end
+
+        plot!(plt_Tχk_vs_k,collect(0:Nk)/Nk,TGm0k_vec,color=thermalCol4_vec[x_pos],linealpha=0.75,label="T/J=1/x="*string(1/x))
+
+        if true ### fit rMF
+            function γtriang(kx,ky) 
+                return 2 * (cos.(kx) .+ 2 .* cos.(kx ./ 2) .* cos.((3^(1/2) .* ky) ./ 2) )
+            end
+            
+            kx_vec = [k[1] for k in k_vec]
+            ky_vec = [k[2] for k in k_vec]
+
+            function rMF(k_pos,p) 
+                return 1 ./ (p[1] .+ p[2] .* γtriang(kx_vec[k_pos],ky_vec[k_pos])) 
+            end 
+            
+            ### initial guess for params
+            b1 = 1/2*(1/2+1)/3
+            z = 6
+            I3 =6
+            f3rdOrder = 1/b1 + z*(1/6*(6*b1+1)*x^2+1/24*(4*b1+1)*x^3)- I3/6*b1*(6*b1+1)*x^3
+            g3rdOrder = x + x^2 / 12 + x^3 /120 * (48*b1^2 + 16* b1 +3)
+            
+            p0 = [f3rdOrder, g3rdOrder]
+            
+            fit = LsqFit.curve_fit(rMF, collect(1:(Nk+1)), TGm0k_vec, p0)
+            p=fit.param
+            @show p
+
+            plot!(collect(0:Nk)/Nk, rMF(collect(1:(Nk+1)),fit.param) ,color=thermalCol4_vec[x_pos], linestyle=:dash, label="rMF [f,g]="*string(round.(p,digits=2)) )
+        end
+    end
+
+    if true ### plot bold-line diagMC data from [KulaginPRB2013]
+        for (x_pos,x) in enumerate(x_vec)
+            fileNameKulagin = "CaseStudy/Triangular_Lattice_BSb/Triangular_StaticSusc_Kulagin_GammaKMGamma_T"*string(1/x)*".csv"
+            if isfile(fileNameKulagin)
+                data = readdlm(fileNameKulagin,',',Float64)
+                scatter!(plt_Tχk_vs_k, data[:,1], data[:,2] / x, markeralpha=0.4, color=thermalCol4_vec[x_pos],label="")
+            end
+        end
+    end
+
+    display(plt_Tχk_vs_k)
+end
+
+
+### prepare triangular lattice inset
+if true
+    plot!(plt_TχK_vs_x,inset=bbox(0.65,0.36,0.36,0.36),subplot=2)
+    plot!(plt_TχK_vs_x[2],xlims=(-1.3,1.3),ylims=(-1.2,1.2),aspect_ratio = :equal,xaxis=false,yaxis=false)
+    a1 = [1/2, sqrt(3)/2]
+    a2 = [1, 0]
+    a3 = [-1/2, sqrt(3)/2]
+    for x in -5:1:5, y in -5:1:5
+        r = x*a1 .+ y*a2
+        r1 = r .+ a1
+        r2 = r .+ a2
+        r3 = r .+ a3
+        plot!(plt_TχK_vs_x[2],[r[1],r1[1]],[r[2],r1[2]],markers=:dot,color=:grey,label="")
+        plot!(plt_TχK_vs_x[2],[r[1],r2[1]],[r[2],r2[2]],markers=:dot,color=:grey,label="")
+        plot!(plt_TχK_vs_x[2],[r[1],r3[1]],[r[2],r3[2]],markers=:dot,color=:grey,label="")
+    end
+end
+
+### finalize
+xPlots,yPlots=1,2
+plt_final = plot(plt_TχK_vs_x,plt_Tχk_vs_k, layout=(yPlots,xPlots), size=(aps_width*xPlots,(0.63)*aps_width*yPlots),dpi=600)
+display(plt_final)
+savefig(plt_final,"CaseStudy/Triangular_Lattice_BSb/Triangular_StaticSF.png")
+
+
 
 
 #########################################################################################
