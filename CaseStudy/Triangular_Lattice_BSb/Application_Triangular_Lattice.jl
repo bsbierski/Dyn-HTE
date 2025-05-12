@@ -104,7 +104,7 @@ if true ### plot χT at k=K vs T
     m = 0
     p_x = sum([cos(dot(k,getSitePosition(hte_lattice.lattice,i).-getSitePosition(hte_lattice.lattice,hte_lattice.basis_positions[1])))*get_TGiip_Matsubara_xpoly(c_iipDyn_mat,i,1,m) for i in 1:hte_lattice.lattice.length])
 
-    pade_vec = [[6,6],[7,5],[5,7],[5,5]]
+    pade_vec = [[6,6],[7,5],[6,5],[5,6],[5,5]]
     label=""
     for  (pade_pos,pade) in enumerate(pade_vec)
         label="x-Padé "*string(pade)
@@ -185,7 +185,7 @@ if true
             p=fit.param
             @show p
 
-            plot!(collect(0:Nk)/Nk, rMF(collect(1:(Nk+1)),fit.param) ,color=thermalCol4_vec[x_pos], linestyle=:dash, label="rMF [f,g]="*string(round.(p,digits=2)) )
+            plot!(collect(0:Nk)/Nk, rMF(collect(1:(Nk+1)),fit.param) ,color=thermalCol4_vec[x_pos], linestyle=:dash, label="rMF (f,g)="*string(round.(p,digits=2)) )
         end
     end
 
