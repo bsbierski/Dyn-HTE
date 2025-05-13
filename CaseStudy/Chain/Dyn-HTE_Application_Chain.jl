@@ -117,7 +117,7 @@ display(plt_dsf)
 ###SPIN STRUCTURE FACTOR HEATMAPS
 using CairoMakie
 
-x = 4.0                #define temperature (x=J/T)
+x = 0.0                #define temperature (x=J/T)
 k_step_size = 1/41     #define k step size (in 1/π)
 w_step_size = 0.025    #define ω step size (in 1/J)
 #define k and ω vectors 
@@ -125,7 +125,7 @@ k_vec = vcat(vcat((0.0001,0.0),[(k*pi,0.0) for k in 0:k_step_size:2][2:end-1] ),
 w_vec = collect(-3:w_step_size:3)
 
 #calculate the spin structure factor for the given k and ω 
-JSkw_mat = get_JSkw_mat("u_pade",x,k_vec,w_vec,c_iipDyn_mat,hte_lattice,f=0.48)
+JSkw_mat = get_JSkw_mat("u_pade",x,k_vec,w_vec,c_iipDyn_mat,hte_lattice,r_min=6,r_max=6,r_ext=3000,f=0.48)
 
 #plot the result
 fig = Figure(size=(400,400),fontsize=20)
@@ -147,18 +147,16 @@ display(fig)
 #ONLY FOR PAPER PLOTS FROM HERE ON 
 
 ##Delta extrapolations and structure factor
-###### S(k,w): few k points, plot δ_vec and show robustness of δ-extrapolation
-### pick x=0 for now (later check x>0, use PADE or IDA), get δs and plot them
 x=0.0
-k_vec=[0.2*π,0.8*π]
+k_vec=[0.2*π,π]
 
 w_vec = collect(-3.0:0.01:3.0)
 η=0.01
-ext_vec = [[2,3,true],[2,3,false],[2,4,true],[2,4,false]]
+ext_vec = [[5,6,true],[5,6,false],[6,6,true]]
 
 title=""#"AFM Heisenberg chain, J/T=x=$x"
-plt_δ = plot([0],[0],label="",xlabel=L"r",ylabel=L"\delta_r",title="X="*string(x),legend=:topleft,xlim=(-0.2,10.2),ylim=(0,8))
-plt_S = plot(xlabel=L"w=\omega/J",ylabel=L"JS(k,\omega)",title="X="*string(x))
+plt_δ = plot([0],[0],label="",xlabel=L"r",ylabel=L"\delta_r",title="",legend=:topleft,xlim=(-0.2,10.2),ylim=(0,8))
+plt_S = plot(xlabel=L"\omega/J=w",ylabel=L"JS(k,\omega)",title="")
 #plt_m = plot([0],[0],label="",xlabel=L"r",ylabel=L"m_r",xlim=(-0.2,10.2))
 
 for (k_pos,k) in enumerate(k_vec)
@@ -173,15 +171,28 @@ for (k_pos,k) in enumerate(k_vec)
 
     for (ext_pos,ext) in enumerate(ext_vec)
         δ_vec_ext =  extrapolate_δvec(δ_vec,ext[1],ext[2],2000,Bool(ext[3]))
-        Plots.scatter!(plt_δ,0:length(δ_vec_ext)-1,δ_vec_ext,markersize=3,label="",marker=marker_vec[ext_pos],color=color_vec[k_pos])
+        Plots.scatter!(plt_δ,7:length(δ_vec_ext)-1,δ_vec_ext[8:end],markersize=3,label="",marker=marker_vec[ext_pos],color=color_vec[k_pos])
         Plots.plot!(plt_S,w_vec,[JS(δ_vec_ext ,x,w,η) for w in w_vec],label="",color=color_vec[k_pos],linestyle=linestyle_vec[ext_pos])
+        Plots.plot!(plt_S,w_vec,[JS(δ_vec ,x,w,η) for w in w_vec],label="",color=color_vec[k_pos],linestyle=linestyle_vec[1],alpha=0.13)
+
     end
 end
 
-xPlots,yPlots=2,1
-plt_final = plot(plt_δ,plt_S , layout=(yPlots,xPlots), size=(aps_width*xPlots,0.62*aps_width*yPlots))
+#addABC(plt_δ,"a)")
+#addABC(plt_S,"b)")
+
+annotate!(plt_δ, xlims(plt_δ)[1]-0.15*(xlims(plt_δ)[2]-xlims(plt_δ)[1]), ylims(plt_δ)[2]-0.03*(ylims(plt_δ)[2]-ylims(plt_δ)[1]), ("a)",8,:left) )
+annotate!(plt_S, xlims(plt_S)[1]-0.15*(xlims(plt_S)[2]-xlims(plt_S)[1]), ylims(plt_S)[2]-0.03*(ylims(plt_S)[2]-ylims(plt_S)[1]), ("b)",8,:left) )
+
+xPlots,yPlots=1,2
+plt_final = plot(plt_δ,plt_S , layout=(yPlots,xPlots), size=(aps_width*xPlots,0.32*aps_width*yPlots),dpi=600)
 display(plt_final)
-savefig(plt_final,"HeisenbergAFMSpinHalfChain_Tinf_Skw_various_k.svg")
+
+
+savefig(plt_final,"chain_Tinf_Skw_various.png")
+
+
+
 
 
 
@@ -259,11 +270,11 @@ end
 # end
 
 if k_idx ==1
-    plt_δ = plot([0],[0],label="",xlabel=L"r",ylabel=[L"\delta_r",""][k_idx],legend=:topleft,xlim=(-0.2,3.1),ylim=[(-0.1,5),(-0.1,4.1),(-0.1,3.7)][k_idx])
-    plt_m = plot([0],[0],label="",xlabel=L"x",ylabel=[L"x \cdot m_{\mathbf{k},r}(x)/m_{\mathbf{k},r}(0)",""][k_idx],title=[L"k=0.2 \pi",L"k=\pi"][k_idx],legend=:topleft,xlim=(-0.2,4.5),ylim=[(-0.05,5.1),(-0.05,5.1),(-0.05,2.5)][k_idx])
+    plt_δ = plot([0],[0],label="",xlabel=L"r",ylabel=[L"\delta_{k,r}",""][k_idx],legend=:topleft,xlim=(-0.2,7.1),ylim=[(-0.1,7),(-0.1,4.1),(-0.1,3.7)][k_idx])
+    plt_m = plot([0],[0],label="",xlabel=L"x=J/T",ylabel=[L"x \cdot m_{{k},2r}(x)/m_{{k},2r}(0)",""][k_idx],title=[L"k=0.2 \pi",L"k=\pi"][k_idx],legend=:topleft,xlim=(-0.2,4.5),ylim=[(-0.05,5.1),(-0.05,5.1),(-0.05,2.5)][k_idx])
 else 
-    plt_δ = plot([0],[0],label="",xlabel=L"r",ylabel=[L"\delta_r",""][k_idx],legend=:topleft,xlim=(-0.2,3.1),ylim=[(-0.1,5),(-0.1,5),(-0.1,3.7)][k_idx] ,yticks=([ 0,1,2,3,4], ["", "", "","", ""]))
-    plt_m = plot([0],[0],label="",xlabel=L"x",ylabel=[L"x \cdot m_{\mathbf{k},r}(x)/m_{\mathbf{k},r}(0)",""][k_idx],title=[L"k=0.2 \pi",L"k=\pi"][k_idx],legend=:topleft,xlim=(-0.2,4.5),ylim=[(-0.05,5.1),(-0.05,5.1),(-0.05,2.5)][k_idx] ,yticks=([ 0, 1,2,3,4,5], ["", "", "", "", "", ""]))
+    plt_δ = plot([0],[0],label="",xlabel=L"r",ylabel=[L"\delta_{k,r}",""][k_idx],legend=:topleft,xlim=(-0.2,7.1),ylim=(-0.1,7),yticks=([ 0,2,4,6], ["", "","", ""]))
+    plt_m = plot([0],[0],label="",xlabel=L"x=J/T",ylabel=[L"x \cdot m_{{k},2r}(x)/m_{{k},2r}(0)",""][k_idx],title=[L"k=0.2 \pi",L"k=\pi"][k_idx],legend=:topleft,xlim=(-0.2,4.5),ylim=[(-0.05,5.1),(-0.05,5.1),(-0.05,2.5)][k_idx] ,yticks=([ 0, 1,2,3,4,5], ["", "", "", "", "", ""]))
 end
 
 if k_idx ==1 
@@ -277,7 +288,7 @@ if k_idx ==1
     Plots.plot!(plt_m,[0],[0],label="u Padé [6-r,7-r]",color = "grey",linestyle = linestyle_vec[3])
     #Plots.plot!(plt_m,[0],[0],label="u Padé [6-r,5-r]",color = "grey",linestyle = linestyle_vec[4])
     #Plots.plot!(plt_m,[0],[0],label="x Padé [6-r,6-r]",color = "grey",linestyle = linestyle_vec[4])
-
+else
 
     Plots.plot!(plt_m,[0],[0],label="r=0",color = color_vec[1],linestyle = linestyle_vec[1])
     Plots.plot!(plt_m,[0],[0],label="r=1",color = color_vec[2],linestyle = linestyle_vec[1])
@@ -287,7 +298,7 @@ end
 
 #BARE SERIES
 for i=1:4
-    Plots.plot!(plt_m,betas[1:180],m_vec_times_x_normalized[i].(betas[1:180]),label = nothing,alpha= 0.7,color = color_vec[i],linestyle = linestyle_vec[1],linewidth=0.5)
+    Plots.plot!(plt_m,betas[1:215],m_vec_times_x_normalized[i].(betas[1:215]),label = nothing,alpha= 0.7,color = color_vec[i],linestyle = linestyle_vec[1],linewidth=0.5)
 end
 
 #U PADE
@@ -309,6 +320,17 @@ for beta_idx in 1:4
     i+=1
     Plots.scatter!(plt_δ,0:3,[delta_T[1][1][beta_idx],delta_T[1][2][beta_idx],delta_T[1][3][beta_idx],delta_T[1][4][beta_idx]],label = nothing,color = thermalCol4_vec[i],markersize=7)
 end
+#DELTA EXTRAPOLATION
+i=0
+for beta_idx in 1:4
+    i+=1
+    extraploated_delta_T = extrapolate_δvec([delta_T[1][1][beta_idx],delta_T[1][2][beta_idx],delta_T[1][3][beta_idx],delta_T[1][4][beta_idx]],3,3,10,true)
+    Plots.scatter!(plt_δ,4:7,extraploated_delta_T[5:8],label = nothing,color = thermalCol4_vec[i],markersize=4,marker=:xcross)
+    #r_ax  = 0:0.01:7
+    #Plots.plot!(r_ax,extraploated_delta_T[5].+(extraploated_delta_T[6].-extraploated_delta_T[5]).*(r_ax.-4),color = thermalCol4_vec[i])
+end
+
+
 
 push!(plot_lst, plt_δ)
 push!(plot_lst, plt_m)
@@ -316,11 +338,11 @@ push!(plot_lst, plt_m)
 end
 xPlots,yPlots=2,2
 # display(Plots.plot(plot_lst[2],plot_lst[1],  layout=(yPlots,xPlots), size=(aps_width*2,0.60*aps_width*yPlots)))
-display(Plots.plot(plot_lst[2],plot_lst[4],plot_lst[1],plot_lst[3],  layout=(yPlots,xPlots), size=(aps_width*2,0.46*aps_width*yPlots)))
+display(Plots.plot(plot_lst[2],plot_lst[4],plot_lst[1],plot_lst[3],  layout=(yPlots,xPlots), size=(aps_width*2,0.4*aps_width*yPlots),dpi=600))
 
 
 
-savefig("chain_moments_and_deltas.pdf")
+Plots.savefig("chain_moments_and_deltas.png")
 
 
 
@@ -330,7 +352,7 @@ savefig("chain_moments_and_deltas.pdf")
 
 
 ######NOW THE COMPARISON OF Dyn-HTE and DMRG
-#S_dyn_HTE= load_object("DSF_with_DynHTE_differnt_temperatures.jdl2")
+# S_dyn_HTE= load_object("dmrg_dynhte_comparison_save.jld2")
 using MAT
 betas = [0,2,4]
 
@@ -426,15 +448,24 @@ end
 
 
 
-subgrid = GridLayout(grid[1, 4], tellheight = false)
-subgrid2 = GridLayout(grid[2, 4], tellheight = false)
+# subgrid = GridLayout(grid[1, 4], tellheight = false)
+# subgrid2 = GridLayout(grid[2, 4], tellheight = false)
+
+# Label(subgrid[1, 1], L"JS(k,\omega)",fontsize=10)
+# Label(subgrid2[1, 1],L"JS(k,\omega)",fontsize=10)
+
+
+# cb1=CairoMakie.Colorbar(subgrid[2, 1],hm,size=11,labelsize = 10) 
+# cb2= CairoMakie.Colorbar(subgrid2[2, 1],hm,size=11,labelsize = 10)
+
+subgrid = GridLayout(grid[1:2, 4], tellheight = false)
 
 Label(subgrid[1, 1], L"JS(k,\omega)",fontsize=10)
-Label(subgrid2[1, 1],L"JS(k,\omega)",fontsize=10)
+
 
 
 cb1=CairoMakie.Colorbar(subgrid[2, 1],hm,size=11,labelsize = 10) 
-cb2= CairoMakie.Colorbar(subgrid2[2, 1],hm,size=11,labelsize = 10)
+
 
 hideydecorations!(plotsDMRG[2])
 hideydecorations!(plotsDMRG[3])
@@ -448,8 +479,8 @@ hidedecorations!(plotsDynHTE[3], grid = false)
 colgap!(subgrid, 0)
 rowgap!(subgrid, 0)
 
-colgap!(subgrid2, 0)
-rowgap!(subgrid2, 0)
+# colgap!(subgrid2, 0)
+# rowgap!(subgrid2, 0)
 
 colgap!(grid, 7)
 rowgap!(grid, 8)
@@ -458,4 +489,4 @@ rowgap!(grid, 8)
 resize_to_layout!(fig)
 # Plots.savefig("dynHTE_dmrg_test.pdf")
 display(fig)
-save("chain_dynHTE_DMRG_comparison.png",fig;px_per_unit=2.0)
+save("chain_dynHTE_DMRG_comparison.png",fig,px_per_unit = 4)

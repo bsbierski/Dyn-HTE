@@ -3,45 +3,35 @@ using Polynomials, HDF5, Measurements
 
 
 path_DynHTSE="../../"
-include(path_DynHTSE*"Embedding.jl")
 include(path_DynHTSE*"LatticeGraphs.jl")
 include(path_DynHTSE*"ConvenienceFunctions.jl")
 include(path_DynHTSE*"plotConventions.jl") 
+include(path_DynHTSE*"Embedding.jl")
 
-#specify max order
-n_max = 11
-spin_string = "S1" #"S1half" #"S3half"
 
-#LOAD FILES -------------------------
-#generate list of graphs
-#graphs_vec = [load_object(path_DynHTSE*"GraphFiles_chain/graphs_"*string(nn)*".jld2") for nn in 0:max_order]
-gG_vec_unique = give_unique_gG_vec(n_max)
- 
-
-#load dictionaries of all lower orders C_Dict_vec 
-C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,n_max+1);
-for ord = 0:n_max
-    C_Dict_vec[ord+1]  = load_object("GraphEvaluations/Spin_"*spin_string*"/C_"*string(ord)*".jld2")
-end
-#-----------------------------------
+#DEFINE THE SYSTEM
+n_max = 12                   #max order in perturbation theory (currently 12 are available)
+spin_length = 1.0            #spin length (currently only S=1/2,1 are available)
+#load graphs
+hte_graphs = load_dyn_hte_graphs(spin_length,n_max)
+#define the lattice geometry
+hte_lattice = getLattice(n_max,"chain")
+#calculate the correlation function for all site combinations
+c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs)
+#plot the lattice geometry
+graphplot(hte_lattice.graph,names=1:nv(hte_lattice.graph),markersize=0.2,fontsize=5,curves=false)
 
 
 
-### Define Lattice
-LatGraph = path_graph(25)#cycle_graph(25)
 reference_site_bulk = 13
 reference_site_edge = 1
-display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.1,fontsize=7,nodeshape=:rect,curves=false))
-
-# #### Compute all non-zero G-coefficients c_ii'(m) 
-# lattice,LatGraph,center_sites = getLattice_Ball(n_max,"chain");
-# c_iipDyn_mat = get_c_iipDyn_mat(LatGraph,lattice,center_sites,n_max,gG_vec_unique,C_Dict_vec)
-
+unique_graphs = hte_graphs.unique_graphs
+c_dict = hte_graphs.c_dict
 
 x=1.0
 
-on_site_correlator_bulk = Calculate_Correlator_fast(LatGraph,reference_site_bulk,reference_site_bulk,n_max,gG_vec_unique,C_Dict_vec)
-on_site_correlator_edge = Calculate_Correlator_fast(LatGraph,reference_site_edge,reference_site_edge,n_max,gG_vec_unique,C_Dict_vec)
+on_site_correlator_bulk = Calculate_Correlator_fast(hte_lattice.graph,reference_site_bulk,reference_site_bulk,n_max,unique_graphs,c_dict)
+on_site_correlator_edge = Calculate_Correlator_fast(hte_lattice.graph,reference_site_edge,reference_site_edge,n_max,unique_graphs,c_dict)
 for ord = 0:n_max
     on_site_correlator_bulk[ord+1] *= (-1)^ord
     on_site_correlator_edge[ord+1] *= (-1)^ord
@@ -82,17 +72,17 @@ m_vec_edge_extrapolated_u_pade = []
 m_vec_bulk_extrapolated_u_pade1 = []
 m_vec_edge_extrapolated_u_pade1 = []
 for m_idx=1:length(m_vec_bulk)-1
-    push!(m_vec_bulk_extrapolated_pade, extrapolate_series(m_vec_bulk[m_idx],"pade",(7-m_idx,6-m_idx)))
-    push!(m_vec_edge_extrapolated_pade, extrapolate_series(m_vec_edge[m_idx],"pade",(7-m_idx,6-m_idx)))
+    push!(m_vec_bulk_extrapolated_pade, extrapolate_series(m_vec_bulk[m_idx],"pade",(7-m_idx,7-m_idx)))
+    push!(m_vec_edge_extrapolated_pade, extrapolate_series(m_vec_edge[m_idx],"pade",(7-m_idx,7-m_idx)))
 
-    push!(m_vec_bulk_extrapolated_pade1, extrapolate_series(m_vec_bulk[m_idx],"pade",(6-m_idx,7-m_idx)))
-    push!(m_vec_edge_extrapolated_pade1, extrapolate_series(m_vec_edge[m_idx],"pade",(6-m_idx,7-m_idx)))
+    push!(m_vec_bulk_extrapolated_pade1, extrapolate_series(m_vec_bulk[m_idx],"pade",(8-m_idx,6-m_idx)))
+    push!(m_vec_edge_extrapolated_pade1, extrapolate_series(m_vec_edge[m_idx],"pade",(8-m_idx,6-m_idx)))
 
-    push!(m_vec_bulk_extrapolated_u_pade, extrapolate_series(m_vec_bulk[m_idx],"u_pade",(7-m_idx,7-m_idx,f)))
-    push!(m_vec_edge_extrapolated_u_pade, extrapolate_series(m_vec_edge[m_idx],"u_pade",(7-m_idx,7-m_idx,f)))
+    push!(m_vec_bulk_extrapolated_u_pade, extrapolate_series(m_vec_bulk[m_idx]*Polynomial([0,1]),"u_pade",(8-m_idx,7-m_idx,f)))
+    push!(m_vec_edge_extrapolated_u_pade, extrapolate_series(m_vec_edge[m_idx]*Polynomial([0,1]),"u_pade",(8-m_idx,7-m_idx,f)))
 
-    push!(m_vec_bulk_extrapolated_u_pade1, extrapolate_series(m_vec_bulk[m_idx],"u_pade",(8-m_idx,6-m_idx,f)))
-    push!(m_vec_edge_extrapolated_u_pade1, extrapolate_series(m_vec_edge[m_idx],"u_pade",(8-m_idx,6-m_idx,f)))
+    push!(m_vec_bulk_extrapolated_u_pade1, extrapolate_series(m_vec_bulk[m_idx]*Polynomial([0,1]),"u_pade",(7-m_idx,8-m_idx,f)))
+    push!(m_vec_edge_extrapolated_u_pade1, extrapolate_series(m_vec_edge[m_idx]*Polynomial([0,1]),"u_pade",(7-m_idx,8-m_idx,f)))
 end
 
 # #plot moments pade
@@ -132,7 +122,7 @@ end
 
 # end
 
-x=3.0
+x=4.0
 
 δ_vec_bulk,r_vec = fromMomentsToδ([m(tanh(f*x))/x for m in m_vec_bulk_extrapolated_u_pade])
 δ_vec_edge,r_vec = fromMomentsToδ([m(tanh(f*x))/x for m in m_vec_edge_extrapolated_u_pade])
@@ -145,14 +135,14 @@ x=3.0
 # scatter!(plt_deltas,0:length(δ_vec)-1,δ_vec)
 # display(plt_deltas)
 
-δ_vec_bulk_ext = extrapolate_δvec(δ_vec_bulk,3,3,4000,true)
-δ_vec_edge_ext = extrapolate_δvec(δ_vec_edge,3,3,4000,true)
+δ_vec_bulk_ext = extrapolate_δvec(δ_vec_bulk,3,3,1000,true)
+δ_vec_edge_ext = extrapolate_δvec(δ_vec_edge,3,3,1000,true)
 w_step_size=0.005
 w_vec = collect(-5.001:w_step_size:5)
-JSKw_bulk = [x*(2*pi*(1-exp(-x*w))*JS(δ_vec_bulk_ext ,x,w,0.01))/w for w in w_vec]#[JS(δ_vec_bulk_ext ,x,w,0.01) for w in w_vec]
-JSKw_edge = [x*(2*pi*(1-exp(-x*w))*JS(δ_vec_edge_ext ,x,w,0.01))/w for w in w_vec]#[JS(δ_vec_edge_ext ,x,w,0.01) for w in w_vec]
+JSKw_bulk = [JS(δ_vec_bulk_ext ,x,w,0.01) for w in w_vec]#[JS(δ_vec_bulk_ext ,x,w,0.01) for w in w_vec]
+JSKw_edge = [JS(δ_vec_edge_ext ,x,w,0.01) for w in w_vec]#[JS(δ_vec_edge_ext ,x,w,0.01) for w in w_vec]
 
-Plots.plot(w_vec,JSKw_bulk,xlabel=L"\omega/J",ylabel=L"R_k(\omega)",label="bulk",color=color_vec[1],size =(aps_width,0.5*aps_width))
+Plots.plot(w_vec,JSKw_bulk,title="x="*string(x),xlabel=L"\omega/J",ylabel=L"S_i(\omega)",label="bulk",color=color_vec[1],size =(aps_width,0.5*aps_width))
 Plots.annotate!(-4.2,10.18,Plots.text("x="*string(round(Int64,x)),:black,10))
 Plots.annotate!(-6.7,11.,Plots.text("b)",:black,10))
 display(Plots.plot!(w_vec,JSKw_edge,label="edge",color=color_vec[2],alpha=0.5))
@@ -432,29 +422,26 @@ savefig("chain_moments_and_deltas.pdf")
 using CairoMakie
 
 
-f=0.57#0.31
 
-x = 4.00#0.128*32 
+x = 4.0#0.128*32 
 k_step_size = 1/72
 w_step_size = 0.025
 k_vec = vcat(vcat((0.0001,0.0),[(k*pi,0.0) for k in 0:k_step_size:2][2:end-1] ),(1.999*pi,0.0))#[(k,0.0) for k in 0.01:0.0039*2.4:(2*π-0.01)]
-w_vec = collect(0:w_step_size:4)# for reliable sigma: collect(-5:0.05*0.1:5)
-JSkw_mat = get_JSkw_mat_finitex(f,"pade_subs",x,k_vec,w_vec,0.01,3,3,1000,false,c_iipDyn_mat,lattice,center_sites)
+w_vec = collect(-4:w_step_size:4)# for reliable sigma: collect(-5:0.05*0.1:5)
+JSkw_mat = get_JSkw_mat("u_pade",x,k_vec,w_vec,c_iipDyn_mat,hte_lattice,f=0.48) #f=0.57
 
 
 
 w_step_size = 0.025
-w_vec = collect(0:w_step_size:4)# for reliable sigma: collect(-5:0.05*0.1:5)
-fig = Figure(size=(aps_width*2.5,0.7*aps_width))
+fig = Figure(size=(aps_width*2,0.5*aps_width),fontsize = 10,padding=0)
 ax=Axis(fig[1,1],xlabel=L"k/ \pi",ylabel=L"\omega/J=w",limits=(0,2,0,3),titlesize=15,xlabelsize=12,ylabelsize=12)
-hm=CairoMakie.heatmap!(ax,[k[1]/π for k in k_vec][1:2:end],w_vec[1:2:end],(JSkw_mat[1:2:end,1:2:end].+0.00000001),colormap=:viridis,colorrange=(0,0.5),highclip=:white)
-# CairoMakie.Colorbar(fig[:, end+1], hm,size=10)
-grid = fig[1,2]= GridLayout()
-subgrid = GridLayout(grid[1, 1], tellheight = false)
-Label(subgrid[1, 1], L"JS(k,\omega)",fontsize=15)
-cb1=CairoMakie.Colorbar(subgrid[2, 1],hm,size=11,labelsize = 10) 
-rowgap!( subgrid,2)
+hm=CairoMakie.heatmap!(ax,[k[1]/π for k in k_vec],w_vec,JSkw_mat,colormap=:viridis,colorrange=(0,3.0),highclip=:white)
+subgrid = GridLayout(fig[1, 2], tellheight = false)
+Label(subgrid[1, 1], L"JS(k,\omega)",fontsize=12)
+cb1=CairoMakie.Colorbar(subgrid[2, 1],hm,size=11,labelsize = 12) 
+rowgap!( subgrid,0)
 colgap!( subgrid,0)
+
 #Magnon plot
 function magnon_dispersion(k)
     Delta_gap = 0.41047925
@@ -464,29 +451,33 @@ end
 #FM
 # CairoMakie.lines!(fig[1,1],0:0.03:2,(1 .-cos.(pi.*(0:0.03:2))))
 #AFM
-#CairoMakie.lines!(fig[1,1],0:0.006:2,magnon_dispersion.(pi.*(0:0.006:2)),color="orange",alpha=0.4)
+CairoMakie.lines!(fig[1,1],0:0.006:2,magnon_dispersion.(pi.*(0:0.006:2)),color="orange",alpha=0.4)
 #Haldane Gap
-CairoMakie.lines!(fig[1,1],[0,2],[0.41,0.41],color="grey")
-CairoMakie.text!(ax, 0.05, 2.91, text=L"x=4", fontsize=17, color=:white, align=(:left, :top) )
+CairoMakie.lines!(fig[1,1],[0,2],[0.41049,0.41049],color="grey")
+CairoMakie.text!(ax, 0.04, 2.91, text=L"x=4", fontsize=15, color=:white, align=(:left, :top) )
+# CairoMakie.text!(ax, 1.7, 2.91, fontsize=17, color=:white, align=(:left, :top) )
 
 # lbl=CairoMakie.Label(fig[1, 1, TopLeft()], "a)", fontsize = 20,padding=(20,0))
 
 #########################
-w_step_size=0.005
-w_vec = collect(-5.001:w_step_size:5)
-ax1=Axis(fig[1,3],xlabel=L"\omega/J",ylabel=L"R_k(\omega)",xgridvisible = false,ygridvisible = false)
-CairoMakie.lines!(ax1,w_vec,JSKw_bulk,label="bulk",color=color_vec[1])
-CairoMakie.lines!(ax1,w_vec,JSKw_edge,label="edge",color=color_vec[2])
-axislegend(ax1, framevisible = false)
-CairoMakie.text!(ax1, -5.0, 11.4, text=L"x=3", fontsize=17, color=:black, align=(:left, :top) )
-lbl=CairoMakie.Label(fig[1, 1, TopLeft()], "a)", fontsize = 17,padding=(20,-10))
-lbl=CairoMakie.Label(fig[1, 3, TopLeft()], "b)", fontsize = 17)
+# w_step_size=0.005
+# w_vec = collect(-5.001:w_step_size:5)
+# ax1=Axis(fig[1,3],xlabel=L"\omega/J",ylabel=L"R_k(\omega)",xgridvisible = false,ygridvisible = false)
+# CairoMakie.lines!(ax1,w_vec,JSKw_bulk,label="bulk",color=color_vec[1])
+# CairoMakie.lines!(ax1,w_vec,JSKw_edge,label="edge",color=color_vec[2])
+# axislegend(ax1, framevisible = false)
+# CairoMakie.text!(ax1, -5.0, 11.4, text=L"x=3", fontsize=17, color=:black, align=(:left, :top) )
+# lbl=CairoMakie.Label(fig[1, 1, TopLeft()], "a)", fontsize = 17,padding=(20,-10))
+# lbl=CairoMakie.Label(fig[1, 3, TopLeft()], "b)", fontsize = 17)
 
 ##########################
 
-display(fig)
+
+
 
 # save("chain_S1_DSF_and_edge_state.pdf",fig)
+
+
 
 #now calculate equal time correlator =1/4 for consitency
 equal_time_corr = 0.0
@@ -495,25 +486,31 @@ for k_idx in 1:length(k_vec)
         equal_time_corr+= JSkw_mat[k_idx,w_idx]
     end 
 end
-equal_time_corr *= k_step_size*w_step_size
+equal_time_corr *= 1/(2*pi) *k_step_size*pi*w_step_size
 println("Equal time correlator: "*string(equal_time_corr))
 println("Deviation from 2/3: "*string(round(abs(2/3-equal_time_corr)*3/2*100,digits=4))*"%")
 
 
-
-# save("chain_x_4.pdf",fig)
-
-
+ax1=Axis(fig[1,3],limits=((0,3),(0,0.7)),ylabel= L"JS(\omega)",xlabel=L"\omega/J = w",xlabelsize=12,ylabelsize=12)
 
 
 #use DSF to determine density of states 
 DOS =  zeros(length(w_vec))
 for w_idx in 1:length(w_vec)
-    DOS[w_idx] = sum(JSkw_mat[1:end,w_idx])*k_step_size
+    DOS[w_idx] = sum(JSkw_mat[1:end,w_idx])*1/(2*pi) *k_step_size*pi
 end
 
-display(Plots.plot(w_vec,DOS,title="DOS",xlabel=L"\omega",ylims=(0,maximum(DOS)+1)))
+CairoMakie.lines!(ax1,w_vec,DOS,color= color_vec[1])
+CairoMakie.lines!(ax1,[0.41049,0.41049],[0,1],color="grey")
+CairoMakie.text!(ax1, 0.1, 0.67, text=L"x=4", fontsize=15, color=:black, align=(:left, :top) )
 
+ax1.xgridvisible =false
+ax1.ygridvisible =false
+text!(fig.scene, "a)", position = (1, 145), fontsize = 15)
+text!(fig.scene, "b)", position = (345, 145), fontsize = 15)
+display(fig)
+# display(Plots.plot(w_vec,DOS,ylabel= L"S(\omega)",label="",title=L"S(\omega) \  \text{ bulk at } \  x = 4",xlabel=L"\omega",ylims=(0,maximum(DOS)+0.2)))
+save("chain_S1_DSF.png",fig; px_per_unit = 3.0)
 
 
 
