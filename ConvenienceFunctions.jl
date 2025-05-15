@@ -108,7 +108,7 @@ end
 
 ###### bare series polynomial in Gii'(x,m) at Matsubara integer m truncated at n 
 
-""" get the expansion of the Matsubara correlator TGii'(iνm) as x-Polyomial for spatial entries i,ip of c_iipDyn_mat"""
+""" expansion of the Matsubara correlator TGii'(iνm) as x-Polyomial for spatial entries i,ip of c_iipDyn_mat"""
 function get_TGiip_Matsubara_xpoly(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}},i::Int,ip::Int,m::Int)
     if m==0
         p_x = 1.0*Polynomial(flipEvenIndexEntries(c_iipDyn_mat[i,ip][:,1]))
@@ -120,9 +120,8 @@ function get_TGiip_Matsubara_xpoly(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}
     return p_x
 end
 
-
+""" v=[a,b,c,d,...] -> [+a,-b,+c,-d,...] """
 function flipEvenIndexEntries(v)
-    """ v=[a,b,c,d,...] -> [+a,-b,+c,-d,...] """
     signs = [-1*(-1)^n for n in eachindex(v)]
     return v .* signs
 end

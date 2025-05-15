@@ -30,7 +30,9 @@ end
 
 ###### dynamical Matsubara correlator (k-space)
 #k,k_label = (1.0*π,0.0), "(pi,0)"
-k,k_label = (π,π), "(pi,pi)"
+#k,k_label = (π,π), "(pi,pi)"
+k,k_label = (π/2,π/2), "(piO2,piO2)"
+
 c_kDyn = get_c_k(k,c_iipDyn_mat,hte_lattice)
 m_vec = get_moments_from_c_kDyn(c_kDyn)
 poly_x = Polynomial([0,1],:x)
@@ -81,7 +83,7 @@ if true
     end
 
     xPlots,yPlots=1,1
-    plt_final = plot(plt_m,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.65*aps_width*yPlots))
+    plt_final = plot(plt_m,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.65*aps_width*yPlots),dpi=600)
     display(plt_final)
     savefig(plt_final,"moments_u-series_k"*k_label*".png")
 end
@@ -168,7 +170,7 @@ if true
     ax=Axis(fig[1,1],xlabel=L"\mathbf{k}",ylabel=L"\omega/J=w",xlabelsize=8,ylabelsize=8);
     hm=CairoMakie.heatmap!(ax,collect(0:Nk)/(Nk),w_vec, JSkw_mat,colormap=:viridis,colorrange=(0.001,0.4),highclip=:white);
     ax.xticks = ((kticks_positioins .- 1)/(Nk),pathticks)
-    CairoMakie.Colorbar(fig[:, end+1], hm,size=8, label = L"J S(k,\omega)")
+    CairoMakie.Colorbar(fig[:, end+1], hm,size=8, label = L"J S(\mathbf{k},\omega)")
     CairoMakie.text!(ax,"x=J/T=$x0",position=[(0.05,0.5)],color=:white)
     CairoMakie.text!(ax,"f=$f",position=[(0.05,0.2)],color=:white)
 
