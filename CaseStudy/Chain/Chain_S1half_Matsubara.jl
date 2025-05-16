@@ -29,7 +29,7 @@ TGiip_m_QMC_err = zeros((length(x_vec_QMC),imax+1,length(m_vec)))
 
 for x_QMC_pos in eachindex(x_vec_QMC) 
     x_QMC=x_vec_QMC[x_QMC_pos]
-    fid = h5open("CaseStudy/Chain_BSb/QMC_Worm/SpinHalfAFMHeisenbergChain/job_BSb_beta"*string(x_QMC)*".out.h5", "r")
+    fid = h5open("CaseStudy/Chain/Chain_S1half_Matsubara_QMC_Worm/job_BSb_beta"*string(x_QMC)*".out.h5", "r")
     for (m_pos,m) in enumerate(m_vec)
         TGiip_m_QMC[x_QMC_pos,:,m_pos] = read(fid["simulation"]["results"]["DensDens_CorrFun_w$m"]["mean"]["value"])[1:imax+1]
         TGiip_m_QMC_err[x_QMC_pos,:,m_pos] = read(fid["simulation"]["results"]["DensDens_CorrFun_w$m"]["mean"]["error"])[1:imax+1]
@@ -119,7 +119,7 @@ if true
     xPlots,yPlots=1,3
     plt_final = plot(plt_vec...,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.4*aps_width*yPlots), dpi=600)
     display(plt_final)
-    savefig(plt_final,"CaseStudy/Chain_BSb/Chain_S1half_Matsubara_r-space.png")
+    savefig(plt_final,"CaseStudy/Chain/Chain_S1half_Matsubara_r-space.png")
 end
 
 ###### plot Matsubara correlator in k-space
@@ -186,5 +186,5 @@ if true
     xPlots,yPlots=1,3
     plt_final = plot(plt_vec...,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.4*aps_width*yPlots), dpi=600)
     display(plt_final)
-    savefig(plt_final,"CaseStudy/Chain_BSb/Chain_S1half_Matsubara_k-space.png")
+    savefig(plt_final,"CaseStudy/Chain/Chain_S1half_Matsubara_k-space.png")
 end

@@ -234,7 +234,7 @@ m_vec = get_moments_from_c_kDyn(c_kDyn)
 x_vec_bare = collect(0.0:0.025:1.2)
 x_vec = collect(0.0:0.2:4.0)
 
-x0_vec = 1 ./ [3.0,1.9,1.5,1.2,0.95,0.8,0.7,0.6,0.5,0.43,0.38]  # for these x the DSF will be computed
+x0_vec = 1 ./ [3.0,1.8,1.2,0.95,0.8,0.7,0.6,0.5,0.43,0.38]  # for these x the DSF will be computed
 
 ##### plot DSF and related quantities
 if true
@@ -343,7 +343,7 @@ if k_label=="K" && true
     α = 1.1
 
     annotate!(plt_JS[2],1,0.1,text(L"\alpha="*string(α)*"0(2)",7))
-    plot!(plt_JS[2],xlims=(0,2.7),ylims=(0.08,0.165),xlabel=L"\omega/T\;\;(\omega \leq"*string(w_max)*L" \,J)",ylabel=L"J\, S(\mathbf{k}="*k_label*L",\omega) \cdot (T/J)^\alpha")
+    plot!(plt_JS[2],xlims=(0,2.7),ylims=(0.08,0.165), guidefont=(6,), tickfont=(6,),xlabel=L"\omega/T\;\;(\omega \leq"*string(w_max)*L" \,J)",ylabel=L"J\, S(\mathbf{k}="*k_label*L",\omega) \cdot (T/J)^\alpha")
 
     for x0_pos in eachindex(x0_vec)
         x0 = x0_vec[x0_pos]
@@ -366,9 +366,9 @@ if k_label=="K" plt_JS_K = deepcopy(plt_JS) end
 if k_label=="M" plt_JS_M = deepcopy(plt_JS) end
 
 
-###### run the above for K and M and then put together
+###### run the above for both K and M and then put together
 xPlots,yPlots=1,2
-plt_final = plot(plt_JS_M,plt_JS_K, layout=(yPlots,xPlots), size=(aps_width*xPlots,(0.48)*aps_width*yPlots),dpi=600)
+plt_final = plot(plt_JS_M,plt_JS_K, layout=(yPlots,xPlots), size=(aps_width*xPlots,(0.45)*aps_width*yPlots),dpi=600)
 display(plt_final)
 savefig(plt_final,"CaseStudy/Triangular_Lattice_BSb/Triangular_DSF.png")
 
