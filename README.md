@@ -88,7 +88,7 @@ x_vec = collect(0:0.05:5.1)
 coeffs_x = flipEvenIndexEntries(get_c_k(k , c_iipEqualTime_mat,hte_lattice))
 p_x = Polynomial(coeffs_x)
 ```
-<p align="center"><img src="tutorialFigures/Triangular_EqualTime_GkK.jpg"></p>
+<p align="center"><img src="tutorialFigures/Triangular_EqualTime_GkK.jpg" width="35%"/></p>
 
 The evaluation of the bare series (p_x) is shown in the figure (full green line). It diverges around x=1.5. For a better estimate, we evaluate Padé approximants using, e.g. for [6,6],
 ```bash
@@ -128,9 +128,40 @@ pathticks = ["Γ","K","M","Γ"]
 Nk = 200
 k_vec,kticks_positioins = create_brillouin_zone_path(path, Nk)
 ```
-<p align="center"><img src="tutorialFigures/Triangular_StaticSF.jpg"></p>
+<p align="center"><img src="tutorialFigures/Triangular_StaticSF.jpg" width="35%"/></p>
 
+### Dynamic structure factor (DSF) at k=M
 
+We now proceed to the dynamic structure factor (DSF) defined above. We wish to work at the point $\mathbf{k}=M$ in momentum space. As a first step we Fourier transform the expansion coefficients $c_{ii^{\prime}}^{(n)}(i\nu_{m})$ and then compute the HTE series of the moments $m_{\mathbf{k},2r}(x)$ in $x$ for $r=0,1,...,6$:
+```bach
+k,k_label = M,"M"
+c_kDyn = get_c_k(k,c_iipDyn_mat,hte_lattice)
+m_vec = get_moments_from_c_kDyn(c_kDyn)
+```
+We normalize the moments as in the left panel of the figure below. This is done as follows:
+```bash
+poly_x = Polynomial([0,1],:x)
+xm_norm_r = coeffs(poly_x * (m_vec[1+r]/m_vec[1+r](0)))
+```
+As for the other quantities obtained from (Dyn-)HTE above, the bare series diverges already for $x=O(1)$ but the two u-Padés [7-r,6-r] and [6-r,5-r] (dashed and dotted lines) agree reasonably well down to $x=4$ for $f=0.55$ and the first four moments $r=0,1,2,3$ which we continue with in the following. We warn the reader that the transformation $u=\mathrm{tanh}(fx)$ shows an unphysical freezing at large $x \gtrsim 2/f$, so results for larger $x$ must be considered as unphysical.
+
+Next we fix a set of particular (inverse) temperatures at which we obtain the moments from the u-Padé approximant [7-r,6-r]. 
+```bash
+x0_vec = 1 ./ [3.0,1.8,1.2,0.95,0.8,0.7,0.6,0.5,0.43,0.38]
+```
+For each temperature x0 we can now convert the numerical values of the moments in the list m0 to the continued fraction parameters $\delta_{\mathbf{k},r}$ shown in the middle panel as dots.
+```bash
+δ_vec,r_vec = fromMomentsToδ(m0_vec[x0_pos])
+δ_vec_ext = extrapolate_δvec(δ_vec,r_max,r_max,4000,true)
+```
+
+The second line provides the linear extrapolation of the $\delta_{\mathbf{k},r}$ for $r>3=r_{max}$ using a linear function through the origin and $\delta_{\mathbf{k},3}$ up to $r_{max}^{\prime}=4000$ (this is controlled by the last four arguments and shown by the straight lines in the figure, middle panel). Finally, we obtain the DSF $JS(\mathbf{k},\omega)$ at $w=\omega/J$ from a vector of energies w:
+```bash
+w_vec = collect(0.0:0.02:3.7)
+JSw_vec = [JS(δ_vec_ext,1.0*x0,w,0.02) for w in w_vec]
+```
+Here the extrapolated vector of $\delta_{\mathbf{k},r}$ is used and the broadening $\eta=0.02$. The result for all temperatures $1/x_{0}$ is shown in the right panel.
+<p align="center"><img src="tutorialFigures/Triangular_DSF_kM.jpg" width="35%"/></p>
 
 
 
