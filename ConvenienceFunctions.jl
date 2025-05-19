@@ -92,8 +92,10 @@ function get_c_iipDyn_mat(hte_lattice::Dyn_HTE_Lattice,hte_graphs::Dyn_HTE_Graph
     return GiipDyn_mat
 end
 
+
+ """ perform frequency sum over real-space dynamic correlators to obtain equal time correlators """
 function get_c_iipEqualTime_mat(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}})::Array{Vector{Rational{Int128}}}
-    """ perform frequency sum over real-space dynamic correlators to obtain equal time correlators """
+   
     max_order_plus1 = size(c_iipDyn_mat[1,1])[1]
     c_iipEqualTime_mat = Array{Vector{Rational{Int64}}}(undef, length(c_iipDyn_mat[:,1]), length(c_iipDyn_mat[1,:]))
     for j in eachindex(c_iipDyn_mat[:,1])
@@ -128,13 +130,15 @@ end
 
 ###### resummation tools for polynomial p
 
+""" Padé approximant (use RobustPade to avoid dividing by zero and just return 0//1) """
 function get_pade(p::Polynomial,N::Int,M::Int)
-    """ Padé approximant (use RobustPade to avoid dividing by zero and just return 0//1) """
+    
     return robustpade(p,N,M)
 end
 
+ """ Integrated differential approximant, setup of the ODE and return solution at x_vec """
 function get_intDiffApprox(p::Polynomial,x_vec::Vector{Float64},M::Int,L::Int,N::Int)
-    """ Integrated differential approximant, setup of the ODE and return solution at x_vec """
+   
     @assert M+L+N+2 <= Polynomials.degree(p)
     pp= Polynomials.derivative(p)
     @variables x
@@ -164,9 +168,9 @@ function get_intDiffApprox(p::Polynomial,x_vec::Vector{Float64},M::Int,L::Int,N:
 end
 
 ###### variable transform from x to u=tanh(fx)
-function get_p_u(coeffs_x::Vector{Float64},f::Float64)
-    """ transform polynomial in x (defined via coeffs_x) to polynomial in u=tanh(fx) truncated to degree length(coeffs_x)-1 """ 
+""" transform polynomial in x (defined via coeffs_x) to polynomial in u=tanh(fx) truncated to degree length(coeffs_x)-1 """ 
     """ this is too slow for transforming many coeffs_x, use the linear trafo instead """
+function get_p_u(coeffs_x::Vector{Float64},f::Float64)
     @variables x u
     x = taylor(atanh(u)/f, u, 0:(length(coeffs_x)-1), rationalize=false)
     p_u_ext = simplify(series(coeffs_x,x);expand=true)
@@ -174,9 +178,10 @@ function get_p_u(coeffs_x::Vector{Float64},f::Float64)
     return p_u
 end
 
-function get_LinearTrafoToCoeffs_u(max_order::Int, f::Float64)::Matrix{Float64}
 """ get linear transform polynomial coeffs from x to u=tanh(fx) """ 
     """ to be used as res*coeffs_x """
+function get_LinearTrafoToCoeffs_u(max_order::Int, f::Float64)::Matrix{Float64}
+
     if max_order > 16
         throw(error("max_order must be smaller than 17"))
     end
@@ -214,8 +219,8 @@ end
 
 ###### k-space functions
 
+ """ create a linear interpolation between an arbitrary number of (high symmetry) points in BZ """
 function create_brillouin_zone_path(points, num_samples::Int)
-    """ create a linear interpolation between an arbitrary number of (high symmetry) points in BZ """
     # Calculate distances between consecutive points
     distances = [norm(p2 .- p1) for (p1, p2) in zip(points[1:end-1], points[2:end])]
     total_distance = sum(distances)
@@ -256,10 +261,11 @@ end
 
 
 #Fourier Transforms
+""" computes the spatial FT of c_iipDyn for momentum k """
+""" assumes inversion symmetry of the lattice to get real FT transform """
+""" sums over all basis states:  """
 function get_c_k(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
-    """ computes the spatial FT of c_iipDyn for momentum k """
-    """ assumes inversion symmetry of the lattice to get real FT transform """
-    """ sums over all basis states:  """
+
 
     lattice = hte_lattice.lattice
     center_sites = hte_lattice.basis_positions
@@ -291,12 +297,12 @@ function get_c_k(kvec::AbstractArray{<:Tuple{Vararg{<:Real}}}
         return fourier_transform.(kvec)
 end
 
-
+"""computes the inverse fourier transform for sublattice resolved fourier transforms"""
 function inverse_fourier_transform(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
     ,c_kDyn::AbstractArray{T}
     ,
     hte_lattice::Dyn_HTE_Lattice)::Matrix{T} where {T}
-    """computes the inverse fourier transform for sublattice resolved fourier transforms"""
+    
 
     #check if kvals and c_kDyn have same dimensions
     if size(c_kDyn) != size(kvals)
@@ -331,9 +337,11 @@ end
 
 #Sublattice Resolved Fourier Transforms
 
+
+ """ computes the sublattice resolved spatial FT of c_iipDyn for momentum k """
+""" assumes inversion symmetry of the lattice to get real FT transform """
 function get_c_k_subl(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
-    """ computes the sublattice resolved spatial FT of c_iipDyn for momentum k """
-    """ assumes inversion symmetry of the lattice to get real FT transform """
+   
     lattice = hte_lattice.lattice
     center_sites = hte_lattice.basis_positions
 
@@ -372,6 +380,8 @@ function get_c_k_subl(
     return fourier_transform.(kvals)
 end
 
+
+ """computes the inverse sublattice resolved fourier transform"""
 function inverse_fourier_transform_subl(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
     ,c_kDyn_subl::Union{
     AbstractVector{Matrix{T}},
@@ -379,7 +389,7 @@ function inverse_fourier_transform_subl(kvals::AbstractArray{<:Tuple{Vararg{<:Re
     AbstractArray{Matrix{T}}
     },
     hte_lattice::Dyn_HTE_Lattice)::Matrix{T} where {T}
-    """computes the inverse fourier transform for sublattice resolved fourier transforms"""
+   
 
     #check if kvals and c_kDyn_subl have same dimensions
     if size(c_kDyn_subl) != size(kvals)
@@ -421,10 +431,10 @@ end
 
 
 ###### moments, continued fractions and dynamical spin structure factors
+""" get the moments m(0),m(2)),m(4),...,m(2r_max) from the coefficients c_kDyn
+(need to flip the even indices in front of x^odd to comply with definition of c)v"""
 function get_moments_from_c_kDyn(c_kDyn::Matrix{Float64})
-    """ get the moments m(0),m(2)),m(4),...,m(2r_max) from the coefficients c_kDyn
-    (need to flip the even indices in front of x^odd to comply with definition of c)v"""
-
+   
     ### generalizes the following which only works for max_order=12 (r_max=6)
     #m0 = Polynomial(+flipEvenIndexEntries(c_kDyn_mat[:,1]))    
     #m2 = Polynomial(+flipEvenIndexEntries(c_kDyn_mat[3:end,2]))
@@ -444,8 +454,9 @@ function get_moments_from_c_kDyn(c_kDyn::Matrix{Float64})
     return m_vec
 end
 
+ """ convert [m0,m2,m4,...] of any length <9 to [δ0,δ1,...] of the same length, also return r_vec=[0,1,2,...] """
 function fromMomentsToδ(m_vec::Vector{Float64})
-    """ convert [m0,m2,m4,...] of any length <9 to [δ0,δ1,...] of the same length, also return r_vec=[0,1,2,...] """
+   
     @assert length(m_vec)<=9
 
     m_vec_pad = 1*m_vec
@@ -491,7 +502,6 @@ function fromMomentsToδ(m_vec::Vector{Float64})
 end
 
 
-###Ruben? Kann das Weg?
 function fromMomentsToδ(m_vec::Vector{Polynomial{Float64, :x}})
     @assert length(m_vec)<=7
 
@@ -524,8 +534,9 @@ function fromMomentsToδ(m_vec::Vector{Polynomial{Float64, :x}})
 end
 
 
+""" continued fraction in variable s using δ_vec=[δ0,δ1,...,δr] and r-pole termination time τ"""
 function contFrac(s::Number,δ_vec::Vector{Float64})::Number
-    """ continued fraction in variable s using δ_vec=[δ0,δ1,...,δr] and r-pole termination time τ"""
+    
     if length(δ_vec)==1
         return  abs(δ_vec[1])^0.5
     else
@@ -535,10 +546,11 @@ end
 
 
 #Björn überarbeiten
+""" extrapolate parameters of continued fraction δ_vec=[δ[0],δ[1],...,δ[R]] 
+using a linear interpolation for δ_vec[r_min] to δ[r_max], extrapolate δ[r_max+1]...δ[r_ext]. 
+If intercept0=true use line through origin. """
 function extrapolate_δvec(δ_vec::Vector{Float64},r_min::Int,r_max::Int,r_ext::Int,intercept0::Bool)
-    """ extrapolate parameters of continued fraction δ_vec=[δ[0],δ[1],...,δ[R]] 
-    using a linear interpolation for δ_vec[r_min] to δ[r_max], extrapolate δ[r_max+1]...δ[r_ext]. 
-    If intercept0=true use line through origin. """
+   
     @assert r_max >= r_min
     @assert r_ext > r_max
     @assert r_max+1 <= length(δ_vec)
@@ -556,8 +568,9 @@ function extrapolate_δvec(δ_vec::Vector{Float64},r_min::Int,r_max::Int,r_ext::
     end
 end
 
+  """ get dynamical spin structure factor (times J) from δ_wec at w=ω/J and broadening η"""
 function JS(δ_vec::Vector{Float64},x::Float64,w::Float64,η::Float64)::Float64
-    """ get dynamical spin structure factor (times J) from δ_wec at w=ω/J and broadening η"""
+  
     res = 1/π * real(contFrac(1im * w + η,δ_vec))
     if x==0.0 || w==0.0
         return res
@@ -567,11 +580,11 @@ function JS(δ_vec::Vector{Float64},x::Float64,w::Float64,η::Float64)::Float64
 end 
 
 
-
+""" get the dynamical spin structure factor from the correlation matrix c_iipDyn_mat 
+using pade approximants for the moments either in the variable x = J/T ("pade") or in the variable
+u = tanh(f*x) ("u_pade")   """
 function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},c_iipDyn_mat::Array{Matrix{Rational{Int128}}},lattice::Dyn_HTE_Lattice;f::Float64=0.48,η::Float64=0.01,r_min::Int=3,r_max::Int=3,r_ext::Int=1000,intercept0::Bool=true)
-    """ get the dynamical spin structure factor from the correlation matrix c_iipDyn_mat 
-    using pade approximants for the moments either in the variable x = J/T ("pade") or in the variable
-    u = tanh(f*x) ("u_pade")   """
+  
 
 
     JSkw_mat = 1.0*zeros(length(k_vec),length(w_vec))
