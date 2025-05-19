@@ -104,7 +104,31 @@ p_u = Polynomial(ufromx_mat*coeffs_x)
 ```
 This completes the crosschecking of the frequency-summed Dyn-HTE expansion.
 
+### Static structure factor
 
+We proceed to the study of the static susceptibility $\chi_{\mathbf{k}}\equiv G_{\mathbf{k}}(i\nu_{m}=0)$ at Matsubara index m=0. We obtain its real-space version using the function
+```bash
+TGiip_Matsubara_xpoly(c_iipDyn_mat,i,1,m)
+```
+
+and then compute the spatial Fourier transform by hand (using the cosine due to inversion symmetry and the function for the real-space position of lattice site i
+```bash
+getSitePosition(hte_lattice.lattice,i)
+```
+as follows:
+```bash
+p_x = sum([cos(dot(k,getSitePosition(hte_lattice.lattice,i) 
+.- getSitePosition(hte_lattice.lattice,hte_lattice.basis_positions[1]))) 
+* get_TGiip_Matsubara_xpoly(c_iipDyn_mat,i,1,m) for i in 1:hte_lattice.lattice.length])
+```
+For k=K the resulting x-Padés and u-Padés (f=0.25) which are computed from the x-series as above are shown in the top panel of the figure. There we also compare to the bold line diagrammatic Monte Carlo of Kulagin et al [PhysRevB.87.024407(2013)], see dots. Finally we can repeat the above calculation of $\chi_{\mathbf{k}}$ for $\mathbf{k}$ sampled uniformly along a path through the BZ (see bottom panel of figure). This path ($Γ\rightarrow K\rightarrow M\rightarrow Γ$) with Nk+1 $\mathbf{k}$-points and the tick labels at the points defining the polygon is obtained conveniently with:
+```bash
+path = [Γ,K,M,Γ]
+pathticks = ["Γ","K","M","Γ"]
+Nk = 200
+k_vec,kticks_positioins = create_brillouin_zone_path(path, Nk)
+```
+<p align="center"><img src="tutorialFigures/Triangular_StaticSF.jpg"></p>
 
 
 
