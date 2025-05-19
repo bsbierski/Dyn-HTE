@@ -1,6 +1,6 @@
-# Dynamic high temperature expansion for quantum spins <br /> (Dyn-HTE) 
+# Dynamic high temperature expansion for quantum spins (Dyn-HTE) 
 
-software by Ruben Burkard, Benedikt Schneider, Björn Sbierski 
+by Ruben Burkard, Benedikt Schneider, Björn Sbierski 
 
 This software allows to compute dynamic spin correlations of spin-S Heisenberg models in thermal equilibrium via a high-temperature expansion of the Matsubara spin-spin correlator. It currently allows for $S \leq 1$ and models with a single coupling constant $J$, but arbitrary lattice geometry.
 
