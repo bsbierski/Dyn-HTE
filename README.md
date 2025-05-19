@@ -19,8 +19,8 @@ $$ S(\mathbf{k},\omega) = \int_{-\infty}^{+\infty}  \frac{\mathrm{d}t}{2\pi N} \
 ## Publication/Citation
 The theory background for Dyn-HTE and various applications are provided in the following two publications.
 
-- Ruben Burkard, Benedikt Schneider, Björn Sbierski, *Dyn-HTE: High-temperature expansion of the dynamic Matsubara spin correlator*, arxiv 2025.YYYYY (2025)
-- Ruben Burkard, Benedikt Schneider, Björn Sbierski, *Dynamic correlations of frustrated quantum spins from high-temperature expansion*, arxiv 2025.XXXXX (2025)
+[1] Ruben Burkard, Benedikt Schneider, Björn Sbierski, *Dyn-HTE: High-temperature expansion of the dynamic Matsubara spin correlator*, arxiv 2025.YYYYY (2025)
+[2] Ruben Burkard, Benedikt Schneider, Björn Sbierski, *Dynamic correlations of frustrated quantum spins from high-temperature expansion*, arxiv 2025.XXXXX (2025)
 
 If Dyn-HTE benefits your research, please acknowledge it by citing these references.
 
@@ -55,11 +55,54 @@ The lattice and in particular the site numbering can be visualized by the follow
 ```bash
 display(graphplot(hte_lattice.graph,names=1:nv(hte_lattice.graph),markersize=0.2,fontsize=8,nodeshape=:rect,curves=false))
 ```
-<p align="center"><img src="tutorial/plotTriangularLattice.png"></p>
+<p align="center"><img src="tutorialFigures/plotTriangularLattice.jpg"></p>
 
+Finally, we perform the embedding to compute the $c_{ii^{\prime}}^{(n)}(i\nu_{m})$ of Eq. (10) in [1], they are provided as vectors containing the prefactors in 
+$$c_{ii^{\prime}}^{(n)}(i\nu_{m})=c_{ii^{\prime},0}^{(n)}\delta_{0,m}+(1-\delta_{0,m})\sum_{l=2,4,6,...}c_{ii^{\prime},l}^{(n)}\frac{1}{(2\pi m)^{2l}},$$
+c.f. Eq. (17) in [1].
+```bash
+c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs);
+```
+Here, the site $i$ is pinned to one of the central basis sites (here the single site 19 in the L=3 example in the figure) and $i^{\prime}$ takes on all other site indices. If this embedding function is used with a SimpleGraph instead where translation symmetry is not assumed, $i^{\prime}$ takes all possible site indices. However, the latter case is less efficient since the embedding with Dyn_HTE_Lattice structures automatically uses lattice symmetries. 
 
+### Equal-time correlators (crosschecks)
 
+As a first crosscheck for Dyn-HTE we reproduce the HTE of the uniform susceptibility $\sum_{i^{\prime}}\left\langle S_{i}^{z}S_{i^{\prime}}^{z}\right\rangle$  found by Elstner et al in [PhysRevLett.71.10 (1993)]. As a first step we analytically sum the $c_{ii^{\prime}}^{(n)}(i\nu_{m})$ over Matsubara frequency to obtain the HTE of the equal-time correlators $\left\langle S_{i}^{z}S_{i^{\prime}}^{z}\right\rangle$, this is done as follows:
+```bash
+c_iipEqualTime_mat = get_c_iipEqualTime_mat(c_iipDyn_mat)
+```
+We now sum over i to obtain the expansion coefficients of the uniform susceptibility in powers of (-x).
+```bash
+println( [sum(c_iipEqualTime_mat[i,1][n+1] for i in 1:hte_lattice.lattice.length) for n in 0:n_max]' )
+```
+This yields 
+```bash
+[1/4, 3/8, 3/8, 17/64, 75/512, 441/5120, 8143/122880, 23691/573440, 118351/13762560, -585353/123863040, 46090313/9909043200, 23370989/2076180480, 1154027593/581330534400]
+```
+which indeed agrees to the result of Elstner et al if their convention for expansion coefficients is taken into account.
 
+We next consider the equal-time correlators in k-space, say at the K-point. We define a vector of inverse temperatures (x_vec) and obtain the Fourier transform to momentum space using the “get_c_k” function. The series expansion in x (instead of -x) is obtained by a simple sign-flip of the even-index entries (note the julia convention that the first element - here $x^{0}$ coefficient - is at index 1). Then the polynomial is obtained as p_x 
+```bash
+k,k_label = K,"K"
+x_vec = collect(0:0.05:5.1)
+coeffs_x = flipEvenIndexEntries(get_c_k(k , c_iipEqualTime_mat,hte_lattice))
+p_x = Polynomial(coeffs_x)
+```
+<p align="center"><img src="tutorialFigures/Triangular_EqualTime_GkK.jpg"></p>
+
+The evaluation of the bare series (p_x) is shown in the figure (full green line). It diverges around x=1.5. For a better estimate, we evaluate Padé approximants using, e.g. for [6,6],
+```bash
+get_pade(p_x,6,6)
+```
+
+which provides a rational function that agrees well down to x=5 with the results of the exponential tensor renormalization group (XTRG, geometry YC6x12, D*=1000) by Chen et al in [PhysRevB.99.140404 (2019)] (gray dots). The series in u=\mathrm{tanh}(fx) is obtained as follows from a linear transformation of the vector of expansion coefficients (we pick f=0.2 empirically for good agreement of the u-Padés, blue lines)
+```bash
+f=0.2 
+ufromx_mat = get_LinearTrafoToCoeffs_u(n_max,f)
+u_vec = tanh.(f .* x_vec)
+p_u = Polynomial(ufromx_mat*coeffs_x)
+```
+This completes the crosschecking of the frequency-summed Dyn-HTE expansion.
 
 
 
