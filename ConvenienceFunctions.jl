@@ -129,48 +129,6 @@ end
 
 ###### resummation tools for polynomial p
 
-function eval_correlator_LR_continuous_pad(Correlator,X,pade_order)
-    """evaluate the correlator for imaginary frequencies by first fitting it to a continued fraction that preserves the continuity relation"""
-    orderJ,orderω = size(Correlator)
-    @variables x
-
-    Gs = x-> sum(Correlator[i,1]*x^(i-1) for i =  1:orderJ) #static correlator
-
-    Gs_pad = robustpade(Gs,pade_order[1],pade_order[2])
-
-    G = Gs_pad(X)
-
-    return G
-   
-end
-
-function eval_correlator_LR_continuous_pad_tanh(Correlator::Matrix{T},X,pade_order,f) where {T}
-    """evaluate the correlator for imaginary frequencies by first fitting it to a continued fraction that preserves the continuity relation"""
-    orderJ,orderω = size(Correlator)
-    @variables x
-    Gs = x-> sum(Correlator[i,1]*(f*atanh(x))^(i) for i =  1:orderJ) #static correlator
-    Gs_pad = robustpade(Gs,pade_order[1],pade_order[2])
-    G = Gs_pad(tanh(X/f))/X
-    return G
-   
-end
-
-function eval_correlator_LR_continuous_pad_exp(Correlator,X,pade_order,f)
-    """evaluate the correlator for imaginary frequencies by first fitting it to a continued fraction that preserves the continuity relation"""
-    orderJ,orderω = size(Correlator)
-    @variables x
-    Gs = x-> sum(Correlator[i,1]*(f*log(1+x))^(i) for i =  1:orderJ) #static correlator
- 
-    Gs_pad = robustpade(Gs,pade_order[1],pade_order[2])
-
-    G = Gs_pad(exp(X/f)-1)/X
-
-    return G
-   
-end
-
-
-
 function get_pade(p::Polynomial,N::Int,M::Int)
     """ Padé approximant (use RobustPade to avoid dividing by zero and just return 0//1) """
     return robustpade(p,N,M)
@@ -244,8 +202,6 @@ function get_LinearTrafoToCoeffs_u(max_order::Int, f::Float64)::Matrix{Float64}
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/f^16]
     ]
 
-
-    
     mat = zeros(Float64, 17, 17)
     for i in 1:17
         for j in 1:length(data[i])
@@ -338,17 +294,14 @@ end
 
 
 function inverse_fourier_transform(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
-    ,c_kDyn_subl::Union{
-    AbstractVector{Matrix{T}},
-    AbstractMatrix{Matrix{T}},
-    AbstractArray{Matrix{T}}
-    },
-    hte_lattice::Dyn_HTE_Lattice)::Matrix{Matrix{T}} where {T<:Number}
+    ,c_kDyn::AbstractArray{T}
+    ,
+    hte_lattice::Dyn_HTE_Lattice)::Matrix{T} where {T}
     """computes the inverse fourier transform for sublattice resolved fourier transforms"""
 
-    #check if kvals and c_kDyn_subl have same dimensions
-    if size(c_kDyn_subl) != size(kvals)
-        throw(error("c_kDyn_subl and kvals have different sizes. They should be the same."))
+    #check if kvals and c_kDyn have same dimensions
+    if size(c_kDyn) != size(kvals)
+        throw(error("c_kDyn and kvals have different sizes. They should be the same."))
     end
 
     lattice = hte_lattice.lattice
@@ -356,7 +309,7 @@ function inverse_fourier_transform(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
     (nx,ny) = size(kmat)
 
     c_iipDyn_mat = Array{T}(undef, length(lattice),length(lattice.unitcell.basis));
-    Threads.@threads for k in 1:length(lattice)
+    #= Threads.@threads =# for k in 1:length(lattice)
         for b in 1:length(lattice.unitcell.basis)
         
             if T == Taylor1{Float64}
@@ -364,15 +317,14 @@ function inverse_fourier_transform(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
             elseif T == Float64
                 z = 0.
             else
-                z = zeros(size(Brillouin_zone_cut[1]))
+                z = zeros(size(c_kDyn[1]))
                 end 
-
 
         for i in 1:nx,j in 1:ny
             # Compute Fourier transformation at momentum (kx, ky). The real-space position of the i-th spin is obtained via getSitePosition(lattice,i). 
-                z += cos(dot(kmat[i,j], getSitePosition(lattice,k).-getSitePosition(lattice,center_sites[b]))) *  c_kDyn_subl[i,j]
+                z += cos(dot(kmat[i,j], getSitePosition(lattice,k).-getSitePosition(lattice,center_sites[b]))) *  c_kDyn[i,j]
         end
-        c_iipDyn_mat[k,b] = z/length(eachindex(c_kDyn_subl))
+        c_iipDyn_mat[k,b] = z/length(eachindex(c_kDyn))
     end
     end
     return c_iipDyn_mat
@@ -711,3 +663,21 @@ end
 
 
 
+"""
+Find the smallest x in [x_min, x_max] such that |f1(x) - f2(x)| > epsilon.
+Returns the x value or `nothing` if no such point exists.
+"""
+function find_divergence_point(f1, f2, epsilon; x_min=0.0, x_max=10.0, step=0.01)
+    diff(x) = abs(f1(x) - f2(x))
+
+    x = x_min
+    while x + step <= x_max
+        if diff(x) ≤ epsilon && diff(x + step) > epsilon
+            # Define a one-argument function for root finding
+            return (x + step / 2)
+        end
+        x += step
+    end
+
+    return nothing  # No divergence found in the interval
+end
