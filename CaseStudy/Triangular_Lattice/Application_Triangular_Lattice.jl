@@ -181,7 +181,7 @@ if true ###### χ vs k #########
             @show p
 
             plot!(collect(0:Nk)/Nk, rMF(collect(1:(Nk+1)),fit.param) ,color=thermalCol4_vec[x_pos], linestyle=:dash,
-                                  label="rMF {f,g}={"*string(round(p[1],digits=2))*","*string(round(p[2],digits=2))*"}" )
+                                  label="rMF "*L"\{f_x,g_x\} \!=\!"*"{"*string(round(p[1],digits=2))*","*string(round(p[2],digits=2))*"}" )
         end
     end
 
