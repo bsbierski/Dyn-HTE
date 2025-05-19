@@ -128,7 +128,7 @@ pathticks = ["Γ","K","M","Γ"]
 Nk = 200
 k_vec,kticks_positioins = create_brillouin_zone_path(path, Nk)
 ```
-<p align="center"><img src="tutorialFigures/Triangular_StaticSF.jpg" width="35%"/></p>
+<p align="center"><img src="tutorialFigures/Triangular_StaticSF.jpg" width="39%"/></p>
 
 ### Dynamic structure factor (DSF) at k=M
 
@@ -161,8 +161,18 @@ w_vec = collect(0.0:0.02:3.7)
 JSw_vec = [JS(δ_vec_ext,1.0*x0,w,0.02) for w in w_vec]
 ```
 Here the extrapolated vector of $\delta_{\mathbf{k},r}$ is used and the broadening $\eta=0.02$. The result for all temperatures $1/x_{0}$ is shown in the right panel.
-<p align="center"><img src="tutorialFigures/Triangular_DSF_kM.jpg" width="35%"/></p>
+<p align="center"><img src="tutorialFigures/Triangular_DSF_kM.jpg" width="55%"/></p>
 
+### Dynamic structure factor (DSF): k-path through BZ
+
+Finally we can compute the DSF on a path trough the BZ (at $x=3$) similar as for the static structure factor $\chi_{\mathbf{k}}$. One subtlety is to avoid the exact $\Gamma$ point, since the corresponding observable $\sum_{i}S_{i}^{z}$ is a conserved quantity and it has thus no dynamics leading to trivial moments. We instead use a point close by the $\Gamma$  point.
+```bash
+path = [(0.0001,0.0001),K,M,(0.0001,0.0001)]
+pathticks = ["Γ","K","M","Γ"]
+Nk = 49
+k_vec,kticks_positioins = create_brillouin_zone_path(path, Nk)
+```
+<p align="center"><img src="tutorialFigures/Triangular_Lattice_JSkw_x3.0_f0.55.jpg" width="45%"/></p>
 
 
 ## Short description of scripts
