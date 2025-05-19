@@ -1,7 +1,18 @@
 using Symbolics, RobustPade, Polynomials, DifferentialEquations, LsqFit
 using TaylorSeries
 
-
+""" create strings "S1half", "S1", "S3half",... dependening on rational spin_length"""
+function create_spin_string(s)
+    spin_length = rationalize(1.0*s)
+    denom = denominator(spin_length)
+    is_half = ""
+    if denom ==2
+        is_half = "half"
+    elseif denom != 1
+        error("invalid spin_length: "*string(spin_length))
+    end
+    return "S"*string(numerator(spin_length))*is_half
+end
 
 """get expansion of real-space G_ii' between the sites in basis_positions and all sites in the Graph
     optional arguments:
@@ -136,7 +147,7 @@ function get_pade(p::Polynomial,N::Int,M::Int)
     return robustpade(p,N,M)
 end
 
- """ Integrated differential approximant, setup of the ODE and return solution at x_vec """
+""" Integrated differential approximant, setup of the ODE and return solution at x_vec """
 function get_intDiffApprox(p::Polynomial,x_vec::Vector{Float64},M::Int,L::Int,N::Int)
    
     @assert M+L+N+2 <= Polynomials.degree(p)
@@ -168,8 +179,8 @@ function get_intDiffApprox(p::Polynomial,x_vec::Vector{Float64},M::Int,L::Int,N:
 end
 
 ###### variable transform from x to u=tanh(fx)
-""" transform polynomial in x (defined via coeffs_x) to polynomial in u=tanh(fx) truncated to degree length(coeffs_x)-1 """ 
-    """ this is too slow for transforming many coeffs_x, use the linear trafo instead """
+""" transform polynomial in x (defined via coeffs_x) to polynomial in u=tanh(fx) truncated to degree length(coeffs_x)-1
+    (this is too slow for transforming many coeffs_x, use the linear trafo instead """
 function get_p_u(coeffs_x::Vector{Float64},f::Float64)
     @variables x u
     x = taylor(atanh(u)/f, u, 0:(length(coeffs_x)-1), rationalize=false)
@@ -178,8 +189,7 @@ function get_p_u(coeffs_x::Vector{Float64},f::Float64)
     return p_u
 end
 
-""" get linear transform polynomial coeffs from x to u=tanh(fx) """ 
-    """ to be used as res*coeffs_x """
+""" get linear transform polynomial coeffs from x to u=tanh(fx), to be used as res*coeffs_x """
 function get_LinearTrafoToCoeffs_u(max_order::Int, f::Float64)::Matrix{Float64}
 
     if max_order > 16
@@ -261,9 +271,9 @@ end
 
 
 #Fourier Transforms
-""" computes the spatial FT of c_iipDyn for momentum k """
-""" assumes inversion symmetry of the lattice to get real FT transform """
-""" sums over all basis states:  """
+""" computes the spatial FT of c_iipDyn for momentum k
+    assumes inversion symmetry of the lattice to get real FT transform
+    sums over all basis states:  """
 function get_c_k(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
 
 
@@ -338,8 +348,8 @@ end
 #Sublattice Resolved Fourier Transforms
 
 
- """ computes the sublattice resolved spatial FT of c_iipDyn for momentum k """
-""" assumes inversion symmetry of the lattice to get real FT transform """
+""" computes the sublattice resolved spatial FT of c_iipDyn for momentum k
+    assumes inversion symmetry of the lattice to get real FT transform """
 function get_c_k_subl(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
    
     lattice = hte_lattice.lattice

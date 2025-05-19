@@ -14,8 +14,8 @@ hte_lattice = getLattice(L,"square");
 #display(graphplot(hte_lattice.graph,names=1:nv(hte_lattice.graph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
 
 ### compute all correlations in the lattice (or load them)
-cd("CaseStudy/Square_Lattice_BSb/")
-fileName_c = "Square_Lattice_c_iipDyn_nmax"*"_L"*string(L)*".jld2"
+cd("CaseStudy/Square_Lattice/")
+fileName_c = "Square_Lattice_"*create_spin_string(spin_length)*"_c_iipDyn_nmax"*string(n_max)*"_L"*string(L)*".jld2"
 if isfile(fileName_c)
     c_iipDyn_mat = load_object(fileName_c)
 else

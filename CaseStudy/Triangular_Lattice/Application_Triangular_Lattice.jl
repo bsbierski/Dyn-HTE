@@ -20,7 +20,7 @@ hte_lattice = getLattice(L,"triang");
 
 
 ### compute all correlations in the lattice (or load them)
-fileName_c = "CaseStudy/Triangular_Lattice_BSb/Triangular_Lattice_c_iipDyn_nmax"*string(nmax)*"_L"*string(L)*".jld2"
+fileName_c = "CaseStudy/Triangular_Lattice/Triangular_Lattice_"*create_spin_string(spin_length)*"_c_iipDyn_nmax"*string(nmax)*"_L"*string(L)*".jld2"
 if isfile(fileName_c)
     println("loading "*fileName_c)
     c_iipDyn_mat = load_object(fileName_c)
@@ -68,7 +68,7 @@ plot!(plt,x_vec,get_pade(p_u,6,6).(u_vec),color=:blue,linestyle=linestyle_vec[2]
 plot!(plt,x_vec,get_pade(p_u,5,5).(u_vec),color=:blue,linestyle=linestyle_vec[3],label="u-Padé[5,5] (f=$f)")
 
 ### plot Gk from [Chen...PRB2019]
-fileNameXTRG = "CaseStudy/Triangular_Lattice_BSb/Triangular_ThreeGk"*k_label*"_Chen.csv"
+fileNameXTRG = "CaseStudy/Triangular_Lattice/Triangular_ThreeGk"*k_label*"_Chen.csv"
 if isfile(fileNameXTRG)
     data = readdlm(fileNameXTRG,',',Float64)
     scatter!(plt,1 ./ data[:,1],data[:,2] ./ 3,color=:grey,label="XTRG [Chen...PRB2019]")
@@ -77,7 +77,7 @@ end
 xPlots,yPlots=1,1
 plt_final = plot(plt,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.62*aps_width*yPlots))
 display(plt_final)
-savefig(plt_final,"CaseStudy/Triangular_Lattice_BSb/Triangular_EqualTime_Gk"*k_label*".png")
+savefig(plt_final,"CaseStudy/Triangular_Lattice/Triangular_EqualTime_Gk"*k_label*".png")
 
 #########################################################################################
 ###### 3. Static structure factor (iν_m=0) and fit of renormalized MF form (rMF) ########
@@ -90,7 +90,7 @@ if true ### plot χT at k=K vs T
     plt_TχK_vs_x = plot(xlims=(0,x_vec[end]),ylims=(0.25,0.7),xlabel=L"x=J/T",ylabel=L"TG_{k=K}(i\nu_{m=0}) = Tχ_{k=K}",  label="",legend=:topleft)
 
     ### plot k=K data from [Kulagin...PhysRevB.87.024407(2013)]
-    fileNameKulagin = "CaseStudy/Triangular_Lattice_BSb/Triangular_StaticSusc_Kulagin_atK.csv"
+    fileNameKulagin = "CaseStudy/Triangular_Lattice/Triangular_StaticSusc_Kulagin_atK.csv"
     if isfile(fileNameKulagin)
         data = readdlm(fileNameKulagin,',',Float64)
         scatter!(plt_TχK_vs_x, 1 ./ data[:,1], data[:,2] .* data[:,1] , color=:black,label="[Kulagin2013]")
@@ -187,7 +187,7 @@ if true ###### χ vs k #########
 
     if true ### plot bold-line diagMC data from [KulaginPRB2013]
         for (x_pos,x) in enumerate(x_vec)
-            fileNameKulagin = "CaseStudy/Triangular_Lattice_BSb/Triangular_StaticSusc_Kulagin_GammaKMGamma_T"*string(1/x)*".csv"
+            fileNameKulagin = "CaseStudy/Triangular_Lattice/Triangular_StaticSusc_Kulagin_GammaKMGamma_T"*string(1/x)*".csv"
             if isfile(fileNameKulagin)
                 data = readdlm(fileNameKulagin,',',Float64)
                 scatter!(plt_Tχk_vs_k, data[:,1], data[:,2] / x, markeralpha=0.4, color=thermalCol4_vec[x_pos],label="")
@@ -219,7 +219,7 @@ end
 xPlots,yPlots=1,2
 plt_final = plot(plt_TχK_vs_x,plt_Tχk_vs_k, layout=(yPlots,xPlots), size=(aps_width*xPlots,(0.58)*aps_width*yPlots),dpi=600)
 display(plt_final)
-savefig(plt_final,"CaseStudy/Triangular_Lattice_BSb/Triangular_StaticSF.png")
+savefig(plt_final,"CaseStudy/Triangular_Lattice/Triangular_StaticSF.png")
 
 
 #########################################################################################
@@ -311,7 +311,7 @@ if true
     xPlots,yPlots=3,1
     plt_final = plot(plt_m, plt_δ, plt_JS, layout=(yPlots,xPlots), size=(0.7*aps_width*xPlots,0.7*aps_width*yPlots))
     display(plt_final)
-    savefig(plt_final,"CaseStudy/Triangular_Lattice_BSb/Triangular_DSF_k"*k_label*".png")
+    savefig(plt_final,"CaseStudy/Triangular_Lattice/Triangular_DSF_k"*k_label*".png")
 end
 
 ### prepare insets
@@ -370,7 +370,7 @@ if k_label=="M" plt_JS_M = deepcopy(plt_JS) end
 xPlots,yPlots=1,2
 plt_final = plot(plt_JS_M,plt_JS_K, layout=(yPlots,xPlots), size=(aps_width*xPlots,(0.45)*aps_width*yPlots),dpi=600)
 display(plt_final)
-savefig(plt_final,"CaseStudy/Triangular_Lattice_BSb/Triangular_DSF.png")
+savefig(plt_final,"CaseStudy/Triangular_Lattice/Triangular_DSF.png")
 
 ###################################################################################################
 ###### background info: scaling plot of DSF at k=K at three different α (in quantum critical fan?)#
@@ -408,7 +408,7 @@ if k_label=="K" && false
     xPlots,yPlots=3,1
     plt_final = plot(plt_JS_scaled1,plt_JS_scaled2,plt_JS_scaled3, layout=(yPlots,xPlots), size=(aps_width*xPlots,0.5*aps_width*yPlots))
     display(plt_final)
-    savefig(plt_final,"CaseStudy/Triangular_Lattice_BSb/Triangular_JS_k"*k_label*"_scaling.png")
+    savefig(plt_final,"CaseStudy/Triangular_Lattice/Triangular_JS_k"*k_label*"_scaling.png")
 end
 
 #########################################################################################
@@ -475,7 +475,7 @@ if true
     resize_to_layout!(fig);
     display(fig)
 
-    save("CaseStudy/Triangular_Lattice_BSb/Triangular_Lattice_JSkw_x$x0"*"_f$f.png",fig; px_per_unit=6.0)
+    save("CaseStudy/Triangular_Lattice/Triangular_Lattice_JSkw_x$x0"*"_f$f.png",fig; px_per_unit=6.0)
 end
 
 
