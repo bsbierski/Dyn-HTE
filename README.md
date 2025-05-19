@@ -70,7 +70,7 @@ Here, the site $i$ is pinned to one of the central basis sites (here in the L=3 
 
 ### Equal-time correlators (crosschecks)
 
-As a first crosscheck for Dyn-HTE we reproduce the HTE of the uniform susceptibility $\sum_{i^{\prime}}\left\langle S_{i}^{z}S_{i^{\prime}}^{z}\right\rangle$  found by Elstner et al in [PhysRevLett.71.10 (1993)]. As a first step we analytically sum the $c_{ii^{\prime}}^{(n)}(i\nu_{m})$ over Matsubara frequency to obtain the HTE of the equal-time correlators $\left\langle S_{i}^{z}S_{i^{\prime}}^{z}\right\rangle$, this is done as follows:
+As a crosscheck for Dyn-HTE we reproduce the HTE of the uniform susceptibility $\sum_{i^{\prime}}\left\langle S_{i}^{z}S_{i^{\prime}}^{z}\right\rangle$  found by Elstner et al in [PhysRevLett.71.10 (1993)]. As a first step we analytically sum the $c_{ii^{\prime}}^{(n)}(i\nu_{m})$ over Matsubara frequency to obtain the HTE of the equal-time correlators $\left\langle S_{i}^{z}S_{i^{\prime}}^{z}\right\rangle,$ this is done as follows:
 ```bash
 c_iipEqualTime_mat = get_c_iipEqualTime_mat(c_iipDyn_mat)
 ```
@@ -84,21 +84,21 @@ This yields
 ```
 which indeed agrees to the result of Elstner et al if their convention for expansion coefficients is taken into account.
 
-We next consider the equal-time correlators in k-space, say at the K-point. We define a vector of inverse temperatures (x_vec) and obtain the Fourier transform to momentum space using the “get_c_k” function. The series expansion in x (instead of -x) is obtained by a simple sign-flip of the even-index entries (note the julia convention that the first element - here $x^{0}$ coefficient - is at index 1). Then the polynomial is obtained as p_x 
+We next consider the equal-time correlators in k-space, say at the K-point. We define a vector of inverse temperatures (x_vec) and obtain the Fourier transform to momentum space using the “get_c_k” function. The series expansion in x (instead of -x) is obtained by a simple sign-flip of the even-index entries (note the julia convention that the first element - here $x^{0}$ coefficient - is at index 1). Then the polynomial is obtained as p_x:
 ```bash
 k,k_label = K,"K"
 x_vec = collect(0:0.05:5.1)
 coeffs_x = flipEvenIndexEntries(get_c_k(k , c_iipEqualTime_mat,hte_lattice))
 p_x = Polynomial(coeffs_x)
 ```
-<p align="center"><img src="tutorialFigures/Triangular_EqualTime_GkK.jpg" width="35%"/></p>
+<p align="center"><img src="tutorialFigures/Triangular_EqualTime_GkK.jpg" width="45%"/></p>
 
 The evaluation of the bare series (p_x) is shown in the figure (full green line). It diverges around x=1.5. For a better estimate, we evaluate Padé approximants using, e.g. for [6,6],
 ```bash
 get_pade(p_x,6,6)
 ```
 
-which provides a rational function that agrees well down to x=5 with the results of the exponential tensor renormalization group (XTRG, geometry YC6x12, D*=1000) by Chen et al in [PhysRevB.99.140404 (2019)] (gray dots). The series in u=\mathrm{tanh}(fx) is obtained as follows from a linear transformation of the vector of expansion coefficients (we pick f=0.2 empirically for good agreement of the u-Padés, blue lines)
+which provides a rational function that agrees well down to x=5 with the results of the exponential tensor renormalization group (XTRG, geometry YC6x12, D*=1000) by Chen et al in [PhysRevB.99.140404 (2019)] (gray dots). The series in $u=\mathrm{tanh}(fx)$ is obtained as follows from a linear transformation of the vector of expansion coefficients (we pick f=0.2 empirically for good agreement of the u-Padés, blue lines)
 ```bash
 f=0.2 
 ufromx_mat = get_LinearTrafoToCoeffs_u(n_max,f)
@@ -109,7 +109,7 @@ This completes the crosschecking of the frequency-summed Dyn-HTE expansion.
 
 ### Static structure factor
 
-We proceed to the study of the static susceptibility $\chi_{\mathbf{k}}\equiv G_{\mathbf{k}}(i\nu_{m}=0)$ at Matsubara index m=0. We obtain its real-space version using the function
+We proceed to the study of the static susceptibility $\chi_{\mathbf{k}}\equiv G_{\mathbf{k}}(i\nu_{m}=0)$ at Matsubara index m=0. For $k \neq 0$ this lies beyond the capabilities of conventional HTE. First we obtain the real-space static susceptibility using the function
 ```bash
 TGiip_Matsubara_xpoly(c_iipDyn_mat,i,1,m)
 ```
