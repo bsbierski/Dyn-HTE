@@ -109,7 +109,7 @@ This completes the crosschecking of the frequency-summed Dyn-HTE expansion.
 
 ### Static structure factor
 
-We proceed to the study of the static susceptibility $\chi_{\mathbf{k}}\equiv G_{\mathbf{k}}(i\nu_{m}=0)$ at Matsubara index m=0. For $k \neq 0$ this lies beyond the capabilities of conventional HTE. First we obtain the real-space static susceptibility using the function
+We proceed to the study of the static susceptibility $\chi_{\mathbf{k}}\equiv G_{\mathbf{k}}(i\nu_{m}=0)$ at Matsubara index m=0. For $\mathbf{k} \neq 0$ this lies beyond the capabilities of conventional HTE. First we obtain the real-space static susceptibility (with $i^\prime$ the central site) using the function
 ```bash
 TGiip_Matsubara_xpoly(c_iipDyn_mat,i,1,m)
 ```
@@ -133,9 +133,9 @@ k_vec,kticks_positioins = create_brillouin_zone_path(path, Nk)
 ```
 <p align="center"><img src="tutorialFigures/Triangular_StaticSF.jpg" width="39%"/></p>
 
-### Dynamic structure factor (DSF) at k=M
+### Dynamic structure factor at k=M
 
-We now proceed to the dynamic structure factor (DSF) defined above. We wish to work at the point $\mathbf{k}=M$ in momentum space. As a first step we Fourier transform the expansion coefficients $c_{ii^{\prime}}^{(n)}(i\nu_{m})$ and then compute the HTE series of the moments $m_{\mathbf{k},2r}(x)$ in $x$ for $r=0,1,...,6$:
+We now proceed to the DSF defined above. We wish to work at the point $\mathbf{k}=M$ in momentum space. As a first step we Fourier transform the expansion coefficients $c_{ii^{\prime}}^{(n)}(i\nu_{m})$ and then compute the HTE series of the moments $m_{\mathbf{k},2r}(x)$ in $x$ for $r=0,1,...,6$:
 ```bach
 k,k_label = M,"M"
 c_kDyn = get_c_k(k,c_iipDyn_mat,hte_lattice)
@@ -146,7 +146,7 @@ We normalize the moments as in the left panel of the figure below. This is done 
 poly_x = Polynomial([0,1],:x)
 xm_norm_r = coeffs(poly_x * (m_vec[1+r]/m_vec[1+r](0)))
 ```
-As for the other quantities obtained from (Dyn-)HTE above, the bare series diverges already for $x=O(1)$ but the two u-Padés [7-r,6-r] and [6-r,5-r] (dashed and dotted lines) agree reasonably well down to $x=4$ for $f=0.55$ and the first four moments $r=0,1,2,3$ which we continue with in the following. We warn the reader that the transformation $u=\mathrm{tanh}(fx)$ shows an unphysical freezing at large $x \gtrsim 2/f$, so results for larger $x$ must be considered as unphysical.
+Like for the other quantities obtained from (Dyn-)HTE above, the bare series diverges already for $x=O(1)$ but the two u-Padés [7-r,6-r] and [6-r,5-r] (dashed and dotted lines) agree reasonably well down to $x=4$ for the first four moments $r=0,1,2,3$ if we choose $f=0.55$. We continue with these four moments in the following. We warn the reader that the transformation $u=\mathrm{tanh}(fx)$ shows an unphysical freezing at large $x \gtrsim 2/f$, so results for larger $x$ must be considered as unphysical.
 
 Next we fix a set of particular (inverse) temperatures at which we obtain the moments from the u-Padé approximant [7-r,6-r]. 
 ```bash
@@ -158,17 +158,17 @@ For each temperature x0 we can now convert the numerical values of the moments i
 δ_vec_ext = extrapolate_δvec(δ_vec,r_max,r_max,4000,true)
 ```
 
-The second line provides the linear extrapolation of the $\delta_{\mathbf{k},r}$ for $r>3=r_{max}$ using a linear function through the origin and $\delta_{\mathbf{k},3}$ up to $r_{max}^{\prime}=4000$ (this is controlled by the last four arguments and shown by the straight lines in the figure, middle panel). Finally, we obtain the DSF $JS(\mathbf{k},\omega)$ at $w=\omega/J$ from a vector of energies w:
+The second line provides the linear extrapolation of the $\delta_{\mathbf{k},r}$ for $r>3=r_{max}$ using a linear function through the origin and $\delta_{\mathbf{k},3}$ up to $r_{max}^{\prime}=4000$ (this is controlled by the last four arguments and shown by the straight lines in the figure, middle panel). Finally, we obtain the DSF $JS(\mathbf{k},\omega)$ for a vector of dimensionless energies $w=\omega/J$:
 ```bash
 w_vec = collect(0.0:0.02:3.7)
 JSw_vec = [JS(δ_vec_ext,1.0*x0,w,0.02) for w in w_vec]
 ```
 Here the extrapolated vector of $\delta_{\mathbf{k},r}$ is used and the broadening $\eta=0.02$. The result for all temperatures $1/x_{0}$ is shown in the right panel.
-<p align="center"><img src="tutorialFigures/Triangular_DSF_kM.jpg" width="55%"/></p>
+<p align="center"><img src="tutorialFigures/Triangular_DSF_kM.jpg" width="85%"/></p>
 
 ### Dynamic structure factor (DSF): k-path through BZ
 
-Finally we can compute the DSF on a path trough the BZ (at $x=3$) similar as for the static structure factor $\chi_{\mathbf{k}}$. One subtlety is to avoid the exact $\Gamma$ point, since the corresponding observable $\sum_{i}S_{i}^{z}$ is a conserved quantity and it has thus no dynamics leading to trivial moments. We instead use a point close by the $\Gamma$  point.
+Finally we can compute the DSF on a path trough the BZ (at $x=3$) similar as for the static structure factor $\chi_{\mathbf{k}}$. One subtlety is to avoid the exact $\Gamma$ point, since the corresponding observable $\sum_{i}S_{i}^{z}$ is a conserved quantity. Thus it has no dynamics and the moments beyond order $r=0$ are trivial. We instead use a point close by the $\Gamma$  point. The red markers in the figure denote the energy at which the maximum intensity appears for a given momentum on the slice.
 ```bash
 path = [(0.0001,0.0001),K,M,(0.0001,0.0001)]
 pathticks = ["Γ","K","M","Γ"]
@@ -187,5 +187,3 @@ k_vec,kticks_positioins = create_brillouin_zone_path(path, Nk)
 * **Embedding:**  For given L, calculation of embedding factors for graphG and calculation of expansion coefficients of $TG_{ii\prime}(i\nu_m)$ (expansion in powers of -x)
 
 * **ConvenienceFunctions:**  Definition of various functions to help evaluate and plot the results of the Dyn-HSE
-
-* **Dyn-HTE_Tutorial_TriangularLattice.pdf** Tutorial on how to use the Dyn-HTE working through the example of the S=1/2 nearest-neighbor Heisenberg AFM on the triangular lattice.
