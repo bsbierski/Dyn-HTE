@@ -17,7 +17,7 @@ hte_lattice = getLattice(L, "pyrochlore");
 @save "CaseStudy/Renormalized_Mean_Field_Theory/Pyrochlore_Lattice_S1half_c_iipDyn_nmax12_L12.jld2" c_iipDyn_mat
 
 
-@load "CaseStudy/Pyrochlore_Lattice/c_iipDyn_mat_L12_S1.jld2" c_iipDyn_mat
+@load "CaseStudy/Pyrochlore_Lattice/Pyrochlore_Lattice_S1_c_iipDyn_nmax12_L12.jld2" c_iipDyn_mat
 #2.Compute all correlations in the lattice
 #@time Correlators = compute_lattice_correlations(LatGraph,lattice,center_sites,max_order,gG_vec_unique,C_Dict_vec);
 @load "CaseStudy/Pyrochlore_Lattice/Correlation_DataS=S1half_L12.jld2" Correlators

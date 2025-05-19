@@ -14,4 +14,8 @@ GraphEvaluations/Spin_S1/C_12.jld2
 GraphEvaluations/Spin_S3half/C_12.jld2
 Chain_S1_BSb
 MatrixPade.jl
+Honeycomb_Lattice_BSch
+Kagome_Lattice_BSch
+Square_Lattice_BSch
+Dyn-HTE.jl
 
