@@ -1,5 +1,73 @@
-# Dyn-HTE (post-processing)
-High temperature expansion of dynamic Matsubara spin correlators for general Heisenberg models (only post-processing)
+# Dynamic high temperature expansion for quantum spins <br /> (Dyn-HTE) 
+
+software by Ruben Burkard, Benedikt Schneider, Björn Sbierski 
+
+This software allows to compute dynamic spin correlations of spin-S Heisenberg models in thermal equilibrium via a high-temperature expansion of the Matsubara spin-spin correlator. It currently allows for $S \leq 1$ and models with a single coupling constant $J$, but arbitrary lattice geometry.
+
+$$ H=J\sum_{(ii^\prime)}\left(S_{i}^{+}S_{i^\prime}^{-}+S_{i}^{-}S_{i^\prime}^{+}+S_{i}^{z}S_{i^\prime}^{z}\right) $$
+
+Dyn-HTE obtains the HTE of the Matsubara spin-spin correlator
+
+$$ G_{ii^\prime}(i\nu_{m})=T  \int_{0}^{\beta} \mathrm{d}\tau\mathrm{d}\tau^{\prime}\,e^{i\nu_{m}(\tau-\tau^{\prime})} 
+\left\langle \mathcal{T}S_{i}^{z}(\tau)S_{i^{\prime}}^{z}(\tau^{\prime})\right\rangle $$
+
+and allows to post-process this information into the dynamic spin structure factor (DSF)
+
+$$ S(\mathbf{k},\omega) = \int_{-\infty}^{+\infty}  \frac{\mathrm{d}t}{2\pi N} \sum_{i,i^\prime}  exp(i\omega t-i\mathbf{k}\cdot(r_i - r_{i^\prime}))  \left\langle S_{i}^{z}(t)S_{i^\prime}^{z}\right\rangle $$
+
+
+## Publication/Citation
+The theory background for Dyn-HTE and various applications are provided in the following two publications.
+
+- Ruben Burkard, Benedikt Schneider, Björn Sbierski, *Dyn-HTE: High-temperature expansion of the dynamic Matsubara spin correlator*, arxiv 2025.YYYYY (2025)
+- Ruben Burkard, Benedikt Schneider, Björn Sbierski, *Dynamic correlations of frustrated quantum spins from high-temperature expansion*, arxiv 2025.XXXXX (2025)
+
+If Dyn-HTE benefits your research, please acknowledge it by citing these references.
+
+## Tutorial: Spin-1/2 Heisenberg AFM on triangular lattice
+This tutorial explains the use of the Dyn-HTE software provided in this repository using the example of the nearest-neighbor S=1/2 Heisenberg AFM on the triangular lattice. The associated julia script can be found under “CaseStudy/Triangular_Lattice/Application_Triangular_Lattice.jl”. This script contains complete code, here we only highlight the most important functionalities specific to Dyn-HTE and assume the reader is familiar with the julia language and its plotting routines. The physical background and most of the results generated in this tutorial are discussed in the two publications mentioned in [Publication/Citation](#Publication/Citation).
+
+### Preparations: Define lattice and find Dyn-HTE for Matsubara correlator
+To start, we need to include the necessary supporting julia scripts and the packages (JLD2, DelimitedFiles) that manage file handling. This is the same for every application of Dyn-HTE.
+```bash
+using JLD2, DelimitedFiles
+include("../../plotConventions.jl")
+include("../../LatticeGraphs.jl")
+include("../../Embedding.jl")
+include("../../ConvenienceFunctions.jl")
+```
+
+Next we fix the spin length to $S=1/2$ (also $S=1$ would be currently available) and load all the graph evaluations for this S for the maximum available order n_max=12.
+```bash
+spin_length = 1/2
+n_max = 12
+hte_graphs = load_dyn_hte_graphs(spin_length,n_max);
+```
+The triangular lattice is predefined in the script “LatticeGraphs.jl” and due to the maximum order n_max=12 we only need a piece of it with sites separated from a central site by L=n_max=12 nearest-neighbor bonds or less. Other predefined lattices available via their keyword are “chain”, “square”, “triang”(ular), “honeycomb”, “pyrochlore”, “kagome”. Other translation invariant geometries can be defined by adapting the function “get_finite_Lattice” in “LatticeGraphs.jl”. We also define the three special points in the Brillouin zone (BZ) that will be of interest to us later, the origin $\Gamma$  and $K=(2\pi/3,2\pi/\sqrt{3})$ and $M=(0,2\pi/\sqrt{3})$.
+
+```bash
+L = 12
+hte_lattice = getLattice(L,"triang");
+Γ,K,M = (0,0), (2*π/3,2*π/sqrt(3)), (0,2*π/sqrt(3))
+```
+Note that it is not necessary to proceed with a Dyn_HTE_Lattice structure, one can also define a SimpleGraph type of the “Graphs.jl” package which is useful for finite or irregular systems (see “SpinCluster_BSb.jl”). 
+The lattice and in particular the site numbering can be visualized by the following line (it is advisable to do this with a smaller L, here L=3).
+```bash
+display(graphplot(hte_lattice.graph,names=1:nv(hte_lattice.graph),markersize=0.2,fontsize=8,nodeshape=:rect,curves=false))
+```
+<p align="center"><img src="tutorial/plotTriangularLattice.png"></p>
+
+
+
+
+
+
+
+
+
+
+
+## Short description of scripts
 
 * **Dyn-HTE:** The main code which shows a usage example of Dyn-HTE both for real- and momentum-space Matsubara correlators
 
