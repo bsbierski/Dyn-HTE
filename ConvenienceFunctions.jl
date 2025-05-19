@@ -372,12 +372,20 @@ function get_c_k_subl(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattic
 end
 
 function get_c_k_subl(
-    kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
-    ,c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
+    kvals::AbstractArray{<:Tuple{Vararg{<:Real}}},
+    c_iipDyn_mat::Array{T},
+    hte_lattice::Dyn_HTE_Lattice
+) where {T}
 
-    fourier_transform(k) = get_c_k_subl(k,c_iipDyn_mat,hte_lattice) 
+    results = Array{Matrix{Matrix{Float64}}}(undef, length(kvals))
 
-    return fourier_transform.(kvals)
+    @Threads.threads for i in eachindex(kvals)
+        results[i] = get_c_k_subl(kvals[i], c_iipDyn_mat, hte_lattice)
+    end
+
+
+    return reshape(results, size(kvals)...)
+
 end
 
 
@@ -404,12 +412,12 @@ function inverse_fourier_transform_subl(kvals::AbstractArray{<:Tuple{Vararg{<:Re
     c_iipDyn_mat = Array{T}(undef, length(lattice),length(lattice.unitcell.basis));
 
 
-        for b1 in 1:basis_size
+    for b1 in 1:basis_size
             for b2 in 1:basis_size
                     indexlist = findall(x->x==b2,label)
 
 
-                for index in indexlist
+    @Threads.threads for index in indexlist
                     if T == Taylor1{ComplexF64}||T == Taylor1{Float64}
                         z = Taylor1(0)
                         else

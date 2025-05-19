@@ -14,7 +14,7 @@ spin_length = 1/2
 hte_graphs = load_dyn_hte_graphs(spin_length, L);
 hte_lattice = getLattice(L, "pyrochlore");
 @time c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice, hte_graphs);
-@save "CaseStudy/Renormalized_Mean_Field_Theory/Pyrochlore_Lattice_S1half_c_iipDyn_nmax12_L12.jld2" c_iipDyn_mat
+#@save "CaseStudy/Renormalized_Mean_Field_Theory/Pyrochlore_Lattice_S1half_c_iipDyn_nmax12_L12.jld2" c_iipDyn_mat
 
 
 @load "CaseStudy/Pyrochlore_Lattice/Pyrochlore_Lattice_S1_c_iipDyn_nmax12_L12.jld2" c_iipDyn_mat
@@ -280,12 +280,12 @@ for (kpos, k) in enumerate(kvec)
 end
 
 
-w_vec = collect(-12/Jmev:0.055:12.01/Jmev)
+w_vec = collect(0:0.055:12.01/Jmev)
 JS_mat = zeros(length(kvec),length(w_vec))
 for kpos in eachindex(kvec)
         δ_vec, r_vec = fromMomentsToδ(m0_vec[kpos,:])
         #scatter!(plt_δ,r_vec,δ_vec,color=thermalCol4_vec[x0_pos],label="x=$x0")
-        δ_vec_ext = extrapolate_δvec(δ_vec, length(δ_vec) - 1, length(δ_vec) - 1, 200, true)
+        δ_vec_ext = extrapolate_δvec(δ_vec, length(δ_vec) - 1, length(δ_vec) - 1, 2000, true)
         JS_mat[kpos,:] = [#= exp(-0.1*kvec[kpos]*kvec[kpos])* =#JS(δ_vec_ext, 1.0 * x0, w, 0.02) for w in w_vec]
 end
 

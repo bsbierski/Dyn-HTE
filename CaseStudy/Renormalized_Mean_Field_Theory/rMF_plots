@@ -100,7 +100,7 @@ invcorrs_triang = inverse_fourier_transform(kmat,invstruc,triang_lattice);
      return Float64(Symbolics.value(x))
   end     
 
- function calc_taylorinvmat_fun(corr::Matrix{Matrix{Float64}})::Matrix{Taylor1{Float64}}
+function calc_taylorinvmat_fun(corr::Matrix{Matrix{Float64}})::Matrix{Taylor1{Float64}}
     orderJ,orderω = size(corr[1])
     @variables x::Real
     taylormat = y -> sum(y[i,1]*x^(i-1) for i =  1:orderJ)
@@ -134,29 +134,33 @@ invcorrs_kagome = inverse_fourier_transform_subl(kmat,invstruc,kagome_lattice);
 
 
 ###### Pyrochlore
-#= 
 
-N = 12;
+#= 
+N = 26;
 kx = (1:N)*2pi/(N);
 ky = (1:N)*2pi/(N);
 kz = (1:N)*2pi/(N); 
 kmat = Tuple.([[-1,1,1].*x .+ [1,-1,1].*y .+ [1,1,-1].*z for x in kx, y in ky , z in kz ]);
-c_kDyn =  get_c_k_subl(kmat,c_iip_pyrochlore,pyrochlore_lattice);
+@time c_kDyn =  get_c_k_subl(kmat,c_iip_pyrochlore,pyrochlore_lattice);
 #test if the inverse is correct
 invcorrstest = inverse_fourier_transform_subl(kmat,c_kDyn,pyrochlore_lattice);
 maximum(maximum.(invcorrstest.-c_iip_pyrochlore))
 
+
+
 #calculate f and g
-invstruc = Array{Matrix{Taylor1{Float64}}}(undef,N,N)
+invstruc = Array{Matrix{Taylor1{Float64}}}(undef,N,N,N)
 #= Threads.@threads =# for i=1:N
     for j = 1:N
-        invstruc[i,j] = calc_taylorinvmat_fun(c_kDyn[i,j])
+      for k = 1:N
+        invstruc[i,j,k] = calc_taylorinvmat_fun(c_kDyn[i,j,k])
 
     end
 end
-invcorrs_pyrochlore = inverse_fourier_transform_subl(kmat,invstruc,pyrochlore_lattice);
+end
+invcorrs_pyrochlore = inverse_fourier_transform_subl(kmat,invstruc,pyrochlore_lattice); =#
+@load "CaseStudy/Renormalized_Mean_Field_Theory/rMFparams_pyrochlore.jld2" invcorrs_pyrochlore
 
- =#
 
 ######  Plotting
 
@@ -171,9 +175,9 @@ axpyro = CairoMakie.Axis(grid[2,2], title = "Pyrochlore", xlabel=L"x = J/T" ,tit
 
 xvec = collect(0:0.1:10)
 if true
-    f1 = 0.6
+    f1 = 0.4
     f2 = 0.4
-    f3 = 0.3
+    f3 = 0.4
     transf1 = get_LinearTrafoToCoeffs_u(12,f1)
     transf2 = get_LinearTrafoToCoeffs_u(13,f2)
     transf3 = get_LinearTrafoToCoeffs_u(12,f3)
@@ -203,11 +207,15 @@ if true
 end
 
 if true
-f = 0.5
-transf1 = get_LinearTrafoToCoeffs_u(12,f)
-transf2 = get_LinearTrafoToCoeffs_u(13,f)
+
+  f1 = 0.4
+  f2 = 0.4
+  f3 = 0.4
+  transf1 = get_LinearTrafoToCoeffs_u(12,f1)
+  transf2 = get_LinearTrafoToCoeffs_u(13,f2)
+  transf3 = get_LinearTrafoToCoeffs_u(12,f3)
 gbyf = transf1*(invcorrs_triang[236]/invcorrs_triang[235]).coeffs
-ϵbyf = transf1*(invcorrs_triang[237]/invcorrs_triang[235]).coeffs
+ϵbyf = transf3*(invcorrs_triang[237]/invcorrs_triang[235]).coeffs
 byf = transf2*vcat(0,(1/invcorrs_triang[235]).coeffs)[:]
 
 
@@ -234,11 +242,14 @@ legscatter = CairoMakie.scatter!(axtriang,[-1,-2],[1,1], color = :black)
 end
 
 if true
-    f = 0.8
-    transf1 = get_LinearTrafoToCoeffs_u(12,f)
-    transf2 = get_LinearTrafoToCoeffs_u(13,f)
+  f1 = 0.8
+  f2 = 0.8
+  f3 = 0.8
+  transf1 = get_LinearTrafoToCoeffs_u(12,f1)
+  transf2 = get_LinearTrafoToCoeffs_u(13,f2)
+  transf3 = get_LinearTrafoToCoeffs_u(12,f3)
     gbyf = transf1*(invcorrs_kagome[190,2]/invcorrs_kagome[190,1]).coeffs
-    ϵbyf = transf1*(invcorrs_kagome[193,1]/invcorrs_kagome[190,1]).coeffs
+    ϵbyf = transf3*(invcorrs_kagome[193,1]/invcorrs_kagome[190,1]).coeffs
     byf = transf2*vcat(0,(1/invcorrs_kagome[190,1]).coeffs)[:]
     
     
@@ -251,39 +262,44 @@ if true
     pade_ϵbyf2 = get_pade(Polynomial(ϵbyf),5,5)
     pade_byf2 = get_pade(Polynomial(byf),5,5)
     
-    CairoMakie.lines!(axkagome,xvec, x->3*pade_gbyf(tanh(-f1*x)), color = (color_vec[1],0.7))
-    CairoMakie.lines!(axkagome,xvec, x->3*abs(pade_ϵbyf(tanh(-f3*x))), color = (color_vec[2],0.7))
-    CairoMakie.lines!(axkagome,xvec, x->3*abs(pade_byf(tanh(-f2*x))), color = (color_vec[3],0.7))
-    CairoMakie.lines!(axkagome,xvec, x->3*pade_gbyf2(tanh(-f1*x)), color = color_vec[1], linestyle = :dash)
-    CairoMakie.lines!(axkagome,xvec, x->3*abs(pade_ϵbyf2(tanh(-f3*x))), color = color_vec[2], linestyle = :dash)
-    CairoMakie.lines!(axkagome,xvec, x->3*abs(pade_byf2(tanh(-f2*x))), color = color_vec[3], linestyle = :dash)
+    CairoMakie.lines!(axkagome,xvec, x->2*pade_gbyf(tanh(-f1*x)), color = (color_vec[1],0.7))
+    CairoMakie.lines!(axkagome,xvec, x->2*abs(pade_ϵbyf(tanh(-f3*x))), color = (color_vec[2],0.7))
+    CairoMakie.lines!(axkagome,xvec, x->2*abs(pade_byf(tanh(-f2*x))), color = (color_vec[3],0.7))
+    CairoMakie.lines!(axkagome,xvec, x->2*pade_gbyf2(tanh(-f1*x)), color = color_vec[1], linestyle = :dash)
+    CairoMakie.lines!(axkagome,xvec, x->2*abs(pade_ϵbyf2(tanh(-f3*x))), color = color_vec[2], linestyle = :dash)
+    CairoMakie.lines!(axkagome,xvec, x->2*abs(pade_byf2(tanh(-f2*x))), color = color_vec[3], linestyle = :dash)
     
 end
 
+
+
 if true
-  f = 0.8
-  transf1 = get_LinearTrafoToCoeffs_u(12,f)
-  transf2 = get_LinearTrafoToCoeffs_u(13,f)
-  gbyf = transf1*(invcorrs_kagome[190,2]/invcorrs_kagome[190,1]).coeffs
-  ϵbyf = transf1*(invcorrs_kagome[193,1]/invcorrs_kagome[190,1]).coeffs
-  byf = transf2*vcat(0,(1/invcorrs_kagome[190,1]).coeffs)[:]
+  f1 = 0.4
+  f2 = 0.4
+  f3 = 0.4
+  transf1 = get_LinearTrafoToCoeffs_u(12,f1)
+  transf2 = get_LinearTrafoToCoeffs_u(13,f2)
+  transf3 = get_LinearTrafoToCoeffs_u(12,f3)
+  gbyf = transf1*(invcorrs_pyrochlore[1845,2]/invcorrs_pyrochlore[1845,1]).coeffs
+  ϵbyf = transf3*(invcorrs_pyrochlore[1849,1]/invcorrs_pyrochlore[1845,1]).coeffs
+  byf = transf2*vcat(0,(1/invcorrs_pyrochlore[1845,1]).coeffs)[:]
   
   
   
   
   pade_gbyf = get_pade(Polynomial(gbyf),6,6)
-  pade_ϵbyf = get_pade(Polynomial(ϵbyf),6,6)
+  pade_ϵbyf = get_pade(Polynomial(ϵbyf),6,5)
   pade_byf = get_pade(Polynomial(byf),6,6)
   pade_gbyf2 = get_pade(Polynomial(gbyf),5,5)
   pade_ϵbyf2 = get_pade(Polynomial(ϵbyf),5,5)
   pade_byf2 = get_pade(Polynomial(byf),5,5)
   
-  CairoMakie.lines!(axpyro,xvec, x->3*pade_gbyf(tanh(-f1*x)), color = color_vec[1])
-  CairoMakie.lines!(axpyro,xvec, x->3*abs(pade_ϵbyf(tanh(-f3*x))), color = color_vec[2])
-  CairoMakie.lines!(axpyro,xvec, x->3*abs(pade_byf(tanh(-f2*x))), color = color_vec[3])
-  CairoMakie.lines!(axpyro,xvec, x->3*pade_gbyf2(tanh(-f1*x)), color = color_vec[1], linestyle = :dash)
-  CairoMakie.lines!(axpyro,xvec, x->3*abs(pade_ϵbyf2(tanh(-f3*x))), color = color_vec[2], linestyle = :dash)
-  CairoMakie.lines!(axpyro,xvec, x->3*abs(pade_byf2(tanh(-f2*x))), color = color_vec[3], linestyle = :dash)
+  CairoMakie.lines!(axpyro,xvec, x->2*pade_gbyf(tanh(-f1*x)), color = (color_vec[1],0.7))
+  CairoMakie.lines!(axpyro,xvec, x->2*abs(pade_ϵbyf(tanh(-f3*x))), color = (color_vec[2],0.7))
+  CairoMakie.lines!(axpyro,xvec, x->2*abs(pade_byf(tanh(-f2*x))), color = (color_vec[3],0.7))
+  CairoMakie.lines!(axpyro,xvec, x->2*pade_gbyf2(tanh(-f1*x)), color = color_vec[1], linestyle = :dash)
+  CairoMakie.lines!(axpyro,xvec, x->2*abs(pade_ϵbyf2(tanh(-f3*x))), color = color_vec[2], linestyle = :dash)
+  CairoMakie.lines!(axpyro,xvec, x->2*abs(pade_byf2(tanh(-f2*x))), color = color_vec[3], linestyle = :dash)
   
 end
 
@@ -303,7 +319,7 @@ rowgap!(grid, 2)
 
 leg = axislegend(axtriang, 
 [line_gbyf, line_ϵbyf, line_byf ],
-[L"g_x/f_x", L"\epsilon_1/f_x", L"x/f_x"],
+[L"|g_x/f_x|", L"|\epsilon_1/f_x|", L"|x/f_x|"],
 tellheight = false,
 tellwidth = false,
 margin = (4, 4, 4, 4),
@@ -311,10 +327,10 @@ framevisible = false,
 position = :rb,
 linewidth = 5,
 labelsize = 12,
-rowgap = 0.1)
+rowgap = -1)
 
 
-leg = axislegend(axpyro, 
+leg = axislegend(axkagome, 
 [legline, legdashline, legscatter],
 ["u-pade [6,6]","u-pade [5,5]","QMC"],
 tellheight = false,
@@ -324,12 +340,17 @@ framevisible = false,
 position = :rb,
 linewidth = 5,
 labelsize = 10,
-rowgap = 0.1)
+rowgap = -4)
 
 resize_to_layout!(fig)
 # Plots.savefig("dynHTE_dmrg_test.pdf")
+
+
+CairoMakie.text!(axchain, 0.2, 1.0, text=L"\times 2, \; f = 0.4", fontsize=11,color=:black, align=(:left, :top) )
+CairoMakie.text!(axtriang, 0.2, 1.0, text=L"\times 3, \; f = 0.4", fontsize=11,color=:black, align=(:left, :top) )
+CairoMakie.text!(axkagome, 0.2, 1.0, text=L"\times 2, \; f = 0.8", fontsize=11,color=:black, align=(:left, :top) )
+CairoMakie.text!(axpyro, 0.2, 1.0, text=L"\times 2, \; f = 0.4", fontsize=11,color=:black, align=(:left, :top) )
+
 display(fig)
 save("CaseStudy/Renormalized_Mean_Field_Theory/rMF.png",fig;px_per_unit = 600/96)
 end
-
-
