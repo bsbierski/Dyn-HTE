@@ -466,10 +466,15 @@ function getGraphsG(graphs_vec::Vector{Vector{Graph}})::Vector{Vector{GraphG}}
     return graphsG_vec
 end
 
-### if GraphFiles/graphs12.jld2 has not yet been merged from its <100Mb parts a,b, then merge and save it
+### if GraphFiles/graphs_12.jld2 has not yet been merged from its <100Mb parts a,b, then merge and save it
 if !isfile("GraphFiles/graphs_12.jld2")
     println("merging graphs12 ...")
     save_object("GraphFiles/graphs_12.jld2",vcat(load_object("GraphFiles/graphs_12a.jld2"),load_object("GraphFiles/graphs_12b.jld2")))
+end
+### if GraphFiles/graphsG_12.jld2 has not yet been merged from its <100Mb parts a,b,c,d then merge and save it
+if !isfile("GraphFiles/graphsG_12.jld2")
+    println("merging graphsG12 ...")
+    save_object("GraphFiles/graphsG_12.jld2",vcat(load_object("GraphFiles/graphsG_12a.jld2"),load_object("GraphFiles/graphsG_12b.jld2"),load_object("GraphFiles/graphsG_12c.jld2"),load_object("GraphFiles/graphsG_12d.jld2")))
 end
 
 ### if GraphEvaluations C_11.jld2 and C_12.jld2 do not yet exist, merge it from its parts
@@ -511,10 +516,6 @@ end
 
 ##repeat the evaluation of this line to generate all graphs
 #push!(graphs_vec,getAllGraphsNextOrder(graphs_vec[end]));  #graphs11 with 46384 graphs use 36.4MiB
-
-### split graphs_12 into a,b
-#save_object("GraphFiles/graphs_12a.jld2", split_vec(graphs_vec[end],1,2)[1] )
-#save_object("GraphFiles/graphs_12b.jld2", split_vec(graphs_vec[end],2,2)[1] )
 
 
 ###### if already generated: load graphs_1,2,3,...,nmax

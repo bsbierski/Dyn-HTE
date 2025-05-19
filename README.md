@@ -9,3 +9,4 @@ High temperature expansion of dynamic Matsubara spin correlators for general Hei
 
 * **ConvenienceFunctions:**  Definition of various functions to help evaluate and plot the results of the Dyn-HSE
 
+* **Dyn-HTE_Tutorial_TriangularLattice.pdf** Tutorial on how to use the Dyn-HTE working through the example of the S=1/2 nearest-neighbor Heisenberg AFM on the triangular lattice.

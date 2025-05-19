@@ -77,16 +77,15 @@ if true #test uniform χ against HTE literature
 end
 
 ##### equal-time correlations (r-space)
-if false #standard Padé in x
+if true #standard Padé in x
     j_vec = [191,154,153,151]
     x_vec_bare = collect(0:0.025:1.35)
-    x_vec = collect(0:0.1:50)
+    x_vec = collect(0:0.1:10)
     plt = plot([0],[0],label="",xlabel="x=J/T",ylims=(-0.07,0.05),legend=:right,title="Kagome AFM S=1/2: equal-time struc-fac L$L")
     for (j_pos,j) in enumerate(j_vec)
 
         @show j
-        GjEqualTime_poly_x = Polynomial(1.0*flipEvenIndexEntries(c_iipEqualTime_mat[j,1,:]))
-        @show flipEvenIndexEntries(c_iipEqualTime_mat[j,1,:])
+        GjEqualTime_poly_x = Polynomial(flipEvenIndexEntries(1.0*c_iipEqualTime_mat[j,1]))
 
         #plot!(plt,x_vec_bare,GjEqualTime_poly_x.(x_vec_bare),color=color_vec[j_pos],label="j=$j",lw=0.4)
         plot!(plt,x_vec,get_pade(GjEqualTime_poly_x,4,4).(x_vec),color=color_vec[j_pos],linestyle=linestyle_vec[2],label="[4,4] j=$j")
@@ -97,10 +96,10 @@ if false #standard Padé in x
     xPlots,yPlots=1,1
     plt_final = plot(plt,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.62*aps_width*yPlots))
     display(plt_final)
-    #savefig(plt_final,"CaseStudy/Kagome/KagomeEqualTimeCorrelator_j_xsweep_L$L.png")
+    savefig(plt_final,"CaseStudy/Kagome_Lattice_BSb/KagomeEqualTimeCorrelator_j_xsweep_L$L.png")
 end
 
-if false  # u=tanh(fx) with bare series in u or Pade in u
+if true  # u=tanh(fx) with bare series in u or Pade in u
     j_vec = [191,153,154,151,155,120]
 
     f=0.72
@@ -113,7 +112,7 @@ if false  # u=tanh(fx) with bare series in u or Pade in u
     for (j_pos,j) in enumerate(j_vec)
 
         @show j
-        coeffs_x = 1.0*flipEvenIndexEntries(c_iipEqualTime_mat[j,1,:])
+        coeffs_x = 1.0*flipEvenIndexEntries(c_iipEqualTime_mat[j,1])
 
         p_u_ext = simplify(series(coeffs_x,x);expand=true)
         p_u = Polynomial(Symbolics.value.(taylor_coeff(p_u_ext,u,0:12,rationalize=false)),:u)
@@ -128,12 +127,12 @@ if false  # u=tanh(fx) with bare series in u or Pade in u
     xPlots,yPlots=1,1
     plt_final = plot(plt,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.62*aps_width*yPlots))
     display(plt_final)
-    savefig(plt_final,"CaseStudy/Kagome/KagomeEqualTimeCorrelator_j_usweep_f"*string(f)*"_L$L.png")
+    savefig(plt_final,"CaseStudy/Kagome_Lattice_BSb/KagomeEqualTimeCorrelator_j_usweep_f"*string(f)*"_L$L.png")
 end
 
 ###### equal-time correlations (k-space)
 if true ### Gk for special k vs x with u-Pade
-    f=0.72
+    f=0.25
     ufromx_mat = get_LinearTrafoToCoeffs_u(n_max,f)
     x_vec = collect(0:0.1:10)
     u_vec = tanh.(f .* x_vec)
@@ -153,7 +152,7 @@ if true ### Gk for special k vs x with u-Pade
     xPlots,yPlots=1,1
     plt_final = plot(plt,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.62*aps_width*yPlots))
     display(plt_final)
-    #savefig(plt_final,"CaseStudy/Kagome_Lattice_BSb/Kagome_EqualTime_Gk_f$f"*".png")
+    savefig(plt_final,"CaseStudy/Kagome_Lattice_BSb/Kagome_EqualTime_Gk_f$f"*".png")
 end
 
 if true ### BZ Gk plot
@@ -296,10 +295,17 @@ end
 
 ### DSF and δ_r (as inset) for x ∈ x0_vec
 w_vec = collect(0.0:0.025:4)
-plt_JS = plot([0,0],[-1,-2],color=:grey,legend=:bottomleft,label="Dyn-HTE",xlims=(0,w_vec[end]),ylims=(0,0.2),xlabel=L"\omega/J=w",ylabel=L"J\, S(\mathbf{k}="*k_label*L",\omega)")
+plt_JS = plot([0,0],[-1,-2],color=:grey,legendfontsize=5,legend=:bottomleft,label="Dyn-HTE",xlims=(0,w_vec[end]),ylims=(0,0.2),xlabel=L"\omega/J=w")
+if k_label=="M"
+    plot!(plt_JS,ylabel=L"J\, S(\mathbf{k}=M,\omega)")
+elseif k_label=="K"
+    plot!(plt_JS,ylabel=L"J\, S(\mathbf{k}=K,\omega)")
+else
+    println("no k label understood")
+end
 plot!(plt_JS,inset=bbox(0.65,0.03,0.32,0.5),subplot=2)
 plt_δ =  plt_JS[2]
-plot!(plt_δ,[0],[0],label="",xlabel=L"r",ylabel=L"\delta_{\mathbf{k},r}",legend=:bottomright)
+plot!(plt_δ,[0],[0],label="",xlabel=L"r",ylabel=L"\delta_{\mathbf{k},r}",legend=:bottomright,legendfontsize=5)
 plot!(plt_JS,[0],[-2],color=:grey,linestyle=:dash,label="NLCE+Gauss [Sherman2018]")
 
 for x0_pos in eachindex(x0_vec)
@@ -307,7 +313,7 @@ for x0_pos in eachindex(x0_vec)
 
     ### plot Dyn-HTE
     δ_vec,r_vec = fromMomentsToδ(m0_vec[x0_pos])
-    scatter!(plt_δ,r_vec,δ_vec,color=thermalCol4_vec[x0_pos],label="x=$x0")
+    Plots.scatter!(plt_δ,r_vec,δ_vec,color=thermalCol4_vec[x0_pos],label="x=$x0")
     δ_vec_ext = extrapolate_δvec(δ_vec,length(δ_vec)-1,length(δ_vec)-1,4000,true)
     #plot!(plt_δ,3:7,δ_vec_ext[4:8],label="",color=thermalCol4_vec[x0_pos]) ###test extrapolation of δr
     plot!(plt_JS,w_vec,[JS(δ_vec_ext,1.0*x0,w,0.02) for w in w_vec],color=thermalCol4_vec[x0_pos],label="")
@@ -322,6 +328,6 @@ for x0_pos in eachindex(x0_vec)
 
 end
 xPlots,yPlots=1,1
-plt_final = plot(plt_JS,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.53*aps_width*yPlots), dpi=600)
+plt_final = plot(plt_JS,  layout=(yPlots,xPlots), size=(0.8*aps_width*xPlots,0.53*aps_width*yPlots), dpi=600)
 display(plt_final)
 savefig(plt_final,"CaseStudy/Kagome_Lattice_BSb/Kagome_JS_k"*k_label*".png")

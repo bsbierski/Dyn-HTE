@@ -108,7 +108,7 @@ end
 
 ###### bare series polynomial in Gii'(x,m) at Matsubara integer m truncated at n 
 
-""" get the expansion of the Matsubara correlator TGii'(iνm) as x-Polyomial for spatial entries i,ip of c_iipDyn_mat"""
+""" expansion of the Matsubara correlator TGii'(iνm) as x-Polyomial for spatial entries i,ip of c_iipDyn_mat"""
 function get_TGiip_Matsubara_xpoly(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}},i::Int,ip::Int,m::Int)
     if m==0
         p_x = 1.0*Polynomial(flipEvenIndexEntries(c_iipDyn_mat[i,ip][:,1]))
@@ -120,9 +120,8 @@ function get_TGiip_Matsubara_xpoly(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}
     return p_x
 end
 
-
+""" v=[a,b,c,d,...] -> [+a,-b,+c,-d,...] """
 function flipEvenIndexEntries(v)
-    """ v=[a,b,c,d,...] -> [+a,-b,+c,-d,...] """
     signs = [-1*(-1)^n for n in eachindex(v)]
     return v .* signs
 end
@@ -569,7 +568,7 @@ end
 
 
 
-function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},c_iipDyn_mat::Array{Matrix{Rational{Int128}}},lattice::Dyn_HTE_Lattice;f::Float64=0.48,η::Float64=0.01,r_min::Int=3,r_max::Int=3,r_ext::Int=1000,intercept0::Bool=false)
+function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},c_iipDyn_mat::Array{Matrix{Rational{Int128}}},lattice::Dyn_HTE_Lattice;f::Float64=0.48,η::Float64=0.01,r_min::Int=3,r_max::Int=3,r_ext::Int=1000,intercept0::Bool=true)
     """ get the dynamical spin structure factor from the correlation matrix c_iipDyn_mat 
     using pade approximants for the moments either in the variable x = J/T ("pade") or in the variable
     u = tanh(f*x) ("u_pade")   """
