@@ -32,7 +32,6 @@ function load_dyn_hte_graphs(spin_length::Number,max_order::Int)::Dyn_HTE_Graphs
     Dyn_HTE_Graphs(S,gG_vec_unique,C_Dict_vec)
 end
 
-
 function split_vec(vec::Vector,part::Int,parts::Int)
     """ splits vector in parts (keep longtail), returns the chunk and its start and end indices """
     chunkLen = Int(floor(length(vec)/parts))
@@ -525,21 +524,3 @@ graphs_vec = [load_object("GraphFiles/graphs_"*string(n)*".jld2") for n in 0:nma
 ###### generate/load lists of vac-graphs and graphsG
 graphsVac_vec = getVacGraphs(graphs_vec)
 graphsG_vec = getGraphsG(graphs_vec)
-
-
-
-
-function whichParts(parts::Int,vec,miss::Vector{Int})::Vector{Int}
-    res = Int[]
-    for part in 1:parts
-        @show part
-        chunk,a,b = split_vec(vec,part,parts)
-        for m in miss
-            if m in collect(a:b)
-                append!(res,part)
-                break
-            end
-        end
-    end
-    return res
-end

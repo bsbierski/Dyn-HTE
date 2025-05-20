@@ -3,10 +3,8 @@ include("Structs.jl")
 include("GraphGeneration.jl")
 include("vf2_edited.jl") 
 
+""" find if gG is a symmetric graph with respect to switching the two external legs """
 function is_symmetric(gG::GraphG)::Bool
-    """
-    find if gG is a symmetric graph with respect to switching the two external legs
-    """
     gg = gG.g
     gg_simple = toSimpleGraph(gg)
 
@@ -22,11 +20,8 @@ function is_symmetric(gG::GraphG)::Bool
     end
 end
 
+""" check if the underlying simple graphs of gG1 and gG2 are isomorphic """
 function is_simple_isomorphic(gG1::GraphG,gG2::GraphG)::Bool
-    """
-    check if the underlying simple graphs of gG1 and gG2 are isomorphic
-    """
- 
     ### convert gg,gg_flip to SimpleGraphs
     gg1_simple = toSimpleGraph(gG1.g)
 
@@ -62,18 +57,19 @@ end
 ###Initialize the File if it does not exist yet.
 #vector = [0,[[gG_vec[1][1],[[0,1,1,true]],0]]]
 #@save "GraphFiles/unique_gG_vec_0.jld2" vector
+
+""" gives unique_gG_vec with the structure
+    [maxorder,
+    [ 
+    [gG,[gG_index_1,gG_index_2,...], dist ],
+    ...
+    ]
+    where the gG_index_1,2,3 identify the GraphG of the same simple graph structure as gG. These indices have the structure
+    gG_index_1 = [order + 1 ,index,symmetryfactor,is_symmetric] 
+    dist = graph distance between external legs of gG
+"""
 function give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}})
-    """
-    gives unique_gG_vec with the structure
-        [maxorder,
-        [ 
-        [gG,[gG_index_1,gG_index_2,...], dist ],
-        ...
-        ]
-        where the gG_index_1,2,3 identify the GraphG of the same simple graph structure as gG. These indices have the structure
-        gG_index_1 = [order + 1 ,index,symmetryfactor,is_symmetric] 
-        dist = graph distance between external legs of gG
-    """
+
     
     maxorder = length(gG_vec) - 1
 
@@ -125,12 +121,8 @@ function give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}})
 
 end
 
-
+""" loads unique_gG_vec """
 function give_unique_gG_vec(max_order::Int)
-    """
-    loads unique_gG_vec
-    """
-
     # try to load the file. if it does not exist try to load the file of one less order
     file_path = "GraphFiles/unique_gG_vec_$max_order"*".jld2"
 
@@ -156,22 +148,18 @@ function give_unique_gG_vec(max_order::Int)
 end
 
 
+""" find embedding factor e of GraphG gG in lattice L
+- lattice L (needs to be chosen large enough to avoid boundary effects!)
+- external site indices jjp=[j,j'] can be [i,i'] (or [i',i] if gG is not symmetric under exchange of i <--> i')
+- assumes that the distance j-jp is smaller or equal to the distance of external vertices of gG
+"""
 function e_fast(LL::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
-    """
-    find embedding factor e 
-    - lattice L (needs to be chosen large enough to avoid boundary effects!)
-    - lattice site indices jjp=[j,j'] can be [i,i'] (or [i',i] if gG is not symmetric under exchange of i <--> i')
-    - embedding of GraphG gG
-
-    assumes that the distance j-jp is smaller or equal to the distance of external vertices of gG
-    """
-
     numSubIsos = count_subgraphisomorph(LL,gG.g,jL1 = j,jL2 = jp,jG1 = gG.jjp[1],jG2 = gG.jjp[2])
     return numSubIsos 
 end
 
+""" Calculate the coefficients of (-x)^n for TG_ii'(iν_m) from embedding factors of only the unique simple graphs and the gG's symmetry factors """    
 function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order::Int,gG_vec_unique::unique_Graphs,C_Dict_vec::Vector{Vector{Vector{Rational{Int128}}}})::Vector{Vector{Rational{Int128}}}
-    """ Calculate the coefficients of (-x)^n for TG_ii'(iν_m) from embedding factors of only the unique simple graphs and the gG's symmetry factors """    
 
     #initialize result array
     result_array = Vector{Vector{Rational{Int128}}}(undef, max_order+1)
@@ -242,7 +230,7 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
     return result_array
 end
 
-###### LEGACY FUNCTIONS
+###### LEGACY FUNCTIONS (SLOW)
 function e(L::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
     """
     OLD FUNCTION use e_fast 

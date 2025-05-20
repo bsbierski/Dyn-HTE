@@ -1,5 +1,4 @@
-using Symbolics, RobustPade, Polynomials, DifferentialEquations, LsqFit
-using TaylorSeries
+using Symbolics, RobustPade, Polynomials, DifferentialEquations, LsqFit, TaylorSeries
 
 """ create strings "S1half", "S1", "S3half",... dependening on rational spin_length"""
 function create_spin_string(s)
@@ -15,11 +14,8 @@ function create_spin_string(s)
 end
 
 """get expansion of real-space G_ii' between the sites in basis_positions and all sites in the Graph
-    optional arguments:
-
     verbose: if true prints progress 
     max_order: restricts expansion to a maximum order of max_order.
-
 """
 function get_c_iipDyn_mat(Graph,basis_positions::Vector{<:Int},hte_graphs::Dyn_HTE_Graphs; verbose =false, max_order = 12)::Array{Matrix{Rational{Int128}}}
     ##preallocate output matrix 
@@ -51,7 +47,6 @@ end
 
     verbose: if true prints progress 
     max_order: restricts expansion to a maximum order of max_order.
-
 """
 function get_c_iipDyn_mat(hte_lattice::Dyn_HTE_Lattice,hte_graphs::Dyn_HTE_Graphs; verbose =false, max_order = 12)::Array{Matrix{Rational{Int128}}}
     ##try to use lattice symmetries 
@@ -103,8 +98,7 @@ function get_c_iipDyn_mat(hte_lattice::Dyn_HTE_Lattice,hte_graphs::Dyn_HTE_Graph
     return GiipDyn_mat
 end
 
-
- """ perform frequency sum over real-space dynamic correlators to obtain equal time correlators """
+""" perform frequency sum over real-space dynamic correlators to obtain equal time correlators """
 function get_c_iipEqualTime_mat(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}})::Array{Vector{Rational{Int128}}}
    
     max_order_plus1 = size(c_iipDyn_mat[1,1])[1]
@@ -228,8 +222,7 @@ end
 
 
 ###### k-space functions
-
- """ create a linear interpolation between an arbitrary number of (high symmetry) points in BZ """
+""" create a linear interpolation between an arbitrary number of (high symmetry) points in BZ """
 function create_brillouin_zone_path(points, num_samples::Int)
     # Calculate distances between consecutive points
     distances = [norm(p2 .- p1) for (p1, p2) in zip(points[1:end-1], points[2:end])]
@@ -271,11 +264,8 @@ end
 
 
 #Fourier Transforms
-""" computes the spatial FT of c_iipDyn for momentum k
-    assumes inversion symmetry of the lattice to get real FT transform
-    sums over all basis states:  """
+""" computes the spatial FT of c_iipDyn for momentum k, assumes inversion symmetry of the lattice to get real FT transform, sums over all basis states"""
 function get_c_k(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
-
 
     lattice = hte_lattice.lattice
     center_sites = hte_lattice.basis_positions
@@ -297,14 +287,9 @@ function get_c_k(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dy
 
     return return c_kDyn
 end
-
-
-function get_c_k(kvec::AbstractArray{<:Tuple{Vararg{<:Real}}}
-    ,c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
-
-        fourier_transform(k) = get_c_k(k,c_iipDyn_mat,hte_lattice) 
-
-        return fourier_transform.(kvec)
+function get_c_k(kvec::AbstractArray{<:Tuple{Vararg{<:Real}}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
+    fourier_transform(k) = get_c_k(k,c_iipDyn_mat,hte_lattice) 
+    return fourier_transform.(kvec)
 end
 
 """computes the inverse fourier transform for sublattice resolved fourier transforms"""
@@ -346,8 +331,6 @@ function inverse_fourier_transform(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
 end
 
 #Sublattice Resolved Fourier Transforms
-
-
 """ computes the sublattice resolved spatial FT of c_iipDyn for momentum k
     assumes inversion symmetry of the lattice to get real FT transform """
 function get_c_k_subl(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
@@ -381,25 +364,17 @@ function get_c_k_subl(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattic
     return c_kDyn_mat
 end
 
-function get_c_k_subl(
-    kvals::AbstractArray{<:Tuple{Vararg{<:Real}}},
-    c_iipDyn_mat::Array{T},
-    hte_lattice::Dyn_HTE_Lattice
-) where {T}
-
+function get_c_k_subl(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
     results = Array{Matrix{Matrix{Float64}}}(undef, length(kvals))
 
     @Threads.threads for i in eachindex(kvals)
         results[i] = get_c_k_subl(kvals[i], c_iipDyn_mat, hte_lattice)
     end
-
-
     return reshape(results, size(kvals)...)
-
 end
 
 
- """computes the inverse sublattice resolved fourier transform"""
+"""computes the inverse sublattice resolved fourier transform"""
 function inverse_fourier_transform_subl(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
     ,c_kDyn_subl::Union{
     AbstractVector{Matrix{T}},
@@ -560,11 +535,11 @@ function contFrac(s::Number,δ_vec::Vector{Float64})::Number
     end
 end
 
-""" extrapolate parameters of continued fraction δ_vec=[δ[0],δ[1],...,δ[R]] 
-using a linear interpolation for δ_vec[r_min] to δ[r_max], extrapolate δ[r_max+1]...δ[r_ext]. 
-If intercept0=true use line through origin. """
+""" extrapolate continued fraction parameters δ_vec=[δ[0],δ[1],...,δ[R]] 
+    using a linear interpolation for δ_vec[r_min] to δ[r_max]
+    extrapolate δ[r_max+1]...δ[r_ext]. 
+    If intercept0=true use line through origin. """
 function extrapolate_δvec(δ_vec::Vector{Float64},r_min::Int,r_max::Int,r_ext::Int,intercept0::Bool)
-   
     @assert r_max >= r_min
     @assert r_ext > r_max
     @assert r_max+1 <= length(δ_vec)
@@ -597,8 +572,6 @@ end
 using pade approximants for the moments either in the variable x = J/T ("pade") or in the variable
 u = tanh(f*x) ("u_pade")   """
 function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},c_iipDyn_mat::Array{Matrix{Rational{Int128}}},lattice::Dyn_HTE_Lattice;f::Float64=0.48,η::Float64=0.01,r_min::Int=3,r_max::Int=3,r_ext::Int=1000,intercept0::Bool=true)
-  
-
 
     JSkw_mat = 1.0*zeros(length(k_vec),length(w_vec))
 
@@ -672,10 +645,7 @@ function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Floa
     return JSkw_mat
 end
 
-
-
-function extrapolate_series(series,method::String,parameters)
-    
+function extrapolate_series(series,method::String,parameters) 
     if method == "pade"
         return get_pade(series,parameters[1],parameters[2])
     elseif method == "u_pade"
