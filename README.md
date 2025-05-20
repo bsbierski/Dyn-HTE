@@ -178,8 +178,12 @@ k_vec,kticks_positioins = create_brillouin_zone_path(path, Nk)
 <p align="center"><img src="tutorialFigures/Triangular_Lattice_JSkw_x3.0_f0.55.jpg" width="45%"/></p>
 
 
-## Short description of scripts
-
+## Short description of folders and scripts
+* **CaseStudy** Folder containing applications of Dyn-HTE from publications [1],[2]
+* **GraphEvaluations** Folder containing graph evaluations "C_n.jld2" for S=1/2 and S=1 (subfolders), sorted according to expansion order n=0,1,...,12
+* **GraphFiles** Folder containing graph(G) files, "graphsG_n.jld2" sorted according to expansion order n=0,1,...,12 and their associated unique graphs for faster embedding
+* **TutorialFigures** Folder containing jpg-figures for the tutorial in README.md
+  
 * **Dyn-HTE:** The main code which shows a usage example of Dyn-HTE both for real- and momentum-space Matsubara correlators
 
 * **LatticeGraphs** Generates lattices or lattice balls L by keyword geometry=chain,square,triangle,... (can be expanded by user). The site indices of the center unit-cell of the lattice ball are returned. This code builds on Lattice.jl which is taken from SpinMC.jl
