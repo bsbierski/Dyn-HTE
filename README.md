@@ -183,11 +183,12 @@ k_vec,kticks_positioins = create_brillouin_zone_path(path, Nk)
 * **GraphEvaluations** Folder containing graph evaluations "C_n.jld2" for S=1/2 and S=1 (subfolders), sorted according to expansion order n=0,1,...,12
 * **GraphFiles** Folder containing graph(G) files, "graphsG_n.jld2" sorted according to expansion order n=0,1,...,12 and their associated unique graphs for faster embedding
 * **TutorialFigures** Folder containing jpg-figures for the tutorial in README.md
-  
-* **Dyn-HTE:** The main code which shows a usage example of Dyn-HTE both for real- and momentum-space Matsubara correlators
 
-* **LatticeGraphs** Generates lattices or lattice balls L by keyword geometry=chain,square,triangle,... (can be expanded by user). The site indices of the center unit-cell of the lattice ball are returned. This code builds on Lattice.jl which is taken from SpinMC.jl
-
-* **Embedding:**  For given L, calculation of embedding factors for graphG and calculation of expansion coefficients of $TG_{ii\prime}(i\nu_m)$ (expansion in powers of -x)
-
-* **ConvenienceFunctions:**  Definition of various functions to help evaluate and plot the results of the Dyn-HSE
+* **ConvenienceFunctions.jl:**  Definition of various functions to help evaluate and plot the results of the Dyn-HSE
+* **Embedding.jl:**  For given lattice, calculation of embedding factors for graphG and calculation of expansion coefficients of $TG_{ii\prime}(i\nu_m)$ (expansion in powers of -x)
+* **GraphGeneration.jl**: Builds on the packages "Graphs.jl" and "SimpleWeightedGraphs.jl" and provides functionalities for handling graphs.
+* **Lattice(Graphs).jl**: Generates lattices or lattice balls L by keyword geometry=chain,square,triangle,... (can be expanded by user). The site indices of the center unit-cell of the lattice ball are returned. This code builds on "Lattice.jl" which is taken from the project "SpinMC.jl" by Finn Lasse Buessen.
+* **LatticeSymmetries.jl**: Functions for symmetry analysis of real-space lattices. These symmetries help to reduce the number of different $G_{ii^\prime}(i\nu_m)$ that need to be computed via graph embedding.
+* **plotConventions.jl**: Defines a few conventions for plotting figures.
+* **Structs.jl**: Defines all structures used across the code. For example Graph (raw multigraphs), GraphG (with two external vertex indicators) and structures related to lattice representations.
+* **vf2_edited.jl**: Functions to compute graph isomorphisms.
