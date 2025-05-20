@@ -518,8 +518,6 @@ function fromMomentsToδ(m_vec::Vector{Float64})
     δ_vec = [δ0,δ1,δ2,δ3,δ4,δ5,δ6,δ7,δ8][1:length(m_vec)] 
     return δ_vec , 1.0*collect(0:length(δ_vec)-1)
 end
-
-
 function fromMomentsToδ(m_vec::Vector{Polynomial{Float64, :x}})
     @assert length(m_vec)<=7
 
@@ -562,8 +560,6 @@ function contFrac(s::Number,δ_vec::Vector{Float64})::Number
     end
 end
 
-
-#Björn überarbeiten
 """ extrapolate parameters of continued fraction δ_vec=[δ[0],δ[1],...,δ[R]] 
 using a linear interpolation for δ_vec[r_min] to δ[r_max], extrapolate δ[r_max+1]...δ[r_ext]. 
 If intercept0=true use line through origin. """
@@ -586,9 +582,8 @@ function extrapolate_δvec(δ_vec::Vector{Float64},r_min::Int,r_max::Int,r_ext::
     end
 end
 
-  """ get dynamical spin structure factor (times J) from δ_wec at w=ω/J and broadening η"""
+""" get dynamical spin structure factor (times J) from δ_wec at w=ω/J and broadening η"""
 function JS(δ_vec::Vector{Float64},x::Float64,w::Float64,η::Float64)::Float64
-  
     res = 1/π * real(contFrac(1im * w + η,δ_vec))
     if x==0.0 || w==0.0
         return res
