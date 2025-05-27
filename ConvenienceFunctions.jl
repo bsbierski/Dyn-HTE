@@ -269,7 +269,13 @@ function get_c_k(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dy
 
     lattice = hte_lattice.lattice
     center_sites = hte_lattice.basis_positions
-        z = zeros(size(c_iipDyn_mat[1]))
+
+        if T == Taylor1{Float64}
+            z = Taylor1(0)
+        else
+            z = zeros(size(c_iipDyn_mat[1]))
+        end
+        
         # Compute Fourier transformation at momentum k. The real-space position of the i-th spin is obtained via getSitePosition(lattice,i). 
         for b in 1:length(lattice.unitcell.basis)
             for i in 1:length(lattice)
@@ -287,6 +293,8 @@ function get_c_k(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dy
 
     return return c_kDyn
 end
+
+
 function get_c_k(kvec::AbstractArray{<:Tuple{Vararg{<:Real}}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
     fourier_transform(k) = get_c_k(k,c_iipDyn_mat,hte_lattice) 
     return fourier_transform.(kvec)
