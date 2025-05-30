@@ -417,5 +417,3 @@ if true
     display(fig)
     save("CaseStudy/Renormalized_Mean_Field_Theory/rMF.png",fig;px_per_unit = 600/96)
 end
-
-
