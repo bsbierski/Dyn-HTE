@@ -518,9 +518,9 @@ end
 
 
 ###### if already generated: load graphs_1,2,3,...,nmax
-nmax=12 
-graphs_vec = [load_object("GraphFiles/graphs_"*string(n)*".jld2") for n in 0:nmax]
+#nmax=12 
+#graphs_vec = [load_object("GraphFiles/graphs_"*string(n)*".jld2") for n in 0:nmax]
 
 ###### generate/load lists of vac-graphs and graphsG
-graphsVac_vec = getVacGraphs(graphs_vec)
-graphsG_vec = getGraphsG(graphs_vec)
+#graphsVac_vec = getVacGraphs(graphs_vec)
+#graphsG_vec = getGraphsG(graphs_vec)

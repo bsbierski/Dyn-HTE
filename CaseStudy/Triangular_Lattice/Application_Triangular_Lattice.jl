@@ -20,7 +20,7 @@ hte_lattice = getLattice(L,"triang");
 
 
 ### compute all correlations in the lattice (or load them)
-fileName_c = "CaseStudy/Triangular_Lattice/Triangular_Lattice_"*create_spin_string(spin_length)*"_c_iipDyn_nmax"*string(nmax)*"_L"*string(L)*".jld2"
+fileName_c = "CaseStudy/Triangular_Lattice/Triangular_Lattice_"*create_spin_string(spin_length)*"_c_iipDyn_nmax"*string(n_max)*"_L"*string(L)*".jld2"
 if isfile(fileName_c)
     println("loading "*fileName_c)
     c_iipDyn_mat = load_object(fileName_c)
