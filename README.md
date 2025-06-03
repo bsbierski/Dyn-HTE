@@ -26,7 +26,7 @@ The theory background for Dyn-HTE and various applications are provided in the f
 If Dyn-HTE benefits your research, please acknowledge it by citing these references.
 
 ## Tutorial: Spin-1/2 Heisenberg AFM on triangular lattice
-This tutorial explains the use of the Dyn-HTE software provided in this repository using the example of the nearest-neighbor S=1/2 Heisenberg AFM on the triangular lattice. The associated julia script can be found under “CaseStudy/Triangular_Lattice/Application_Triangular_Lattice.jl”. This script contains complete code, here we only highlight the most important functionalities specific to Dyn-HTE and assume the reader is familiar with the julia language and its plotting routines. The physical background and most of the results generated in this tutorial are discussed in the two publications mentioned in [Publication/Citation].
+This tutorial explains the use of the Dyn-HTE software provided in this repository using the example of the nearest-neighbor S=1/2 Heisenberg AFM on the triangular lattice. The associated julia script can be found under "examples/Triangular_Lattice/Application_Triangular_Lattice.jl”. This script contains complete code, here we only highlight the most important functionalities specific to Dyn-HTE and assume the reader is familiar with the julia language and its plotting routines. The physical background and most of the results generated in this tutorial are discussed in the two publications mentioned in [Publication/Citation].
 
 ### Preparations: Define lattice and find Dyn-HTE for Matsubara correlator
 To start, we need to include the necessary supporting julia scripts and the packages (JLD2, DelimitedFiles) that manage file handling. This is the same for every application of Dyn-HTE.
@@ -332,19 +332,37 @@ elseif geometry == "custom_lattice"
     # 5. Generate full symmetry group
     symmetry_Group = generate_symmetry_group(basis, translation_Group)
 ```
+## Project Structure
 
+### Data Folders
+* **data/**
+  * **GraphEvaluations/** - Contains graph evaluations "C_n.jld2" for S=1/2 and S=1, sorted by expansion order (n=0,1,...,12)
+  * **GraphFiles/** - Contains graph(G) files "graphsG_n.jld2" sorted by expansion order, with associated unique graphs for faster embedding 
 
-## Short description of folders and scripts
-* **CaseStudy** Folder containing applications of Dyn-HTE from publications [1],[2]
-* **GraphEvaluations** Folder containing graph evaluations "C_n.jld2" for S=1/2 and S=1 (subfolders), sorted according to expansion order n=0,1,...,12
-* **GraphFiles** Folder containing graph(G) files, "graphsG_n.jld2" sorted according to expansion order n=0,1,...,12 and their associated unique graphs for faster embedding
-* **TutorialFigures** Folder containing jpg-figures for the tutorial in README.md
+### Example Applications
+* **examples/** - Contains implementations from publications [1],[2], including:
+  * Chain lattice examples
+  * Honeycomb lattice examples
+  * Kagome lattice examples
+  * Pyrochlore lattice examples
+  * Square lattice examples
+  * Triangular lattice examples
 
-* **ConvenienceFunctions.jl:**  Definition of various functions to help evaluate and plot the results of the Dyn-HSE
-* **Embedding.jl:**  For given lattice, calculation of embedding factors for graphG and calculation of expansion coefficients of $TG_{ii\prime}(i\nu_m)$ (expansion in powers of -x)
-* **GraphGeneration.jl**: Builds on the packages "Graphs.jl" and "SimpleWeightedGraphs.jl" and provides functionalities for handling graphs.
-* **Lattice(Graphs).jl**: Generates lattices or lattice balls L by keyword geometry=chain,square,triangle,... (can be expanded by user). The site indices of the center unit-cell of the lattice ball are returned. This code builds on "Lattice.jl" which is taken from the project "SpinMC.jl" by Finn Lasse Buessen.
-* **LatticeSymmetries.jl**: Functions for symmetry analysis of real-space lattices. These symmetries help to reduce the number of different $G_{ii^\prime}(i\nu_m)$ that need to be computed via graph embedding.
-* **plotConventions.jl**: Defines a few conventions for plotting figures.
-* **Structs.jl**: Defines all structures used across the code. For example Graph (raw multigraphs), GraphG (with two external vertex indicators) and structures related to lattice representations.
-* **vf2_edited.jl**: Functions to compute graph isomorphisms. Uses a modified version of Graph.jl's experimental vf2 algorithm. 
+### Documentation
+* **tutorialFigures/** - Contains images used in the tutorial documentation
+
+### Source Code 
+* **src/**
+    * **ConvenienceFunctions.jl** - Helper functions for evaluating and plotting Dyn-HTE results
+    * **DynHTE.jl** - Main module file
+    * **Embedding.jl** - Handles embedding factors calculation and expansion coefficients of $TG_{ii\prime}(i\nu_m)$
+    * **GraphGeneration.jl** - Graph handling functionality using Graphs.jl and SimpleWeightedGraphs.jl
+    * **Lattice.jl** - Core lattice functionality from SpinMC.jl
+    * **LatticeGraphs.jl** - Generates lattices/lattice balls with geometries like chain, square, triangle, etc.
+    * **LatticeSymmetries.jl** - Handles symmetry analysis to optimize $G_{ii^\prime}(i\nu_m)$ calculations
+    * **Structs.jl** - Core data structures (Graph, GraphG, lattice representations)
+    * **vf2_edited.jl** - Modified VF2 algorithm for graph isomorphism computations
+
+### Tests
+* **test/** - Contains test files for the project components
+
