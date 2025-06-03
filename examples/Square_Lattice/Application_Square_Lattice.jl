@@ -1,8 +1,6 @@
-using JLD2,DelimitedFiles
-include("../../plotConventions.jl")
-include("../../LatticeGraphs.jl")
-include("../../Embedding.jl")
-include("../../ConvenienceFunctions.jl") 
+using JLD2,DelimitedFiles,Polynomials
+using DynHTE
+include("../plotConventions.jl")
 
 ### load graph evaluations and prepare lattice  
 L = 12
@@ -14,7 +12,7 @@ hte_lattice = getLattice(L,"square");
 #display(graphplot(hte_lattice.graph,names=1:nv(hte_lattice.graph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
 
 ### compute all correlations in the lattice (or load them)
-cd("CaseStudy/Square_Lattice/")
+cd("examples/Square_Lattice/")
 fileName_c = "Square_Lattice_"*create_spin_string(spin_length)*"_c_iipDyn_nmax"*string(n_max)*"_L"*string(L)*".jld2"
 if isfile(fileName_c)
     c_iipDyn_mat = load_object(fileName_c)
@@ -52,13 +50,13 @@ if true
     u0_vec = tanh.(f .* x0_vec)
     m0_vec = [Float64[] for _ in x0_vec]
 
-    plt_m = plot([0],[0],xlims=(0,x_vec[end]),label="",xlabel=L"x=J/T",ylabel=L"x \cdot m_{\mathbf{k},2r}(x) \, / \, m_{\mathbf{k},2r}(0)",legend=:topleft);
-    plot!(plt_m,-x_vec,x_vec,color=:grey,label="x bare");
-    plot!(plt_m,-x_vec,x_vec,color=:grey,linestyle=linestyle_vec[2],label="u Padé [7-r,6-r]");
-    plot!(plt_m,-x_vec,x_vec,color=:grey,linestyle=linestyle_vec[3],label="u Padé [6-r,5-r]");
-    annotate!(plt_m,3,2,text(L"\mathbf{k}="*string(k_label)*",  f="*string(f),7));
+    plt_m = Plots.plot([0],[0],xlims=(0,x_vec[end]),label="",xlabel=L"x=J/T",ylabel=L"x \cdot m_{\mathbf{k},2r}(x) \, / \, m_{\mathbf{k},2r}(0)",legend=:topleft);
+    Plots.plot!(plt_m,-x_vec,x_vec,color=:grey,label="x bare");
+    Plots.plot!(plt_m,-x_vec,x_vec,color=:grey,linestyle=linestyle_vec[2],label="u Padé [7-r,6-r]");
+    Plots.plot!(plt_m,-x_vec,x_vec,color=:grey,linestyle=linestyle_vec[3],label="u Padé [6-r,5-r]");
+    Plots.annotate!(plt_m,3,2,L"$\mathbf{k}=$"*string(k_label)*",  f="*string(f),7);
     
-    plot!(plt_m,title="SquareLattice AFM S=1/2: moment at k="*k_label*" (f=$f)")
+    Plots.plot!(plt_m,title="SquareLattice AFM S=1/2: moment at k="*k_label*" (f=$f)")
     #plot!([2/f,2/f],[0,4],color=:grey,linewidth=10,label="u-freezing",alpha=0.3)
     for r in 0:r_max
         #xm_norm_r = m_vec[1+r]
@@ -68,11 +66,11 @@ if true
         @show xm_norm_r
         p_u = Polynomial(ufromx_mat[1:n_max+2-2*r,1:n_max+2-2*r]*xm_norm_r)
         
-        plot!(plt_m,x_vec_bare,Polynomial(xm_norm_r).(x_vec_bare),color=color_vec[r+1],linewidth=0.4,label="r=$r",alpha=0.7) 
+        Plots.plot!(plt_m,x_vec_bare,Polynomial(xm_norm_r).(x_vec_bare),color=color_vec[r+1],linewidth=0.4,label="r=$r",alpha=0.7) 
         #plot!(plt_m,x_vec,p_u.(u_vec),color=color_vec[r+1],linestyle=linestyle_vec[1],label="u-poly r=$r")
         
-        plot!(plt_m,x_vec,get_pade(p_u,7-r,6-r).(u_vec),color=color_vec[r+1],linestyle=linestyle_vec[2],label="",alpha=0.7)
-        plot!(plt_m,x_vec,get_pade(p_u,6-r,5-r).(u_vec),color=color_vec[r+1],linestyle=linestyle_vec[3],label="",alpha=0.7)
+        Plots.plot!(plt_m,x_vec,get_pade(p_u,7-r,6-r).(u_vec),color=color_vec[r+1],linestyle=linestyle_vec[2],label="",alpha=0.7)
+        Plots.plot!(plt_m,x_vec,get_pade(p_u,6-r,5-r).(u_vec),color=color_vec[r+1],linestyle=linestyle_vec[3],label="",alpha=0.7)
 
         ### extract moments at x0_vec 
         for x0_pos in eachindex(x0_vec)
@@ -83,42 +81,42 @@ if true
     end
 
     xPlots,yPlots=1,1
-    plt_final = plot(plt_m,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.65*aps_width*yPlots),dpi=600)
+    plt_final = Plots.plot(plt_m,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.65*aps_width*yPlots),dpi=600)
     display(plt_final)
-    savefig(plt_final,"moments_u-series_k"*k_label*".png")
+    Plots.savefig(plt_final,"moments_u-series_k"*k_label*".png")
 end
 
 
 ### δ_r and DSF for x ∈ x0_vec
 if true
     w_vec = collect(0.0:0.025:5)
-    plt_JS = plot([0,0],[0,0.01],color=:grey,label="Dyn-HTE",xlims=(0,w_vec[end]),xlabel=L"\omega/J=w",ylabel=L"J \, S(\mathbf{k}="*k_label*L",\omega)",legend=:topleft);#,title="SquareLat AFM S=1/2: "*"JS("*k_label*",w)")
+    plt_JS = Plots.plot([0,0],[0,0.01],color=:grey,label="Dyn-HTE",xlims=(0,w_vec[end]),xlabel=L"\omega/J=w",ylabel=L"J \, S(\mathbf{k}="*k_label*L",\omega)",legend=:topleft);#,title="SquareLat AFM S=1/2: "*"JS("*k_label*",w)")
 
-    plt_δ =plot([0],[0],label="",xlabel=L"r",ylabel=L"\delta_{\mathbf{k},r}",legend=:topleft);
+    plt_δ =Plots.plot([0],[0],label="",xlabel=L"r",ylabel=L"\delta_{\mathbf{k},r}",legend=:topleft);
 
     for x0_pos in eachindex(x0_vec)
         x0 = x0_vec[x0_pos]
 
         ### plot Dyn-HTE
         δ_vec,r_vec = fromMomentsToδ(m0_vec[x0_pos])
-        scatter!(plt_δ,r_vec,δ_vec,color=thermalCol4_vec[x0_pos],label="x=$x0")
+        Plots.scatter!(plt_δ,r_vec,δ_vec,color=thermalCol4_vec[x0_pos],label="x=$x0")
         δ_vec_ext = extrapolate_δvec(δ_vec,length(δ_vec)-1,length(δ_vec)-1,2000,true)
-        plot!(plt_δ,r_max:7,δ_vec_ext[r_max+1:7+1],label="",color=thermalCol4_vec[x0_pos])
-        plot!(plt_JS,w_vec,[JS(δ_vec_ext,1.0*x0,w,0.02) for w in w_vec],color=thermalCol4_vec[x0_pos],label="")
+        Plots.plot!(plt_δ,r_max:7,δ_vec_ext[r_max+1:7+1],label="",color=thermalCol4_vec[x0_pos])
+        Plots.plot!(plt_JS,w_vec,[JS(δ_vec_ext,1.0*x0,w,0.02) for w in w_vec],color=thermalCol4_vec[x0_pos],label="")
 
         ### plot experimental data from DallaPiazza
         fileName = "DallaPiazza_exp_S"*k_label*".csv"
         factor = 1200
         if isfile(fileName)
             data = readdlm(fileName,',',Float64)
-            scatter!(plt_JS,data[:,1],data[:,2]/factor,color=:blue,marker=:cross,markersize=3.0,label="")#,label="x=$x0"
+            Plots.scatter!(plt_JS,data[:,1],data[:,2]/factor,color=:blue,marker=:cross,markersize=3.0,label="")#,label="x=$x0"
         end
 
     end
     xPlots,yPlots=1,2
-    plt_final = plot(plt_δ, plt_JS,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.62*aps_width*yPlots))
+    plt_final = Plots.plot(plt_δ, plt_JS,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.62*aps_width*yPlots))
     display(plt_final)
-    savefig(plt_final,"JS_k"*k_label*".png")
+    Plots.savefig(plt_final,"JS_k"*k_label*".png")
 end
 
 
@@ -166,7 +164,7 @@ end
 if true
     using CairoMakie
 
-    fig = Figure(fontsize=8,size=(aps_width,0.6*aps_width));
+    fig = CairoMakie.Figure(fontsize=8,size=(aps_width,0.6*aps_width));
     ax=Axis(fig[1,1],xlabel=L"\mathbf{k}",ylabel=L"\omega/J=w",xlabelsize=8,ylabelsize=8);
     hm=CairoMakie.heatmap!(ax,collect(0:Nk)/(Nk),w_vec, JSkw_mat,colormap=:viridis,colorrange=(0.001,0.4),highclip=:white);
     ax.xticks = ((kticks_positioins .- 1)/(Nk),pathticks)

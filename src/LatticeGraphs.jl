@@ -1,8 +1,3 @@
-using Graphs, GraphRecipes, Plots
-#include Lattice support from SpinMC.jl
-include("Structs.jl")
-include("Lattice.jl")
-include("LatticeSymmetries.jl")
 
 function latticeToGraph(lattice::Lattice)::SimpleGraph{Int}
     """ transforms a Lattice Struct into a SimpleGraph """

@@ -1,11 +1,9 @@
 ###############################################
 # Imports and Setup
 ###############################################
-include("../../LatticeGraphs.jl")
-include("../../Embedding.jl")
-include("../../ConvenienceFunctions.jl") 
-include("../../plotConventions.jl")
+using DynHTE
 using CairoMakie
+using Symbolics, TaylorSeries,Polynomials
 
 ###############################################
 # Load Lattice Data
@@ -19,16 +17,16 @@ pyrochlore_lattice = getLattice(L,"pyrochlore");
 ###############################################
 # Load Correlation Data
 ###############################################
-@load "CaseStudy/Renormalized_Mean_Field_Theory/Chain_S1half_c_iipDyn_nmax12_L12.jld2" c_iipDyn_mat
+@load "examples/Renormalized_Mean_Field_Theory/Chain_S1half_c_iipDyn_nmax12_L12.jld2" c_iipDyn_mat
 c_iip_chain = c_iipDyn_mat
 
-@load "CaseStudy/Renormalized_Mean_Field_Theory/Triangular_Lattice_S1half_c_iipDyn_nmax12_L12.jld2" single_stored_object
+@load "examples/Renormalized_Mean_Field_Theory/Triangular_Lattice_S1half_c_iipDyn_nmax12_L12.jld2" single_stored_object
 c_iip_triang = single_stored_object
 
-@load "CaseStudy/Renormalized_Mean_Field_Theory/Kagome_Lattice_S1half_c_iipDyn_nmax12_L12.jld2" c_iipDyn_mat
+@load "examples/Renormalized_Mean_Field_Theory/Kagome_Lattice_S1half_c_iipDyn_nmax12_L12.jld2" c_iipDyn_mat
 c_iip_kagome = c_iipDyn_mat
 
-@load "CaseStudy/Renormalized_Mean_Field_Theory/Pyrochlore_Lattice_S1half_c_iipDyn_nmax12_L12.jld2" c_iipDyn_mat
+@load "examples/Renormalized_Mean_Field_Theory/Pyrochlore_Lattice_S1half_c_iipDyn_nmax12_L12.jld2" c_iipDyn_mat
 c_iip_pyrochlore = c_iipDyn_mat
 
 ###############################################
@@ -182,7 +180,7 @@ invstruc = Array{Matrix{Taylor1{Float64}}}(undef,N,N,N)
 end
 end
 invcorrs_pyrochlore = inverse_fourier_transform_subl(kmat,invstruc,pyrochlore_lattice); =#
-@load "CaseStudy/Renormalized_Mean_Field_Theory/rMFparams_pyrochlore.jld2" invcorrs_pyrochlore
+@load "examples/Renormalized_Mean_Field_Theory/rMFparams_pyrochlore.jld2" invcorrs_pyrochlore
 
 ###############################################
 # Plotting
@@ -415,5 +413,5 @@ if true
 
     # Save figure
     display(fig)
-    save("CaseStudy/Renormalized_Mean_Field_Theory/rMF.png",fig;px_per_unit = 600/96)
+   # save("examples/Renormalized_Mean_Field_Theory/rMF.png",fig;px_per_unit = 600/96)
 end

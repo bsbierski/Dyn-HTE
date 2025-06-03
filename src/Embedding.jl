@@ -1,24 +1,5 @@
 ### find embedding factors
-include("Structs.jl")
-include("GraphGeneration.jl")
-include("vf2_edited.jl") 
 
-""" find if gG is a symmetric graph with respect to switching the two external legs """
-function is_symmetric(gG::GraphG)::Bool
-    gg = gG.g
-    gg_simple = toSimpleGraph(gg)
-
-    edge_relation(b1,b2) = (gg.weights[src(b1),dst(b1)] == gg.weights[src(b2),dst(b2)])
-
-    # finds if there is an isomorphism by only permuting the internal vertices between the graph and the graph with its external vertices flipped.
-    count = count_subgraphisomorph(gg_simple,gg,edge_relation=edge_relation,jL1 = gG.jjp[2],jL2 = gG.jjp[1],jG1 = gG.jjp[1],jG2 = gG.jjp[2])
-    
-    if count >0 
-        return true
-    else
-        return false
-    end
-end
 
 """ check if the underlying simple graphs of gG1 and gG2 are isomorphic """
 function is_simple_isomorphic(gG1::GraphG,gG2::GraphG)::Bool
@@ -56,7 +37,7 @@ end
 
 ###Initialize the File if it does not exist yet.
 #vector = [0,[[gG_vec[1][1],[[0,1,1,true]],0]]]
-#@save "GraphFiles/unique_gG_vec_0.jld2" vector
+#@save data_dir()*"/GraphFiles/unique_gG_vec_0.jld2" vector
 
 """ gives unique_gG_vec with the structure
     [maxorder,
@@ -74,7 +55,7 @@ function give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}})
     maxorder = length(gG_vec) - 1
 
     # try to load the file. if it does not exist try to load the file of one less order
-    file_path = "GraphFiles/unique_gG_vec_$maxorder.jld2"
+    file_path = data_dir()*"/GraphFiles/unique_gG_vec_$maxorder.jld2"
 
     if isfile(file_path)
         unique_gG_vec = load_object(file_path) 
@@ -115,7 +96,7 @@ function give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}})
     end
 
     unique_gG_vec[1] = maxorder
-    @save "GraphFiles/unique_gG_vec_$maxorder.jld2" unique_gG_vec
+    @save data_dir()*"/GraphFiles/unique_gG_vec_$maxorder.jld2" unique_gG_vec
 
     return unique_gG_vec
 
@@ -124,7 +105,7 @@ end
 """ loads unique_gG_vec """
 function give_unique_gG_vec(max_order::Int)
     # try to load the file. if it does not exist try to load the file of one less order
-    file_path = "GraphFiles/unique_gG_vec_$max_order"*".jld2"
+    file_path = data_dir()*"/GraphFiles/unique_gG_vec_$max_order"*".jld2"
 
     if isfile(file_path)
         unique_gG_vec = load_object(file_path) 
@@ -134,12 +115,12 @@ function give_unique_gG_vec(max_order::Int)
                 ##Combine the 4 parts for order 12
                 graphlist = Vector{Vector{unique_Graph}}(undef,4)
                 for part = 1:4
-                    @load "GraphFiles/unique_gG_vec_$max_order"*"_$part"*".jld2" unique_graphs_12_part
+                    @load data_dir()*"/GraphFiles/unique_gG_vec_$max_order"*"_$part"*".jld2" unique_graphs_12_part
                     graphlist[part] = unique_Graphs(12,unique_graphs_12_part).graphs
                 end
                     combined = vcat(graphlist...) 
                     combined_unique = unique_Graphs(max_order,combined)
-                    @save "GraphFiles/unique_gG_vec_12.jld2" combined_unique
+                    @save data_dir()*"/GraphFiles/unique_gG_vec_12.jld2" combined_unique
             return combined_unique
         end
         throw(ArgumentError("No unique graph file available for order $max_order"))

@@ -5,11 +5,11 @@
 ###############################################
 # Imports and Setup
 ###############################################
-include("../../LatticeGraphs.jl")
-include("../../Embedding.jl")
-include("../../ConvenienceFunctions.jl")
-include("../../plotConventions.jl")
-using JLD2, LaTeXStrings, CairoMakie, DelimitedFiles
+
+using JLD2,DelimitedFiles, HDF5, LaTeXStrings,Polynomials
+using DynHTE
+
+include("../plotConventions.jl")
 
 ###############################################
 # Load DynHTE Data
@@ -18,7 +18,7 @@ L = 12
 spin_length = 1
 hte_lattice = getLattice(L, "pyrochlore")
 
-@load "CaseStudy/Pyrochlore_Lattice/Pyrochlore_Lattice_S1_c_iipDyn_nmax12_L12.jld2" c_iipDyn_mat
+@load "examples/Pyrochlore_Lattice/Pyrochlore_Lattice_S1_c_iipDyn_nmax12_L12.jld2" c_iipDyn_mat
 ### c_iipDyn_mat can be loaded from a file, or calculated from scratch
 ### If you want to calculate it from scratch, uncomment the following lines:
 
@@ -101,7 +101,7 @@ function importINSdata(filename)
 end
 
 # Process 22L data
-filename = "CaseStudy/Pyrochlore_Lattice/E22l.txt"
+filename = "examples/Pyrochlore_Lattice/E22l.txt"
 intensity, err, x, y = importINSdata(filename)
 x_unique_22l = sort(unique(x))
 y_unique_22l = y[1:23]
@@ -109,7 +109,7 @@ z_22l = reshape(intensity, length(x_unique_22l), length(y_unique_22l))
 err_22l = reshape(err, length(x_unique_22l), length(y_unique_22l))
 
 # Process HH2 data
-filename = "CaseStudy/Pyrochlore_Lattice/Ehh2.txt"
+filename = "examples/Pyrochlore_Lattice/Ehh2.txt"
 intensity, err, x, y = importINSdata(filename)
 x_unique_hh2 = sort(unique(x))
 indices = vcat([1,2], collect(5:19))
@@ -200,7 +200,7 @@ function plot_comparison_22l()
         
         resize_to_layout!(fig)
         display(fig)
-        save("CaseStudy/Pyrochlore_Lattice/INS_comp.png",fig;px_per_unit=2.0)
+        save("examples/Pyrochlore_Lattice/INS_comp.png",fig;px_per_unit=2.0)
 
         
         
@@ -265,7 +265,7 @@ function plot_full_comparison()
         resize_to_layout!(fig)
     
         display(fig)
-        save("CaseStudy/Pyrochlore_Lattice/INS_comp_22l.png",fig;px_per_unit = 600/96)
+        save("examples/Pyrochlore_Lattice/INS_comp_22l.png",fig;px_per_unit = 600/96)
         
 
 end

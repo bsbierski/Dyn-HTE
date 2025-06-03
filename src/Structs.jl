@@ -1,5 +1,3 @@
-using Graphs, SimpleWeightedGraphs, Parameters
-
 #from SpinMC.jl 
 struct InteractionMatrix
     m11::Float64
@@ -56,7 +54,7 @@ end
 mutable struct GraphG ### V-connected graphs for correlator G with TWO external legs at sites j,jp
     g::SimpleWeightedGraph{Int64, Int64}
     jjp::Vector{Int64}
-    function GraphG(g,jjp)
+    function GraphG(g::SimpleWeightedGraph{Int64, Int64},jjp)
 
         @assert is_connected(g)
         @assert nv(g) >= maximum(jjp)
@@ -64,7 +62,19 @@ mutable struct GraphG ### V-connected graphs for correlator G with TWO external 
 
         new(g,jjp)
     end
+
+    function GraphG(g::SimpleWeightedGraph{Int64, Float64},jjp)
+        g = SimpleWeightedGraph(map(Int64, g.weights))
+        @assert is_connected(g)
+        @assert nv(g) >= maximum(jjp)
+        @assert length(jjp)==2
+
+        new(g,jjp)
+    end
+    
 end
+
+
 
 mutable struct gG_properties
     order::Int

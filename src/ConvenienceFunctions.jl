@@ -1,4 +1,3 @@
-using Symbolics, RobustPade, Polynomials, DifferentialEquations, LsqFit, TaylorSeries
 
 """ create strings "S1half", "S1", "S3half",... dependening on rational spin_length"""
 function create_spin_string(s)
@@ -102,7 +101,7 @@ end
 function get_c_iipEqualTime_mat(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}})::Array{Vector{Rational{Int128}}}
    
     max_order_plus1 = size(c_iipDyn_mat[1,1])[1]
-    c_iipEqualTime_mat = Array{Vector{Rational{Int64}}}(undef, length(c_iipDyn_mat[:,1]), length(c_iipDyn_mat[1,:]))
+    c_iipEqualTime_mat = Array{Vector{Rational{Int128}}}(undef, length(c_iipDyn_mat[:,1]), length(c_iipDyn_mat[1,:]))
     for j in eachindex(c_iipDyn_mat[:,1])
         for b in eachindex(c_iipDyn_mat[1,:])
             c_iipEqualTime_mat[j,b] = [sum(c_iipDyn_mat[j,b][n,:] .* [1//1,1//12,1//720,1//30240,1//1209600,1//47900160,691//1307674368000,1//74724249600,3617//10670622842880000,43867//5109094217170944000]) for n in 1:max_order_plus1]
@@ -117,6 +116,7 @@ end
 
 """ expansion of the Matsubara correlator TGii'(iνm) as x-Polyomial for spatial entries i,ip of c_iipDyn_mat"""
 function get_TGiip_Matsubara_xpoly(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}},i::Int,ip::Int,m::Int)
+    n_max = size(c_iipDyn_mat[1,1])[1]-1
     if m==0
         p_x = 1.0*Polynomial(flipEvenIndexEntries(c_iipDyn_mat[i,ip][:,1]))
     else
@@ -314,7 +314,7 @@ function inverse_fourier_transform(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
 
     lattice = hte_lattice.lattice
     center_sites = hte_lattice.basis_positions
-    (nx,ny) = size(kmat)
+    (nx,ny) = size(kvals)
 
     c_iipDyn_mat = Array{T}(undef, length(lattice),length(lattice.unitcell.basis));
     #= Threads.@threads =# for k in 1:length(lattice)
@@ -330,7 +330,7 @@ function inverse_fourier_transform(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
 
         for i in 1:nx,j in 1:ny
             # Compute Fourier transformation at momentum (kx, ky). The real-space position of the i-th spin is obtained via getSitePosition(lattice,i). 
-                z += cos(dot(kmat[i,j], getSitePosition(lattice,k).-getSitePosition(lattice,center_sites[b]))) *  c_kDyn[i,j]
+                z += cos(dot(kvals[i,j], getSitePosition(lattice,k).-getSitePosition(lattice,center_sites[b]))) *  c_kDyn[i,j]
         end
         c_iipDyn_mat[k,b] = z/length(eachindex(c_kDyn))
     end
@@ -655,11 +655,11 @@ end
 
 function extrapolate_series(series,method::String,parameters) 
     if method == "pade"
-        return get_pade(series,parameters[1],parameters[2])
+        return get_pade(series,Int64(parameters[1]),Int64(parameters[2]))
     elseif method == "u_pade"
         substitution_matrix = get_LinearTrafoToCoeffs_u(length(coeffs(series))-1,parameters[3])
         p_u = Polynomial(substitution_matrix*coeffs(series))
-        return get_pade(p_u,parameters[1],parameters[2])
+        return get_pade(p_u,Int64(parameters[1]),Int64(parameters[2]))
     end
 
 end

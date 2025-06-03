@@ -1,11 +1,9 @@
 ######## In this file we define symmetry groups to reduce the number of Susceptibilities we have to calculate
 
-using LinearAlgebra
-
 """
     sym_element
 
-Represents a symmetry element `g`, defined by a linear transformation (matrix `gMat`)
+Represents a symmetry element `g`, defined by an orthogonal transformation (matrix `gMat`)
 and a translation vector `gVec`. The action of `g` on a vector `r` is:
 
     g * r = gMat * r + gVec
@@ -13,6 +11,16 @@ and a translation vector `gVec`. The action of `g` on a vector `r` is:
 mutable struct sym_element
     gMat    ::Matrix{Float64}
     gVec    ::Vector{Float64}
+    function sym_element(gMat,gVec)
+
+        if abs(det(gMat)) < 1e-10
+            throw(error("gMat is singular (not invertible or orthogonal)"))
+        elseif inv(gMat) ≈ transpose(gMat)
+            return new(gMat,gVec)
+        else
+            throw(error("gMat is not orthogonal"))
+        end
+    end
 end
 
 """

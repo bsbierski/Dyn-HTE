@@ -1,11 +1,8 @@
-using JLD2,DelimitedFiles
-include("../../plotConventions.jl")
-include("../../LatticeGraphs.jl")
-include("../../Embedding.jl")
-include("../../ConvenienceFunctions.jl") 
+using JLD2,DelimitedFiles,Graphs,Plots
+using DynHTE
 
 ### maximum expansion order and spin-length
-n_max = 12
+n_max = 6
 spin_length = 1
 
 ### define lattice for embedding (here: all-to-all with N=4 sites)
@@ -19,7 +16,7 @@ if false ### plot the C_n vs graphG index
     plt=plot(yscale=:log10,xlabel="graph index",ylabel="denom C_n",title="spin length S=$spin_length")
     for n in n_max:-1:8
         tmp = hte_graphs.c_dict[n+1]
-        #tmp = load_object("GraphEvaluations/Spin_"*spin_string*"/Vac_"*string(n)*".jld2")
+        #tmp = load_object(data_dir()*"/GraphEvaluations/Spin_"*spin_string*"/Vac_"*string(n)*".jld2")
         plot!(plt,[abs(denominator(c[1]))+1 for c in tmp],label="n=$n")
     end
     display(plt)

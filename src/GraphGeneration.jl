@@ -1,16 +1,10 @@
 ### all tools revolving around abstract graphs and their visualization
-using Random, Parameters, JLD2
-using Graphs, SimpleWeightedGraphs
-using SparseArrays, Combinatorics, LinearAlgebra
-using GraphRecipes,Plots
+
 plt_empty = plot(label="",axis=([], false))
 graphsInRow = 6 #for plotting
 
-include("Structs.jl")
-include("vf2_edited.jl") 
-
 ####### various helper functions ################### 
-function load_dyn_hte_graphs(spin_length::Number,max_order::Int)::Dyn_HTE_Graphs
+function load_dyn_hte_graphs(spin_length::Number,max_order::Int; verbose = false)::Dyn_HTE_Graphs
     S = rationalize(spin_length)
     if S == 1//2
         S_string = "Spin_S1half"
@@ -27,7 +21,10 @@ function load_dyn_hte_graphs(spin_length::Number,max_order::Int)::Dyn_HTE_Graphs
     C_Dict_vec = Vector{Vector{Vector{Rational{Int128}}}}(undef,max_order+1) ;
     #load dictionaries of all lower orders C_Dict_vec 
     for ord = 0:max_order
-        C_Dict_vec[ord+1]  = load_object("GraphEvaluations/"*S_string*"/C_"*string(ord)*".jld2")
+        if verbose
+        println("loading C_"*string(ord)*" for S="*S_string)
+        end
+        C_Dict_vec[ord+1]  = load_object(data_dir()*"/GraphEvaluations/"*S_string*"/C_"*string(ord)*".jld2")
     end 
     Dyn_HTE_Graphs(S,gG_vec_unique,C_Dict_vec)
 end
@@ -98,10 +95,11 @@ function isIsomorph(gG1::GraphG,gG2::GraphG)::Bool
     return Graphs.Experimental.has_isomorph(gG1_ext_simple,gG2_ext_simple,edge_relation=edge_relation)
 end
 
+"""
+find if gG is a symmetric graph with respect to switching the two external legs (fix the mapping of the two external vertices)
+"""
 function is_symmetric(gG::GraphG)::Bool
-    """
-    find if gG is a symmetric graph with respect to switching the two external legs (fix the mapping of the two external vertices)
-    """
+
     gg = gG.g
     gg_simple = toSimpleGraph(gg)
 
@@ -117,8 +115,9 @@ function is_symmetric(gG::GraphG)::Bool
     end
 end
 
+ """ search g in g_vec, if found return index, else return 0"""
 function findg(g::Graph,g_vec::Vector{Graph})::Int
-    """ search g in g_vec, if found return index, else return 0"""
+   
     for k in eachindex(g_vec)
         if isIsomorph(g,g_vec[k])
             return k
@@ -126,8 +125,10 @@ function findg(g::Graph,g_vec::Vector{Graph})::Int
     end
     return 0
 end
+
+""" find gG in gG_vec, if found return index, else return 0"""
 function findg(gG::GraphG,gG_vec::Vector{GraphG})::Int
-    """ find gG in gG_vec, if found return index, else return 0"""
+    
     for k in eachindex(gG_vec)
         if isIsomorph(gG,gG_vec[k])
             return k
@@ -136,8 +137,9 @@ function findg(gG::GraphG,gG_vec::Vector{GraphG})::Int
     return 0
 end
 
+""" take Graph g and add one edge in all possible ways (strenghten existing edge or connect to new vertex) """
 function addOneEdge(g::Graph)::Vector{Graph}
-    """ take Graph g and add one edge in all possible ways (strenghten existing edge or connect to new vertex) """
+    
     vs = nv(g.g)
     g_vec = Graph[]
 
@@ -163,8 +165,10 @@ function totalEdges(g::SimpleWeightedGraph{Int64, Int64})::Int
     return Int(sum(g.weights)/2)
 end
 
+
+""" do not affect trivial graph with single vertex """
 function removeVerticesWithoutEdge!(g::Graph)
-    """ do not affect trivial graph with single vertex """
+    
     for j in 2:nv(g)
         if length(outneighbors(g,j))==0
             rem_vertex!(g,j)
@@ -183,8 +187,10 @@ function toSimpleGraph(g::SimpleWeightedGraph{Int64, Int64})::SimpleGraph
     return g_simple
 end
 
+
+ """ split vacuum graph into connected components, drop isolated vertices (this is used after subtraction) """
 function splitToConnectedComp(g::SimpleWeightedGraph{Int64, Int64})::Vector{Graph}
-    """ split vacuum graph into connected components, drop isolated vertices (this is used after subtraction) """
+   
     if is_connected(g) 
         return [Graph(g)]
     else
@@ -219,8 +225,10 @@ function noLeavesExceptAt(g::SimpleWeightedGraph{Int64, Int64},j_vec::Vector{Int
     end
     return true
 end
+
+""" check if a Graph g has generalized leaves (used for vacuum graphs)"""
 function hasGeneralizedLeaves(g::Graph)::Bool
-    """ check if a Graph g has generalized leaves (used for vacuum graphs)"""
+    
     g_ext = copy(g.g)
 
     ### move through all edges e, if weigth=1 remove it and check if there is still just one connected component 
@@ -237,8 +245,11 @@ function hasGeneralizedLeaves(g::Graph)::Bool
     end
     return false
 end 
+
+
+""" check if a GraphG gG has generalized leaves """
 function hasGeneralizedLeaves(gG::GraphG)::Bool
-    """ check if a GraphG gG has generalized leaves """
+    
     
     ### add terminal vertices via edge with weight 100 
     gG_ext = copy(gG.g)
@@ -268,8 +279,9 @@ function hasGeneralizedLeaves(gG::GraphG)::Bool
     return false
 end 
 
+ """ symmetry Factor of graph, this is the number auf automorphisms respecting edge weights"""
 function symmetryFactor(g::Graph)::Int
-    """ symmetry Factor of graph, this is the number auf automorphisms respecting edge weights"""
+   
     gg = copy(g.g)
 
     ### convert gg to SimpleGraphs
@@ -280,8 +292,10 @@ function symmetryFactor(g::Graph)::Int
 
     return Graphs.Experimental.count_isomorph(gg_simple,gg_simple,edge_relation=edge_relation)
 end
+
+""" symmetry Factor of graphG, this is the number of graph automorphisms respecting edge weights and not touching external indices"""
 function symmetryFactor(gG::GraphG)::Int
-    """ symmetry Factor of graphG, this is the number of graph automorphisms respecting edge weights and not touching external indices"""
+    
     gg = copy(gG.g)
 
     ### add to gg two vertices at terminals j,j' with bond-weight 100,101
@@ -384,8 +398,9 @@ function gplot(g_vec::Vector{};subtitle_vec::Vector{String}=["#"*string(pos) for
 end
 
 ###### graph generation ############################################################
+""" iterate to find all connected multi-graphs of one order higher than those provided, skip graphs with more than two leaves """
 function getAllGraphsNextOrder(g_vec::Vector{Graph})::Vector{Graph}
-    """ iterate to find all connected multi-graphs of one order higher than those provided, skip graphs with more than two leaves """
+    
     
     println("finding all graphs of order "*string(totalEdges(g_vec[end].g)+1)*"..." )
     
@@ -408,7 +423,7 @@ function getAllGraphsNextOrder(g_vec::Vector{Graph})::Vector{Graph}
             end
         end
     end
-    save_object("GraphFiles/graphs_"*string(totalEdges(g_new_vec[end].g))*".jld2",g_new_vec)
+    save_object(data_dir()*"/GraphFiles/graphs_"*string(totalEdges(g_new_vec[end].g))*".jld2",g_new_vec)
     return g_new_vec
 end
 
@@ -420,14 +435,16 @@ function getVacGraphs(graphs_vec::Vector{Vector{Graph}})::Vector{Vector{Graph}}
     return graphs_vac_vec
 end
 
+
+""" load graphsG or compute GraphsG from graphs_vec, need to remove equivalent ways of adding terminals """
 function getGraphsG(graphs_vec::Vector{Vector{Graph}})::Vector{Vector{GraphG}}
-    """ load graphsG or compute GraphsG from graphs_vec, need to remove equivalent ways of adding terminals """
+    
     graphsG_vec = [[GraphG(graphs_vec[1][1].g,[1,1])]]
 
     for n in eachindex(graphs_vec[2:end])
         g_vec = graphs_vec[2:end][n]
         gG_vec = GraphG[]
-        fileName = "GraphFiles/graphsG_"*string(n)*".jld2"
+        fileName = data_dir()*"/GraphFiles/graphsG_"*string(n)*".jld2"
 
         ### load if available
         if isfile(fileName)
@@ -465,35 +482,36 @@ function getGraphsG(graphs_vec::Vector{Vector{Graph}})::Vector{Vector{GraphG}}
     return graphsG_vec
 end
 
+
 ### if GraphFiles/graphs_12.jld2 has not yet been merged from its <100Mb parts a,b, then merge and save it
-if !isfile("GraphFiles/graphs_12.jld2")
+if !isfile(data_dir()*"/GraphFiles/graphs_12.jld2")
     println("merging graphs12 ...")
-    save_object("GraphFiles/graphs_12.jld2",vcat(load_object("GraphFiles/graphs_12a.jld2"),load_object("GraphFiles/graphs_12b.jld2")))
+    save_object(data_dir()*"/GraphFiles/graphs_12.jld2",vcat(load_object(data_dir()*"/GraphFiles/graphs_12a.jld2"),load_object(data_dir()*"/GraphFiles/graphs_12b.jld2")))
 end
 ### if GraphFiles/graphsG_12.jld2 has not yet been merged from its <100Mb parts a,b,c,d then merge and save it
-if !isfile("GraphFiles/graphsG_12.jld2")
+if !isfile(data_dir()*"/GraphFiles/graphsG_12.jld2")
     println("merging graphsG12 ...")
-    save_object("GraphFiles/graphsG_12.jld2",vcat(load_object("GraphFiles/graphsG_12a.jld2"),load_object("GraphFiles/graphsG_12b.jld2"),load_object("GraphFiles/graphsG_12c.jld2"),load_object("GraphFiles/graphsG_12d.jld2")))
+    save_object(data_dir()*"/GraphFiles/graphsG_12.jld2",vcat(load_object(data_dir()*"/GraphFiles/graphsG_12a.jld2"),load_object(data_dir()*"/GraphFiles/graphsG_12b.jld2"),load_object(data_dir()*"/GraphFiles/graphsG_12c.jld2"),load_object(data_dir()*"/GraphFiles/graphsG_12d.jld2")))
 end
 
 ### if GraphEvaluations C_11.jld2 and C_12.jld2 do not yet exist, merge it from its parts
 for sstring in ["S1half","S1"]
 
-    if !isfile("GraphEvaluations/Spin_"*sstring*"/C_11.jld2")
+    if !isfile(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_11.jld2")
         println(sstring*": merging C_11 ...")
-        save_object("GraphEvaluations/Spin_"*sstring*"/C_11.jld2",vcat(     load_object("GraphEvaluations/Spin_"*sstring*"/C_11a.jld2"),
-                                                                            load_object("GraphEvaluations/Spin_"*sstring*"/C_11b.jld2")            
+        save_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_11.jld2",vcat(     load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_11a.jld2"),
+                                                                            load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_11b.jld2")            
                                                                     ))
     end
 
-    if !isfile("GraphEvaluations/Spin_"*sstring*"/C_12.jld2")
+    if !isfile(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12.jld2")
         println(sstring*": merging C_12 ...")
-        save_object("GraphEvaluations/Spin_"*sstring*"/C_12.jld2",vcat( load_object("GraphEvaluations/Spin_"*sstring*"/C_12a.jld2"),
-                                                                        load_object("GraphEvaluations/Spin_"*sstring*"/C_12b.jld2"),
-                                                                        load_object("GraphEvaluations/Spin_"*sstring*"/C_12c.jld2"),
-                                                                        load_object("GraphEvaluations/Spin_"*sstring*"/C_12d.jld2"),
-                                                                        load_object("GraphEvaluations/Spin_"*sstring*"/C_12e.jld2"),
-                                                                        load_object("GraphEvaluations/Spin_"*sstring*"/C_12f.jld2")            
+        save_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12.jld2",vcat( load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12a.jld2"),
+                                                                        load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12b.jld2"),
+                                                                        load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12c.jld2"),
+                                                                        load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12d.jld2"),
+                                                                        load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12e.jld2"),
+                                                                        load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12f.jld2")            
                                                                     ))
     end
 
@@ -506,7 +524,7 @@ end
 
 ###### generation of basic graphs with two or fewer leaves
 #graphs_vec = [ [Graph(SimpleWeightedGraph{Int64,Int64}(diagm([Int64(0)])))] ]      ## the single-vertex graph with 0 edges
-#save_object("GraphFiles/graphs_0.jld2",graphs_vec[end])
+#save_object(data_dir()*"/GraphFiles/graphs_0.jld2",graphs_vec[end])
 #for nn in 1:8
 #    @show nn
 #    push!(graphs_vec,getAllGraphsNextOrder(graphs_vec[end]));       
@@ -519,7 +537,7 @@ end
 
 ###### if already generated: load graphs_1,2,3,...,nmax
 #nmax=12 
-#graphs_vec = [load_object("GraphFiles/graphs_"*string(n)*".jld2") for n in 0:nmax]
+#graphs_vec = [load_object(data_dir()*"/GraphFiles/graphs_"*string(n)*".jld2") for n in 0:nmax]
 
 ###### generate/load lists of vac-graphs and graphsG
 #graphsVac_vec = getVacGraphs(graphs_vec)
