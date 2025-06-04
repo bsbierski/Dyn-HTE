@@ -37,6 +37,7 @@ export
     unique_Graphs,
     unique_Graph,
     GraphG,
+    Graph,
     InteractionMatrix,
     gG_properties
 

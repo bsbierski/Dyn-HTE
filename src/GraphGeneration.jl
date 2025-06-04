@@ -5,6 +5,9 @@ graphsInRow = 6 #for plotting
 
 ####### various helper functions ################### 
 function load_dyn_hte_graphs(spin_length::Number,max_order::Int; verbose = false)::Dyn_HTE_Graphs
+    #first check if all required data files are available, if not merge them
+    merge_data_files()
+
     S = rationalize(spin_length)
     if S == 1//2
         S_string = "Spin_S1half"
@@ -483,38 +486,50 @@ function getGraphsG(graphs_vec::Vector{Vector{Graph}})::Vector{Vector{GraphG}}
 end
 
 
-### if GraphFiles/graphs_12.jld2 has not yet been merged from its <100Mb parts a,b, then merge and save it
-if !isfile(data_dir()*"/GraphFiles/graphs_12.jld2")
-    println("merging graphs12 ...")
-    save_object(data_dir()*"/GraphFiles/graphs_12.jld2",vcat(load_object(data_dir()*"/GraphFiles/graphs_12a.jld2"),load_object(data_dir()*"/GraphFiles/graphs_12b.jld2")))
-end
-### if GraphFiles/graphsG_12.jld2 has not yet been merged from its <100Mb parts a,b,c,d then merge and save it
-if !isfile(data_dir()*"/GraphFiles/graphsG_12.jld2")
-    println("merging graphsG12 ...")
-    save_object(data_dir()*"/GraphFiles/graphsG_12.jld2",vcat(load_object(data_dir()*"/GraphFiles/graphsG_12a.jld2"),load_object(data_dir()*"/GraphFiles/graphsG_12b.jld2"),load_object(data_dir()*"/GraphFiles/graphsG_12c.jld2"),load_object(data_dir()*"/GraphFiles/graphsG_12d.jld2")))
-end
+"""
+    merge_data_files()
 
-### if GraphEvaluations C_11.jld2 and C_12.jld2 do not yet exist, merge it from its parts
-for sstring in ["S1half","S1"]
-
-    if !isfile(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_11.jld2")
-        println(sstring*": merging C_11 ...")
-        save_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_11.jld2",vcat(     load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_11a.jld2"),
-                                                                            load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_11b.jld2")            
-                                                                    ))
+Initialize and merge required data files if they don't exist.
+"""
+function merge_data_files()
+    println("Begin merging DynHTE datafiles:")
+    println("This will only happen the very first time this function is used. It can take a while.")
+    if !isfile(data_dir()*"/GraphFiles/graphs_12.jld2")
+       
+        println("merging graphs12 ...")
+        save_object(data_dir()*"/GraphFiles/graphs_12.jld2",
+            vcat(load_object(data_dir()*"/GraphFiles/graphs_12a.jld2"),
+                 load_object(data_dir()*"/GraphFiles/graphs_12b.jld2")))
     end
 
-    if !isfile(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12.jld2")
-        println(sstring*": merging C_12 ...")
-        save_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12.jld2",vcat( load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12a.jld2"),
-                                                                        load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12b.jld2"),
-                                                                        load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12c.jld2"),
-                                                                        load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12d.jld2"),
-                                                                        load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12e.jld2"),
-                                                                        load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12f.jld2")            
-                                                                    ))
+    if !isfile(data_dir()*"/GraphFiles/graphsG_12.jld2")
+        println("merging graphsG12 ...")
+        save_object(data_dir()*"/GraphFiles/graphsG_12.jld2",
+            vcat(load_object(data_dir()*"/GraphFiles/graphsG_12a.jld2"),
+                 load_object(data_dir()*"/GraphFiles/graphsG_12b.jld2"),
+                 load_object(data_dir()*"/GraphFiles/graphsG_12c.jld2"),
+                 load_object(data_dir()*"/GraphFiles/graphsG_12d.jld2")))
     end
 
+    for sstring in ["S1half","S1"]
+        if !isfile(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_11.jld2")
+            println(sstring*": merging C_11 ...")
+            save_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_11.jld2",
+                vcat(load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_11a.jld2"),
+                     load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_11b.jld2")))
+        end
+
+        if !isfile(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12.jld2")
+            println(sstring*": merging C_12 ...")
+            save_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12.jld2",
+                vcat(load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12a.jld2"),
+                     load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12b.jld2"),
+                     load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12c.jld2"),
+                     load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12d.jld2"),
+                     load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12e.jld2"),
+                     load_object(data_dir()*"/GraphEvaluations/Spin_"*sstring*"/C_12f.jld2")))
+        end
+    end
 end
 
 
