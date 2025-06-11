@@ -1,0 +1,6 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+DynHTE = "4c418324-5d4b-4ba6-83e1-c4a7fb1710ab"
+LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+RobustPade = "b6330c75-f9ac-4258-a16a-0222d98b9b6c"

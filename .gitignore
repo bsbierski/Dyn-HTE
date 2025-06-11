@@ -18,3 +18,5 @@ Kagome_Lattice_BSch
 Kagome_Lattice_BSb
 Square_Lattice_BSch
 Dyn-HTE.jl
+Manifest.toml
+docs/build

@@ -4,6 +4,30 @@ plt_empty = plot(label="",axis=([], false))
 graphsInRow = 6 #for plotting
 
 ####### various helper functions ################### 
+"""
+    load_dyn_hte_graphs(spin_length::Number, max_order::Int; verbose = false) -> Dyn_HTE_Graphs
+
+Load pre-computed graph data for high-temperature series expansion calculations.
+
+# Arguments
+- `spin_length::Number`: The spin length (e.g., 1/2 or 1)
+- `max_order::Int`: Maximum expansion order to load
+- `verbose::Bool=false`: Whether to print loading information
+
+# Returns
+- `Dyn_HTE_Graphs`: Structure containing unique graphs and their coefficients
+
+# Description
+Loads the required graph data files and evaluation coefficients needed for 
+high-temperature series expansion calculations. If files are split across multiple 
+parts, they are automatically merged.
+
+# Examples
+```julia
+# Load graph data for spin-1/2 system up to 10th order
+graphs_data = load_dyn_hte_graphs(1/2, 10)
+```
+"""
 function load_dyn_hte_graphs(spin_length::Number,max_order::Int; verbose = false)::Dyn_HTE_Graphs
     #first check if all required data files are available, if not merge them
     merge_data_files()
@@ -32,8 +56,31 @@ function load_dyn_hte_graphs(spin_length::Number,max_order::Int; verbose = false
     Dyn_HTE_Graphs(S,gG_vec_unique,C_Dict_vec)
 end
 
+"""
+    split_vec(vec::Vector, part::Int, parts::Int) -> (Vector, Int, Int)
+
+Split a vector into parts and return a specific chunk along with its indices.
+
+# Arguments
+- `vec::Vector`: The vector to split
+- `part::Int`: The part number to return (1-indexed)
+- `parts::Int`: Total number of parts to split into
+
+# Returns
+- `Tuple{Vector, Int, Int}`: The requested chunk and its start/end indices
+
+# Description
+Divides a vector into roughly equal parts, with any remainder added to the last part.
+Returns the requested part along with its starting and ending indices in the original vector.
+
+# Examples
+```julia
+data = collect(1:100)
+chunk, start_idx, end_idx = split_vec(data, 2, 4)  # Get second quarter of data
+```
+"""
 function split_vec(vec::Vector,part::Int,parts::Int)
-    """ splits vector in parts (keep longtail), returns the chunk and its start and end indices """
+    
     chunkLen = Int(floor(length(vec)/parts))
 
     if parts==1 && part==1
@@ -49,8 +96,32 @@ function split_vec(vec::Vector,part::Int,parts::Int)
     end
 end
 
+
+"""
+    degeneracy(g::SimpleWeightedGraph{Int64, Int64}) -> Int
+
+Calculate the degeneracy factor of a weighted graph.
+
+# Arguments
+- `g::SimpleWeightedGraph{Int64, Int64}`: The weighted graph
+
+# Returns
+- `Int`: Degeneracy factor as product of factorials of edge multiplicities
+
+# Description
+Computes the product of the factorials of edge multiplicities for all edges in the graph.
+This factor is used in statistical weight calculations for graph-based expansions.
+
+# Examples
+```julia
+g = SimpleWeightedGraph(3)
+add_edge!(g, 1, 2, 2)  # Edge with weight 2
+add_edge!(g, 2, 3, 1)  # Edge with weight 1
+deg = degeneracy(g)    # Returns 2! * 1! = 2
+```
+"""
 function degeneracy(g::SimpleWeightedGraph{Int64, Int64})::Int
-    """ get degeneracy factor prod_b(m_b!) for bonds b in SimpleWeightedGraph """
+    
     mat = g.weights
     deg = 1
     n = nv(g)
@@ -62,8 +133,31 @@ function degeneracy(g::SimpleWeightedGraph{Int64, Int64})::Int
     return deg
 end
 
+"""
+    isIsomorph(g1::Graph, g2::Graph) -> Bool
+
+Check if two Graph objects are isomorphic, respecting edge weights.
+
+# Arguments
+- `g1::Graph`: First graph
+- `g2::Graph`: Second graph
+
+# Returns
+- `Bool`: `true` if graphs are isomorphic, `false` otherwise
+
+# Description
+Tests whether there exists a vertex mapping between g1 and g2 that preserves
+both the graph structure and the edge weights.
+
+# Examples
+```julia
+if isIsomorph(graph1, graph2)
+    println("These graphs are structurally equivalent")
+end
+```
+"""
 function isIsomorph(g1::Graph,g2::Graph)::Bool
-    """ for graphs: check if g1 ~ g2 """
+   
     ### convert g1,2 to SimpleGraphs
     g1_simple = toSimpleGraph(g1.g)
     g2_simple = toSimpleGraph(g2.g)
@@ -73,8 +167,33 @@ function isIsomorph(g1::Graph,g2::Graph)::Bool
     
     return Graphs.Experimental.has_isomorph(g1_simple,g2_simple,edge_relation=edge_relation)
 end
+
+"""
+    isIsomorph(gG1::GraphG, gG2::GraphG) -> Bool
+
+Check if two GraphG objects (graphs with external legs) are isomorphic.
+
+# Arguments
+- `gG1::GraphG`: First graph with external legs
+- `gG2::GraphG`: Second graph with external legs
+
+# Returns
+- `Bool`: `true` if graphs are isomorphic, `false` otherwise
+
+# Description
+Tests whether there exists a vertex mapping between gG1 and gG2 that preserves
+the graph structure, edge weights, and the relationship between external legs.
+External legs can match either in the same order or flipped.
+
+# Examples
+```julia
+if isIsomorph(graph_with_legs1, graph_with_legs2)
+    println("These graphs with external legs are equivalent")
+end
+```
+"""
 function isIsomorph(gG1::GraphG,gG2::GraphG)::Bool
-    """ for graphsG: check if gG1 ~ gG2 with (j1,j1')=(j2,j2') or (j1,j1')=(j2',j2)"""
+    
     
     ### add terminal vertices via edge with weight 100 
     gG1_ext = copy(gG1.g)
@@ -164,6 +283,29 @@ function addOneEdge(g::Graph)::Vector{Graph}
     return g_vec
 end
 
+"""
+    totalEdges(g::SimpleWeightedGraph{Int64, Int64}) -> Int
+
+Count the total number of edges in a weighted graph.
+
+# Arguments
+- `g::SimpleWeightedGraph{Int64, Int64}`: The weighted graph
+
+# Returns
+- `Int`: The total number of edges, counting multiplicities
+
+# Description
+Computes the sum of all edge weights divided by 2 to account for the 
+undirected nature of the graph (each edge is counted twice in the adjacency matrix).
+
+# Examples
+```julia
+g = SimpleWeightedGraph(3)
+add_edge!(g, 1, 2, 2)  # Double edge between 1 and 2
+add_edge!(g, 2, 3, 1)  # Single edge between 2 and 3
+total = totalEdges(g)  # Returns 3
+```
+"""
 function totalEdges(g::SimpleWeightedGraph{Int64, Int64})::Int
     return Int(sum(g.weights)/2)
 end
@@ -179,6 +321,30 @@ function removeVerticesWithoutEdge!(g::Graph)
     end
 end
 
+"""
+    toSimpleGraph(g::SimpleWeightedGraph{Int64, Int64}) -> SimpleGraph
+
+Convert a weighted graph to a simple unweighted graph.
+
+# Arguments
+- `g::SimpleWeightedGraph{Int64, Int64}`: The weighted graph to convert
+
+# Returns
+- `SimpleGraph`: An unweighted graph with the same connectivity
+
+# Description
+Creates a simple graph where edges exist if and only if the corresponding
+edges in the weighted graph have positive weights. The resulting graph
+preserves connectivity but discards weight information.
+
+# Examples
+```julia
+g_weighted = SimpleWeightedGraph(3)
+add_edge!(g_weighted, 1, 2, 2)  # Edge with weight 2
+add_edge!(g_weighted, 2, 3, 1)  # Edge with weight 1
+g_simple = toSimpleGraph(g_weighted)  # Simple graph with edges 1-2 and 2-3
+```
+"""
 function toSimpleGraph(g::SimpleWeightedGraph{Int64, Int64})::SimpleGraph
     ### drop the weights of a SimpleWeightedGraph to get a SimpleGraph
     g_simple=SimpleGraph(nv(g))
@@ -191,7 +357,28 @@ function toSimpleGraph(g::SimpleWeightedGraph{Int64, Int64})::SimpleGraph
 end
 
 
- """ split vacuum graph into connected components, drop isolated vertices (this is used after subtraction) """
+"""
+    splitToConnectedComp(g::SimpleWeightedGraph{Int64, Int64}) -> Vector{Graph}
+
+Split a graph into its connected components, discarding isolated vertices.
+
+# Arguments
+- `g::SimpleWeightedGraph{Int64, Int64}`: The graph to split
+
+# Returns
+- `Vector{Graph}`: Array of connected components as separate Graph objects
+
+# Description
+Decomposes a graph into its connected components, returning each component
+as a separate Graph object. Isolated vertices (single-vertex components) are
+discarded from the result.
+
+# Examples
+```julia
+# Split a disconnected graph into its components
+components = splitToConnectedComp(disconnected_graph)
+```
+"""
 function splitToConnectedComp(g::SimpleWeightedGraph{Int64, Int64})::Vector{Graph}
    
     if is_connected(g) 
@@ -208,6 +395,26 @@ function splitToConnectedComp(g::SimpleWeightedGraph{Int64, Int64})::Vector{Grap
     end
 end
 
+"""
+    numberOfLeaves(g::SimpleWeightedGraph{Int64, Int64}) -> Int
+
+Count the number of leaf vertices in a graph.
+
+# Arguments
+- `g::SimpleWeightedGraph{Int64, Int64}`: The graph to analyze
+
+# Returns
+- `Int`: Number of leaf vertices
+
+# Description
+A leaf vertex is defined as a vertex with total edge weight less than 2.
+This function counts all such vertices in the graph.
+
+# Examples
+```julia
+leaves = numberOfLeaves(my_graph)
+```
+"""
 function numberOfLeaves(g::SimpleWeightedGraph{Int64, Int64})::Int
     ### get number of leaves
     res = 0
@@ -218,6 +425,31 @@ function numberOfLeaves(g::SimpleWeightedGraph{Int64, Int64})::Int
     end
     return res
 end
+
+"""
+    noLeavesExceptAt(g::SimpleWeightedGraph{Int64, Int64}, j_vec::Vector{Int64}=Int64[]) -> Bool
+
+Check if a graph has leaves only at specified vertices.
+
+# Arguments
+- `g::SimpleWeightedGraph{Int64, Int64}`: The graph to check
+- `j_vec::Vector{Int64}=Int64[]`: Vertices where leaves are allowed
+
+# Returns
+- `Bool`: `true` if the graph has no leaves except possibly at vertices in `j_vec`
+
+# Description
+A leaf vertex is defined as a vertex with total edge weight less than 2.
+This function checks that such vertices occur only in the specified list `j_vec`.
+
+# Examples
+```julia
+# Check if graph has leaves only at vertices 1 and 5
+if noLeavesExceptAt(g, [1, 5])
+    println("Graph has no unexpected leaf vertices")
+end
+```
+"""
 function noLeavesExceptAt(g::SimpleWeightedGraph{Int64, Int64},j_vec::Vector{Int64}=Int64[])::Bool
     ### check if a Graph g has leaves, exclude sites in j_vec from checking
     for i in vertices(g)
@@ -229,7 +461,28 @@ function noLeavesExceptAt(g::SimpleWeightedGraph{Int64, Int64},j_vec::Vector{Int
     return true
 end
 
-""" check if a Graph g has generalized leaves (used for vacuum graphs)"""
+"""
+    hasGeneralizedLeaves(g::Graph) -> Bool
+
+Check if a graph has generalized leaves.
+
+# Arguments
+- `g::Graph`: The graph to check
+
+# Returns
+- `Bool`: `true` if the graph has generalized leaves, `false` otherwise
+
+# Description
+A generalized leaf is a bridge edge (weight 1) whose removal would disconnect
+the graph. This function checks for the existence of such edges.
+
+# Examples
+```julia
+if hasGeneralizedLeaves(my_graph)
+    println("Graph has generalized leaves (bridge edges)")
+end
+```
+"""
 function hasGeneralizedLeaves(g::Graph)::Bool
     
     g_ext = copy(g.g)
@@ -250,7 +503,29 @@ function hasGeneralizedLeaves(g::Graph)::Bool
 end 
 
 
-""" check if a GraphG gG has generalized leaves """
+"""
+    hasGeneralizedLeaves(gG::GraphG) -> Bool
+
+Check if a graph with external legs has generalized leaves.
+
+# Arguments
+- `gG::GraphG`: The graph with external legs to check
+
+# Returns
+- `Bool`: `true` if the graph has generalized leaves, `false` otherwise
+
+# Description
+For graphs with external legs, a generalized leaf is a bridge edge (weight 1)
+whose removal would create a separate component that still connects the
+external vertices. This function checks for the existence of such edges.
+
+# Examples
+```julia
+if hasGeneralizedLeaves(my_graph_with_legs)
+    println("Graph has generalized leaves (bridge edges)")
+end
+```
+"""
 function hasGeneralizedLeaves(gG::GraphG)::Bool
     
     
@@ -282,7 +557,27 @@ function hasGeneralizedLeaves(gG::GraphG)::Bool
     return false
 end 
 
- """ symmetry Factor of graph, this is the number auf automorphisms respecting edge weights"""
+"""
+    symmetryFactor(g::Graph) -> Int
+
+Calculate the symmetry factor of a graph.
+
+# Arguments
+- `g::Graph`: The graph to analyze
+
+# Returns
+- `Int`: The symmetry factor (number of automorphisms)
+
+# Description
+Computes the number of graph automorphisms (self-isomorphisms) that preserve
+edge weights. This factor is important for statistical weights in diagrammatic
+expansions.
+
+# Examples
+```julia
+sym = symmetryFactor(my_graph)
+```
+"""
 function symmetryFactor(g::Graph)::Int
    
     gg = copy(g.g)
@@ -296,7 +591,27 @@ function symmetryFactor(g::Graph)::Int
     return Graphs.Experimental.count_isomorph(gg_simple,gg_simple,edge_relation=edge_relation)
 end
 
-""" symmetry Factor of graphG, this is the number of graph automorphisms respecting edge weights and not touching external indices"""
+"""
+    symmetryFactor(gG::GraphG) -> Int
+
+Calculate the symmetry factor of a graph with external legs.
+
+# Arguments
+- `gG::GraphG`: The graph with external legs to analyze
+
+# Returns
+- `Int`: The symmetry factor (number of automorphisms)
+
+# Description
+Computes the number of graph automorphisms (self-isomorphisms) that preserve
+edge weights and the identity of external legs. This factor is important for
+statistical weights in diagrammatic expansions with external sources.
+
+# Examples
+```julia
+sym = symmetryFactor(my_graph_with_legs)
+```
+"""
 function symmetryFactor(gG::GraphG)::Int
     
     gg = copy(gG.g)
@@ -316,7 +631,33 @@ function symmetryFactor(gG::GraphG)::Int
     return Graphs.Experimental.count_isomorph(gg_simple,gg_simple,edge_relation=edge_relation)
 end
 
-####### graph plotting ##################################################################
+"""
+    gplot(g::Graph; title::String="", save::Bool=false) -> Plot
+
+Create a visualization of a Graph.
+
+# Arguments
+- `g::Graph`: The graph to plot
+- `title::String=""`: Optional title for the plot
+- `save::Bool=false`: Whether to save the plot to file
+
+# Returns
+- A plot object representing the graph visualization
+
+# Description
+Generates a visual representation of the graph with numbered vertices.
+Edge weights are represented by multiple parallel edges.
+
+# Examples
+```julia
+# Create and display a plot of a graph
+plot = gplot(my_graph, title="Example Graph")
+display(plot)
+
+# Save the plot to a file
+gplot(my_graph, title="saved_graph", save=true)
+```
+"""
 function gplot(g::Graph;title::String="",save::Bool=false)
     Random.seed!(2011);
     m = collect(g.g.weights)
@@ -346,6 +687,32 @@ function gplot(g::Graph;title::String="",save::Bool=false)
     end
     return fig
 end
+
+
+"""
+    gplot(gG::GraphG; title::String="", save::Bool=false) -> Plot
+
+Create a visualization of a GraphG (graph with external legs).
+
+# Arguments
+- `gG::GraphG`: The graph with external legs to plot
+- `title::String=""`: Optional title for the plot
+- `save::Bool=false`: Whether to save the plot to file
+
+# Returns
+- A plot object representing the graph visualization
+
+# Description
+Generates a visual representation of the graph where external legs
+are highlighted in red and labeled as "j" and "j'".
+
+# Examples
+```julia
+# Create and display a plot of a graph with external legs
+plot = gplot(my_graph_with_legs, title="Correlation Function Graph")
+display(plot)
+```
+"""
 function gplot(gG::GraphG;title::String="",save::Bool=false)
     Random.seed!(2011);
     gplot = copy(gG.g) #the SimpleWeightedGraph for plotting with external legs
@@ -385,6 +752,35 @@ function gplot(gG::GraphG;title::String="",save::Bool=false)
     end
     return fig
 end
+"""
+    gplot(g_vec::Vector; subtitle_vec::Vector{String}=["#"*string(pos) for pos in eachindex(g_vec)], 
+          title::String="", save::Bool=false) -> Plot
+
+Create a grid visualization of multiple graphs.
+
+# Arguments
+- `g_vec::Vector`: Collection of graphs to plot
+- `subtitle_vec::Vector{String}`: Optional subtitles for each graph
+- `title::String=""`: Optional title for the entire plot
+- `save::Bool=false`: Whether to save the plot to file
+
+# Returns
+- A plot object representing the grid of graph visualizations
+
+# Description
+Generates a grid layout containing visualizations of multiple graphs,
+with customizable subtitles for each graph and a main title.
+
+# Examples
+```julia
+# Plot a collection of graphs in a grid
+plot = gplot(graph_collection, title="Evolution of Graphs")
+display(plot)
+
+# Plot with custom subtitles
+plot = gplot(graph_collection, subtitle_vec=["Initial", "Step 1", "Step 2", "Final"])
+```
+"""
 function gplot(g_vec::Vector{};subtitle_vec::Vector{String}=["#"*string(pos) for pos in eachindex(g_vec)],title::String="",save::Bool=false)
     fig_vec = []
     for g_pos in 1:length(g_vec)
@@ -400,8 +796,31 @@ function gplot(g_vec::Vector{};subtitle_vec::Vector{String}=["#"*string(pos) for
     return fig
 end
 
-###### graph generation ############################################################
-""" iterate to find all connected multi-graphs of one order higher than those provided, skip graphs with more than two leaves """
+"""
+    getAllGraphsNextOrder(g_vec::Vector{Graph}) -> Vector{Graph}
+
+Generate all connected graphs with one more edge than those in the input vector.
+
+# Arguments
+- `g_vec::Vector{Graph}`: Vector of graphs of order n
+
+# Returns
+- `Vector{Graph}`: All unique connected graphs of order n+1
+
+# Description
+Starting from a vector of graphs with n edges, generates all possible connected
+graphs with n+1 edges, filtering out isomorphic duplicates. The resulting graphs
+are limited to those with at most 2 leaf vertices.
+
+# Examples
+```julia
+# Generate all order-5 graphs from order-4 graphs
+graphs_order5 = getAllGraphsNextOrder(graphs_order4)
+```
+
+# Note
+The resulting graphs are also saved to disk in the data directory.
+"""
 function getAllGraphsNextOrder(g_vec::Vector{Graph})::Vector{Graph}
     
     
@@ -430,6 +849,29 @@ function getAllGraphsNextOrder(g_vec::Vector{Graph})::Vector{Graph}
     return g_new_vec
 end
 
+"""
+    getVacGraphs(graphs_vec::Vector{Vector{Graph}}) -> Vector{Vector{Graph}}
+
+Filter a collection of graphs to remove those with generalized leaves.
+
+# Arguments
+- `graphs_vec::Vector{Vector{Graph}}`: Nested vector of graphs by order
+
+# Returns
+- `Vector{Vector{Graph}}`: Filtered collection with generalized leaves removed
+
+# Description
+From a collection of graphs organized by order, returns a new collection
+where graphs with generalized leaves have been removed from all orders
+except the first. This is used to identify "vacuum" graphs in diagrammatic
+expansions.
+
+# Examples
+```julia
+# Get vacuum graphs from a collection of all graphs
+vac_graphs = getVacGraphs(all_graphs_by_order)
+```
+"""
 function getVacGraphs(graphs_vec::Vector{Vector{Graph}})::Vector{Vector{Graph}}
     graphs_vac_vec = copy(graphs_vec)
     for m in 1:length(graphs_vac_vec)-1
@@ -438,8 +880,32 @@ function getVacGraphs(graphs_vec::Vector{Vector{Graph}})::Vector{Vector{Graph}}
     return graphs_vac_vec
 end
 
+"""
+    getGraphsG(graphs_vec::Vector{Vector{Graph}}) -> Vector{Vector{GraphG}}
 
-""" load graphsG or compute GraphsG from graphs_vec, need to remove equivalent ways of adding terminals """
+Generate all unique graphs with external legs from regular graphs.
+
+# Arguments
+- `graphs_vec::Vector{Vector{Graph}}`: Nested vector of graphs by order
+
+# Returns
+- `Vector{Vector{GraphG}}`: Collection of GraphG objects by order
+
+# Description
+For each graph in the input collection, generates all possible ways to
+attach external legs (marked vertices), filtering out duplicates and
+ensuring the resulting graphs have no generalized leaves and no leaves
+except at the marked vertices.
+
+# Examples
+```julia
+# Generate graphs with external legs from regular graphs
+leg_graphs = getGraphsG(all_graphs_by_order)
+```
+
+# Note
+Results are cached to disk to avoid repeated computation.
+"""
 function getGraphsG(graphs_vec::Vector{Vector{Graph}})::Vector{Vector{GraphG}}
     
     graphsG_vec = [[GraphG(graphs_vec[1][1].g,[1,1])]]
@@ -492,10 +958,10 @@ end
 Initialize and merge required data files if they don't exist.
 """
 function merge_data_files()
-    println("Begin merging DynHTE datafiles:")
-    println("This will only happen the very first time this function is used. It can take a while.")
     if !isfile(data_dir()*"/GraphFiles/graphs_12.jld2")
-       
+        println("Begin merging DynHTE datafiles:")
+        println("This will only happen the very first time this function is used. It can take a while.")
+
         println("merging graphs12 ...")
         save_object(data_dir()*"/GraphFiles/graphs_12.jld2",
             vcat(load_object(data_dir()*"/GraphFiles/graphs_12a.jld2"),

@@ -81,11 +81,11 @@
         mod!(g, square_trans)
         @test g.gVec ≈ [0.3, 0.7] atol=1e-12
         
-        # Test integer_part_tol function
-        @test integer_part_tol(2.999, tol=0.01) == 3
-        @test integer_part_tol(2.001, tol=0.01) == 2
-        @test integer_part_tol(-2.001, tol=0.01) == -2
-        @test integer_part_tol(-2.999, tol=0.01) == -3
+        # Test floor_tol function
+        @test floor_tol(2.999, tol=0.01) == 3
+        @test floor_tol(2.001, tol=0.01) == 2
+        @test floor_tol(-2.001, tol=0.01) == -2
+        @test floor_tol(-2.999, tol=0.01) == -3
     end
     
     @testset "Group Generation" begin

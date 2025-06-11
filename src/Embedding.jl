@@ -1,7 +1,30 @@
 ### find embedding factors
 
 
-""" check if the underlying simple graphs of gG1 and gG2 are isomorphic """
+"""
+    is_simple_isomorphic(gG1::GraphG, gG2::GraphG) -> Bool
+
+Check if the underlying simple graphs of two GraphG objects are isomorphic.
+
+# Arguments
+- `gG1::GraphG`: First graph with external legs
+- `gG2::GraphG`: Second graph with external legs
+
+# Returns
+- `Bool`: `true` if the underlying simple graphs are isomorphic, `false` otherwise
+
+# Description
+Determines whether the two graphs have the same topology when edge weights 
+are ignored, while respecting the external legs. This function handles special 
+cases where one graph has coincident external legs (j=j') and the other doesn't.
+
+# Examples
+```julia
+if is_simple_isomorphic(graph1, graph2)
+    println("These graphs have the same underlying structure")
+end
+```
+"""
 function is_simple_isomorphic(gG1::GraphG,gG2::GraphG)::Bool
     ### convert gg,gg_flip to SimpleGraphs
     gg1_simple = toSimpleGraph(gG1.g)
@@ -39,15 +62,36 @@ end
 #vector = [0,[[gG_vec[1][1],[[0,1,1,true]],0]]]
 #@save data_dir()*"/GraphFiles/unique_gG_vec_0.jld2" vector
 
-""" gives unique_gG_vec with the structure
-    [maxorder,
-    [ 
-    [gG,[gG_index_1,gG_index_2,...], dist ],
-    ...
-    ]
-    where the gG_index_1,2,3 identify the GraphG of the same simple graph structure as gG. These indices have the structure
-    gG_index_1 = [order + 1 ,index,symmetryfactor,is_symmetric] 
-    dist = graph distance between external legs of gG
+"""
+    give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}}) -> Vector{Any}
+
+Load or create a data structure that groups graphs by their underlying simple graph structure.
+
+# Arguments
+- `gG_vec::Vector{Vector{GraphG}}`: Nested vector of graphs with external legs by order
+
+# Returns
+- `Vector{Any}`: Structure containing unique graph representatives and related graphs
+
+# Description
+Processes a collection of graphs to identify those with equivalent underlying
+simple graph structure, grouping them together for efficient processing.
+The resulting structure has the form:
+```
+[maxorder,
+ [ 
+   [gG, [gG_index_1, gG_index_2, ...], dist],
+   ...
+ ]]
+```
+Where:
+- `maxorder` is the highest order processed
+- `gG` is a representative graph
+- `gG_index_*` are indices of equivalent graphs with structure [order+1, index, symmetryfactor, is_symmetric]
+- `dist` is the graph distance between external legs
+
+# Note
+Results are cached to disk to avoid repeated computation.
 """
 function give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}})
 
@@ -102,7 +146,31 @@ function give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}})
 
 end
 
-""" loads unique_gG_vec """
+"""
+    give_unique_gG_vec(max_order::Int) -> Vector{Any}
+
+Load precomputed unique graph representatives up to the specified maximum order.
+
+# Arguments
+- `max_order::Int`: Maximum order of graphs to load
+
+# Returns
+- `Vector{Any}`: Structure containing unique graph representatives and related graphs
+
+# Description
+Attempts to load the precomputed unique graph structure from disk for the specified
+maximum order. If the exact file isn't found, it may attempt to combine partial files
+for higher orders.
+
+# Throws
+- `ArgumentError`: If no suitable graph file is available for the requested order
+
+# Examples
+```julia
+# Load unique graph structure up to order 10
+unique_graphs = give_unique_gG_vec(10)
+```
+"""
 function give_unique_gG_vec(max_order::Int)
     # try to load the file. if it does not exist try to load the file of one less order
     file_path = data_dir()*"/GraphFiles/unique_gG_vec_$max_order"*".jld2"
@@ -129,17 +197,73 @@ function give_unique_gG_vec(max_order::Int)
 end
 
 
-""" find embedding factor e of GraphG gG in lattice L
-- lattice L (needs to be chosen large enough to avoid boundary effects!)
-- external site indices jjp=[j,j'] can be [i,i'] (or [i',i] if gG is not symmetric under exchange of i <--> i')
-- assumes that the distance j-jp is smaller or equal to the distance of external vertices of gG
+"""
+    e_fast(LL::SimpleGraph{Int}, j::Int, jp::Int, gG::GraphG) -> Int
+
+Calculate the embedding factor of a graph with external legs into a lattice.
+
+# Arguments
+- `LL::SimpleGraph{Int}`: The lattice graph
+- `j::Int`: First external site in the lattice
+- `jp::Int`: Second external site in the lattice
+- `gG::GraphG`: Graph with external legs to embed
+
+# Returns
+- `Int`: Number of ways the graph can be embedded with j, jp as external sites
+
+# Description
+Counts the number of isomorphic subgraphs in the lattice that match the given
+graph structure, with the constraint that the external legs must map to the
+specified lattice sites j and jp.
+
+# Note
+This is an optimized version that directly counts subgraph isomorphisms.
+
+# Examples
+```julia
+# Count embeddings of a correlation graph between sites 1 and 5
+embeddings = e_fast(lattice_graph, 1, 5, correlation_graph)
+```
 """
 function e_fast(LL::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
     numSubIsos = count_subgraphisomorph(LL,gG.g,jL1 = j,jL2 = jp,jG1 = gG.jjp[1],jG2 = gG.jjp[2])
     return numSubIsos 
 end
 
-""" Calculate the coefficients of (-x)^n for TG_ii'(iν_m) from embedding factors of only the unique simple graphs and the gG's symmetry factors """    
+
+"""
+    Calculate_Correlator_fast(L::SimpleGraph{Int}, ext_j1::Int, ext_j2::Int, 
+                             max_order::Int, gG_vec_unique::unique_Graphs, 
+                             C_Dict_vec::Vector{Vector{Vector{Rational{Int128}}}}) 
+                             -> Vector{Vector{Rational{Int128}}}
+
+Calculate the coefficients of (-x)^n for TG_ii'(iν_m) using optimized embedding calculations.
+
+# Arguments
+- `L::SimpleGraph{Int}`: The lattice graph
+- `ext_j1::Int`: First external site in the lattice
+- `ext_j2::Int`: Second external site in the lattice
+- `max_order::Int`: Maximum expansion order to calculate
+- `gG_vec_unique::unique_Graphs`: Structure of unique graph representatives
+- `C_Dict_vec::Vector{Vector{Vector{Rational{Int128}}}}`: Coefficients for each graph
+
+# Returns
+- `Vector{Vector{Rational{Int128}}}`: Array of coefficients for each order and power of Δ
+
+# Description
+Computes the coefficients of the high-temperature series expansion for a correlation
+function between sites ext_j1 and ext_j2. Each order returns a vector representing 
+prefactors of [δω, Δ², Δ⁴, Δ⁶, Δ⁸, Δ¹⁰, Δ¹², Δ¹⁴, Δ¹⁶, Δ¹⁸].
+
+The computation uses preprocessing of unique graph structures to minimize redundant 
+calculations of embedding factors.
+
+# Examples
+```julia
+# Calculate correlation coefficients between sites 1 and 5 up to order 10
+coeffs = Calculate_Correlator_fast(lattice_graph, 1, 5, 10, unique_graphs, graph_coeffs)
+```
+"""
 function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order::Int,gG_vec_unique::unique_Graphs,C_Dict_vec::Vector{Vector{Vector{Rational{Int128}}}})::Vector{Vector{Rational{Int128}}}
 
     #initialize result array
@@ -212,14 +336,15 @@ function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,m
 end
 
 ###### LEGACY FUNCTIONS (SLOW)
+"""
+OLD FUNKTION: use e_fast
+find embedding factor e of GraphG gG in lattice L
+- lattice L (needs to be chosen large enough to avoid boundary effects!)
+- external site indices jjp=[j,j′] can be (i,i′) or (i′,i) if gG is not symmetric under exchange of i ↔ i′
+- assumes that the distance j-jp is smaller or equal to the distance of external vertices of gG
+"""
 function e(L::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
-    """
-    OLD FUNCTION use e_fast 
-    find embedding factor e 
-    - lattice L (needs to be chosen large enough to avoid boundary effects)
-    - lattice site indices jjp=[j,j'] can be [i,i'] (or [i',i] if gG is not symmetric under exchange of i <--> i')
-    - embedding of GraphG gG
-    """
+
  
     ### copy L -> LL and gG.g -> gg not to mess with input
     LL = copy(L)
@@ -271,8 +396,10 @@ function e(L::SimpleGraph{Int},j::Int,jp::Int,gG::GraphG)::Int
     return numSubIsos / symmetryFactor(gG)
 end
 
+
+ """OLD FUNCTION: use Calculate_Correlator_fast"""
 function Calculate_Correlator(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order,gG_vec::Vector{Vector{GraphG}},C_Dict_vec::Vector{Vector{Vector{Rational{Int128}}}})::Vector{Vector{Rational{Int128}}}
-    """OLD FUNCTION: use Calculate_Correlator_fast"""
+   
 
     #initialize result array
     result_array = Vector{Vector{Rational{Int128}}}(undef, max_order+1)

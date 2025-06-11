@@ -34,6 +34,10 @@ The DynHTE.jl package can be installed by invoking the following command in the 
 Since DynHTE.jl depends on the unregistered package RobustPade it needs to be added first. 
 Due to the size of the precomputed data, this can take a minute. 
 
+## Documenation
+
+The documentation can currently be hosted locally by running the host_documentation.jl file. 
+
 
 ## Tutorial: Spin-1/2 Heisenberg AFM on triangular lattice
 This tutorial explains the use of the Dyn-HTE software provided in this repository using the example of the nearest-neighbor S=1/2 Heisenberg AFM on the triangular lattice. The associated julia script can be found under "examples/Triangular_Lattice/Application_Triangular_Lattice.jl”. This script contains complete code, here we only highlight the most important functionalities specific to Dyn-HTE and assume the reader is familiar with the julia language and its plotting routines. The physical background and most of the results generated in this tutorial are discussed in the two publications mentioned in [Publication/Citation].

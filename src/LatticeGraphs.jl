@@ -1,6 +1,28 @@
+import Base.-
 
+"""
+    latticeToGraph(lattice::Lattice) -> SimpleGraph{Int}
+
+Convert a Lattice struct into a SimpleGraph representation.
+
+# Arguments
+- `lattice::Lattice`: The lattice structure to convert
+
+# Returns
+- `SimpleGraph{Int}`: Graph where vertices correspond to lattice sites and edges to interactions
+
+# Description
+Creates a graph representation of the lattice where each vertex corresponds to a site
+in the lattice, and edges connect sites that interact with each other according to
+the `interactionSites` field of the lattice.
+
+# Examples
+```julia
+graph = latticeToGraph(lattice)
+```
+"""
 function latticeToGraph(lattice::Lattice)::SimpleGraph{Int}
-    """ transforms a Lattice Struct into a SimpleGraph """
+   
     g = SimpleGraph(lattice.length)
     ints = lattice.interactionSites
     for v in 1:nv(g)
@@ -15,16 +37,41 @@ function latticeToGraph(lattice::Lattice)::SimpleGraph{Int}
     return g
 end
 
+
+"""
+    get_finite_Lattice(L::Int, geometry::String; PBC::Bool = true) -> (Lattice, SimpleGraph)
+
+Create a lattice and corresponding graph with specified geometry and size.
+Can be modified to include custom lattice geometries.
+
+# Arguments
+- `L::Int`: Linear size of the lattice
+- `geometry::String`: Type of lattice geometry
+- `PBC::Bool = true`: Whether to use periodic boundary conditions
+
+# Returns
+- `Tuple{Lattice, SimpleGraph}`: A tuple containing the lattice and its graph representation
+
+# Supported Geometries
+- "chain": 1D chain
+- "square": 2D square lattice
+- "simple_cubic": 3D cubic lattice
+- "triang": 2D triangular lattice
+- "honeycomb": 2D honeycomb lattice
+- "kagome": 2D kagome lattice
+- "pyrochlore": 3D pyrochlore lattice
+
+# Examples
+```julia
+# Create a 10×10 square lattice with periodic boundaries
+lattice, graph = get_finite_Lattice(10, "square")
+
+# Create a honeycomb lattice without periodic boundaries
+lattice, graph = get_finite_Lattice(8, "honeycomb", PBC=false)
+```
+"""
 function get_finite_Lattice(L::Int,geometry::String; PBC::Bool = true)
-    """ creates lattice and corresponding graphs, L is the linear size, PBC sets the use of boundary conditions.
-    Currently implmented:
-        - chain
-        - square
-        - triang
-        - honeycomb
-        - pyrochlore
-        - kagome
-    """
+  
     if geometry == "chain" ### chain lattice
         a1 = (1, 0)
         a2 = (0, 1)
@@ -154,21 +201,75 @@ function get_finite_Lattice(L::Int,geometry::String; PBC::Bool = true)
     return (lattice,graph)
 end
 
-### helper functions
-import Base.-
+"""
+    -(a::Tuple{Float64, Float64}, b::Tuple{Float64, Float64}) -> Tuple{Float64, Float64}
+
+Subtract two 2D coordinate tuples element-wise.
+
+# Arguments
+- `a::Tuple{Float64, Float64}`: First coordinate
+- `b::Tuple{Float64, Float64}`: Second coordinate
+
+# Returns
+- `Tuple{Float64, Float64}`: Result of a - b
+
+# Examples
+```julia
+diff = (3.0, 4.0) - (1.0, 2.0)  # Returns (2.0, 2.0)
+```
+"""
 function -(a::Tuple{Float64, Float64},b::Tuple{Float64, Float64})::Tuple{Float64, Float64}
-    """ - for 2-tuples """
+   
     return (a[1]-b[1],a[2]-b[2])
 end
+
+"""
+    -(a::Tuple{Float64, Float64, Float64}, b::Tuple{Float64, Float64, Float64}) -> Tuple{Float64, Float64, Float64}
+
+Subtract two 3D coordinate tuples element-wise.
+
+# Arguments
+- `a::Tuple{Float64, Float64, Float64}`: First coordinate
+- `b::Tuple{Float64, Float64, Float64}`: Second coordinate
+
+# Returns
+- `Tuple{Float64, Float64, Float64}`: Result of a - b
+
+# Examples
+```julia
+diff = (3.0, 4.0, 5.0) - (1.0, 2.0, 3.0)  # Returns (2.0, 2.0, 2.0)
+```
+"""
 function -(a::Tuple{Float64, Float64, Float64},b::Tuple{Float64, Float64, Float64})::Tuple{Float64, Float64, Float64}
-    """ minus for 3-tuples """
+    
     return (a[1]-b[1],a[2]-b[2],a[3]-b[3])
 end
 
+
+"""
+    find_graph_center(graph) -> Vector{Int}
+
+Find vertices at the center of a graph based on average shortest path distances.
+
+# Arguments
+- `graph`: A graph structure supporting Graphs.floyd_warshall_shortest_paths
+
+# Returns
+- `Vector{Int}`: Indices of vertices with the minimum average distance to all other vertices
+
+# Description
+Computes the average shortest path distance from each vertex to all others,
+then returns the vertices with the minimum average distance. These vertices
+are considered the "center" of the graph in terms of connectivity.
+
+# Examples
+```julia
+# Find the central vertices in a lattice graph
+centers = find_graph_center(lattice_graph)
+```
+"""
 function find_graph_center(graph)
-    """ 
-    Gives the sites at the center of the graph
-    """
+    
 
     n = nv(graph)  # Number of vertices
     distances = Graphs.floyd_warshall_shortest_paths(graph).dists  # All-pairs shortest path distances
@@ -189,10 +290,36 @@ function find_graph_center(graph)
     return min_vertices
 end
 
+
+"""
+    getLattice(L::Int, geometry::String) -> Dyn_HTE_Lattice
+
+Generate a lattice where all sites are at most L steps away from center sites.
+
+# Arguments
+- `L::Int`: Maximum distance from center sites
+- `geometry::String`: Type of lattice geometry (e.g., "chain", "square", "honeycomb")
+
+# Returns
+- `Dyn_HTE_Lattice`: A structure containing the modified lattice, its graph 
+  representation, and identified center sites
+
+# Description
+Creates a finite lattice centered around a reference site(s), including only
+sites that are within L steps (graph distance) from the center. For a chain
+lattice, a shortcut implementation is used with the middle site as center.
+
+# Examples
+```julia
+# Get a square lattice with sites at most 5 steps from center
+lattice_ball = getLattice(5, "square")
+
+# Get a honeycomb lattice with sites at most 4 steps from center
+honeycomb_ball = getLattice(4, "honeycomb")
+```
+"""
 function getLattice(L::Int,geometry::String)::Dyn_HTE_Lattice
-    """ 
-    Gives the lattice where all sites are at most L away from the center sites, no PBC
-    """
+    
 
     if geometry == "chain" #shortcut for chain
         lattice,LatGraph = get_finite_Lattice(2*L+1,"chain"; PBC = false)
@@ -259,15 +386,32 @@ function getLattice(L::Int,geometry::String)::Dyn_HTE_Lattice
     return Dyn_HTE_Lattice(geometry ,lattice, gg, center_sites)
 end
 
-###### TESTS ############
-#lattice,LatGraph = getLattice(4,"honeycomb"; PBC = false);
-#display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
 
-#lattice,LatGraph,center_sites = getLattice_Ball(6,"honeycomb");
-#display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
+"""
+    find_site_basis_label(lattice) -> Vector{Int}
 
+Identify which basis site in the unit cell each lattice site corresponds to.
 
-# Function to determine which basis site a given point corresponds to
+# Arguments
+- `lattice`: Lattice object with unit cell information
+
+# Returns
+- `Vector{Int}`: Array where each element indicates the basis site index (1 to n_basis)
+  for the corresponding lattice site
+
+# Description
+For lattices with multiple sites per unit cell (like honeycomb or kagome),
+this function determines which of the basis sites each position in the lattice
+corresponds to. It works by checking if a site position minus a basis site
+position can be expressed as an integer combination of lattice vectors.
+
+# Examples
+```julia
+# For a honeycomb lattice (2 basis sites)
+labels = find_site_basis_label(honeycomb_lattice)
+# Returns array with values 1 or 2 for each site
+```
+"""
 function find_site_basis_label(lattice)
     function is_int_vec(vec)
         return all(isinteger,(x->round(x; digits = 10)).(vec))
@@ -288,3 +432,15 @@ function find_site_basis_label(lattice)
 
     return site_basis_label
 end
+
+
+
+###### TESTS ############
+#lattice,LatGraph = getLattice(4,"honeycomb"; PBC = false);
+#display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
+
+#lattice,LatGraph,center_sites = getLattice_Ball(6,"honeycomb");
+#display(graphplot(LatGraph,names=1:nv(LatGraph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
+
+
+# Function to determine which basis site a given point corresponds to

@@ -1,17 +1,5 @@
 using SimpleWeightedGraphs
 @testset "Structs Tests" begin
-    @testset "InteractionMatrix" begin
-        # Test constructor
-        m = InteractionMatrix(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
-        @test m.m11 == 1.0
-        @test m.m22 == 1.0
-        @test m.m33 == 1.0
-        
-        # Test field access
-        @test isdefined(m, :m11)
-        @test isdefined(m, :m12)
-        @test isdefined(m, :m13)
-    end
 
     @testset "UnitCell" begin
         # Test 1D constructor
@@ -39,7 +27,7 @@ using SimpleWeightedGraphs
         add_edge!(g, 1, 2)
         add_edge!(g, 2, 3)
         add_edge!(g, 1, 3)
-        @test_nowarn Graph(g)
+        @test_nowarn DynHTE.Graph(g)
         
         # Test GraphG
         @test_nowarn GraphG(g, [1,2])

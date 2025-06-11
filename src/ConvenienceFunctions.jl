@@ -1,5 +1,29 @@
+"""
+    create_spin_string(s::Number) -> String
 
-""" create strings "S1half", "S1", "S3half",... dependening on rational spin_length"""
+Convert a numerical spin length to a standardized string representation.
+
+# Arguments
+- `s`: Spin length that can be converted to a rational number
+
+# Returns
+- A string in the format "S{n}" for integer spins or "S{n}half" for half-integer spins
+  where {n} is the numerator of the rationalized spin length
+
+# Examples
+```julia
+create_spin_string(1)    # returns "S1"
+create_spin_string(1.5)  # returns "S3half"
+create_spin_string(1/2)  # returns "S1half"
+```
+
+# Throws
+- `ErrorException` if the spin length cannot be represented as an integer or half-integer value
+
+# Notes
+- Input is automatically converted to a rational number using `rationalize(1.0*s)`
+- Only supports integer and half-integer spin values (denominator must be 1 or 2)
+"""
 function create_spin_string(s)
     spin_length = rationalize(1.0*s)
     denom = denominator(spin_length)
@@ -11,10 +35,54 @@ function create_spin_string(s)
     end
     return "S"*string(numerator(spin_length))*is_half
 end
+"""
+    get_c_iipDyn_mat(Graph, basis_positions::Vector{<:Int}, hte_graphs::Dyn_HTE_Graphs; 
+                    verbose=false, max_order=12) -> Array{Matrix{Rational{Int128}}}
+    get_c_iipDyn_mat(hte_lattice::Dyn_HTE_Lattice, hte_graphs::Dyn_HTE_Graphs; 
+                    verbose=false, max_order=12) -> Array{Matrix{Rational{Int128}}}
 
-"""get expansion of real-space G_ii' between the sites in basis_positions and all sites in the Graph
-    verbose: if true prints progress 
-    max_order: restricts expansion to a maximum order of max_order.
+Calculate the high-temperature series expansion of dynamic correlators G_ii' between basis sites
+and all sites in the graph.
+
+# Arguments
+- `Graph`: The graph representing the lattice structure (first method)
+- `basis_positions::Vector{<:Int}`: Vector of indices for basis sites (first method)
+- `hte_lattice::Dyn_HTE_Lattice`: Object containing the lattice structure, graph, and basis positions (second method)
+- `hte_graphs::Dyn_HTE_Graphs`: Container of precomputed HTE graphs and coefficients
+- `verbose::Bool=false`: When true, prints progress information
+- `max_order::Int=12`: Maximum expansion order (will be capped by available data)
+
+# Returns
+- `Array{Matrix{Rational{Int128}}}`: A matrix where element `[jp,b]` contains the expansion
+  coefficients for correlations between site `jp` and basis site `b`
+
+# Notes
+- The second method provides significant performance improvements by leveraging lattice symmetries
+  to reduce the number of correlation calculations needed
+- Automatically detects and applies lattice symmetries using `getSymmetryGroup` (second method)
+- Falls back to the standard algorithm if symmetries aren't available for the lattice type
+- Calculations are parallelized using `Threads.@threads 
+- The actual maximum order is limited by `min(max_order, unique_graphs.max_order)`
+- Uses `Calculate_Correlator_fast` for the underlying computation
+- Output dimensions are `[nv(Graph), length(basis_positions)]`
+
+# Examples
+```julia
+# Standard method: Calculate correlators for a square lattice to 12th order for spin 1/2
+L = 12
+n_max = 1*L
+spin_length = 1/2
+hte_graphs = load_dyn_hte_graphs(spin_length,L)
+hte_lattice = getLattice(L,"square")
+c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice.graph, hte_lattice.basis_positions, hte_graphs)
+
+# Optimized method: Calculate correlators with symmetry optimization
+L = 12
+spin_length = 1/2
+hte_graphs = load_dyn_hte_graphs(spin_length, L)
+hte_lattice = getLattice(L, "square")
+c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice, hte_graphs, verbose=true)
+```
 """
 function get_c_iipDyn_mat(Graph,basis_positions::Vector{<:Int},hte_graphs::Dyn_HTE_Graphs; verbose =false, max_order = 12)::Array{Matrix{Rational{Int128}}}
     ##preallocate output matrix 
@@ -41,12 +109,6 @@ function get_c_iipDyn_mat(Graph,basis_positions::Vector{<:Int},hte_graphs::Dyn_H
     return GiipDyn_mat
 end
 
-"""get expansion of real-space G_ii' between the sites in hte_lattice.basis_positions and all sites in the hte_lattice.graph by using lattice symmetries
-    optional arguments:
-
-    verbose: if true prints progress 
-    max_order: restricts expansion to a maximum order of max_order.
-"""
 function get_c_iipDyn_mat(hte_lattice::Dyn_HTE_Lattice,hte_graphs::Dyn_HTE_Graphs; verbose =false, max_order = 12)::Array{Matrix{Rational{Int128}}}
     ##try to use lattice symmetries 
     try 
@@ -97,7 +159,37 @@ function get_c_iipDyn_mat(hte_lattice::Dyn_HTE_Lattice,hte_graphs::Dyn_HTE_Graph
     return GiipDyn_mat
 end
 
-""" perform frequency sum over real-space dynamic correlators to obtain equal time correlators """
+"""
+    get_c_iipEqualTime_mat(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}}) -> Array{Vector{Rational{Int128}}}
+
+Perform frequency summation over real-space dynamic correlators to obtain equal-time correlators.
+
+This function converts dynamic frequency-dependent correlation functions into static (equal-time)
+correlations by performing the appropriate frequency summation with predefined coefficients.
+
+# Arguments
+- `c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}}`: Matrix of dynamic correlators where each element 
+  contains a matrix of expansion coefficients
+
+# Returns
+- `Array{Vector{Rational{Int128}}}`: Matrix with the same dimensions as input, but where each element 
+  is a vector of equal-time correlation coefficients
+
+# Examples
+```julia
+# Convert dynamic correlators to equal-time correlators
+c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice, hte_graphs)
+c_iipEqualTime_mat = get_c_iipEqualTime_mat(c_iipDyn_mat)
+
+# Compare with literature values (for triangular lattice)
+coeffs = [sum(c_iipEqualTime_mat[i,1][n+1] for i in 1:hte_lattice.lattice.length) for n in 0:12]
+```
+
+# Notes
+- The frequency sum is performed using fixed rational coefficients for each frequency component
+- The output has dimensions `[length(c_iipDyn_mat[:,1]), length(c_iipDyn_mat[1,:])]`
+- Each entry in the returned matrix is a vector of length `max_order_plus1`
+"""
 function get_c_iipEqualTime_mat(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}})::Array{Vector{Rational{Int128}}}
    
     max_order_plus1 = size(c_iipDyn_mat[1,1])[1]
@@ -114,7 +206,42 @@ end
 
 ###### bare series polynomial in Gii'(x,m) at Matsubara integer m truncated at n 
 
-""" expansion of the Matsubara correlator TGii'(iνm) as x-Polyomial for spatial entries i,ip of c_iipDyn_mat"""
+"""
+    get_TGiip_Matsubara_xpoly(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}}, i::Int, ip::Int, m::Int) -> Polynomial{Float64}
+
+Convert a dynamic correlator to a Matsubara frequency polynomial representation.
+
+Extracts the time-ordered Matsubara correlator TGii'(iνm) as a polynomial in x = J/T for the 
+spatial indices (i,ip) at Matsubara frequency index m.
+
+# Arguments
+- `c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}}`: Matrix of dynamic correlator coefficients
+- `i::Int`: First spatial index for the correlator
+- `ip::Int`: Second spatial index for the correlator
+- `m::Int`: Matsubara frequency index (m=0 is handled as a special case)
+
+# Returns
+- `Polynomial{Float64}`: Polynomial representation of the Matsubara correlator in variable x
+
+# Examples
+```julia
+# Get the m=0 Matsubara correlator at wavevector K
+k = (2π/3, 2π/sqrt(3))  # K-point in Brillouin zone
+m = 0
+p_x = sum([cos(dot(k, getSitePosition(hte_lattice.lattice, i) .- 
+          getSitePosition(hte_lattice.lattice, hte_lattice.basis_positions[1]))) * 
+          get_TGiip_Matsubara_xpoly(c_iipDyn_mat, i, 1, m) 
+          for i in 1:hte_lattice.lattice.length])
+
+# Apply Padé approximation to the polynomial
+pade_approx = get_pade(p_x, 6, 6)
+```
+
+# Notes
+- For m=0, uses the first column of the coefficient matrix directly
+- For m≠0, computes a weighted sum over frequency components with weight 1/(2πm)^(2l)
+- Sign alternation is applied using `flipEvenIndexEntries`
+"""
 function get_TGiip_Matsubara_xpoly(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}},i::Int,ip::Int,m::Int)
     n_max = size(c_iipDyn_mat[1,1])[1]-1
     if m==0
@@ -127,7 +254,31 @@ function get_TGiip_Matsubara_xpoly(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}
     return p_x
 end
 
-""" v=[a,b,c,d,...] -> [+a,-b,+c,-d,...] """
+"""
+    flipEvenIndexEntries(v) -> Vector
+
+Apply alternating signs to vector elements based on their position.
+
+Transforms a vector [a,b,c,d,...] into [+a,-b,+c,-d,...] by multiplying elements
+at even indices by -1. This changes an expansion in ''-x'' to an expansion in ''x''
+
+# Arguments
+- `v`: Input vector of any numeric type
+
+# Returns
+- A vector of the same type and length as the input, but with alternating signs
+
+# Examples
+```julia
+# Simple vector transformation
+flipEvenIndexEntries([1, 2, 3, 4])  # Returns [1, -2, 3, -4]
+
+# changes expansion in (-x) to expansion in (x)
+k = (0, 0)  # Gamma point in Brillouin zone
+coeffs_x = flipEvenIndexEntries(get_c_k(k, c_iipEqualTime_mat, hte_lattice))
+p_x = Polynomial(coeffs_x)
+```
+"""
 function flipEvenIndexEntries(v)
     signs = [-1*(-1)^n for n in eachindex(v)]
     return v .* signs
@@ -135,13 +286,87 @@ end
 
 ###### resummation tools for polynomial p
 
-""" Padé approximant (use RobustPade to avoid dividing by zero and just return 0//1) """
+"""
+    get_pade(p::Polynomial, N::Int, M::Int) -> Polynomial
+
+Create a Padé approximant for polynomial p with specified degrees.
+
+Constructs a robust [N,M] Padé approximant for the input polynomial, handling potential
+numerical issues like division by zero.
+
+# Arguments
+- `p::Polynomial`: Input polynomial to approximate
+- `N::Int`: Degree of the numerator polynomial
+- `M::Int`: Degree of the denominator polynomial
+
+# Returns
+- Padé approximant as a rational function approximating the original function
+
+# Examples
+```julia
+# Create and evaluate Padé approximant
+x_vec = collect(0:0.05:5.0)
+coeffs_x = flipEvenIndexEntries(get_c_k(k, c_iipEqualTime_mat, hte_lattice))
+p_x = Polynomial(coeffs_x)
+
+# Create different Padé approximants
+pade_66 = get_pade(p_x, 6, 6)
+pade_55 = get_pade(p_x, 5, 5)
+
+# Evaluate at multiple points
+y_vec_66 = pade_66.(x_vec)
+y_vec_55 = pade_55.(x_vec)
+```
+
+# Notes
+- Uses `robustpade` internally to avoid numerical issues
+- The approximant will match the Taylor series of the original function up to order N+M
+"""
 function get_pade(p::Polynomial,N::Int,M::Int)
     
     return robustpade(p,N,M)
 end
 
-""" Integrated differential approximant, setup of the ODE and return solution at x_vec """
+"""
+    get_intDiffApprox(p::Polynomial, x_vec::Vector{Float64}, M::Int, L::Int, N::Int) -> Vector{Float64}
+
+Create an integrated differential approximant for a polynomial using ODE methods.
+
+Solves an ODE that represents the integrated differential approximation of the input polynomial
+and evaluates the solution at the specified points.
+
+# Arguments
+- `p::Polynomial`: Input polynomial to approximate
+- `x_vec::Vector{Float64}`: Points at which to evaluate the approximation
+- `M::Int`: Degree parameter for Q(x) polynomial
+- `L::Int`: Degree parameter for P(x) polynomial
+- `N::Int`: Degree parameter for R(x) polynomial
+
+# Returns
+- `Vector{Float64}`: Solutions of the ODE evaluated at the specified points in `x_vec`
+
+# Examples
+```julia
+# Create integrated differential approximant for a correlator polynomial
+k = (2π/3, 2π/sqrt(3))  # K-point
+x_vec = collect(0.0:0.1:5.0)
+p_x = get_TGiip_Matsubara_xpoly(c_iipDyn_mat, 1, 1, 0)  # m=0 Matsubara frequency
+
+# Create approximant with specific parameters
+ida_result = get_intDiffApprox(p_x, x_vec, 3, 2, 2)
+
+# Compare with Padé approximation
+pade_result = get_pade(p_x, 5, 5).(x_vec)
+```
+
+# Notes
+- The function solves a first-order ODE of the form Q(x)f'(x) + P(x)f(x) + R(x) = 0
+- Requires M+L+N+2 ≤ degree(p) to have enough coefficients for solving the system
+- Uses ODE solver `Tsit5()` with tolerances reltol=1e-8 and abstol=1e-8
+
+# Throws
+- `AssertionError`: If M+L+N+2 > degree(p) making the system underdetermined
+"""
 function get_intDiffApprox(p::Polynomial,x_vec::Vector{Float64},M::Int,L::Int,N::Int)
    
     @assert M+L+N+2 <= Polynomials.degree(p)
@@ -173,8 +398,38 @@ function get_intDiffApprox(p::Polynomial,x_vec::Vector{Float64},M::Int,L::Int,N:
 end
 
 ###### variable transform from x to u=tanh(fx)
-""" transform polynomial in x (defined via coeffs_x) to polynomial in u=tanh(fx) truncated to degree length(coeffs_x)-1
-    (this is too slow for transforming many coeffs_x, use the linear trafo instead """
+"""
+    get_p_u(coeffs_x::Vector{Float64}, f::Float64) -> Polynomial
+
+Transform a polynomial in variable x to a polynomial in u=tanh(fx).
+
+This function performs a variable substitution from x to u=tanh(fx) in a polynomial
+defined by its coefficients, truncating the result to the same degree as the input.
+
+# Arguments
+- `coeffs_x::Vector{Float64}`: Coefficients of the polynomial in variable x
+- `f::Float64`: Scaling factor in the tanh transformation
+
+# Returns
+- `Polynomial`: Transformed polynomial in variable u=tanh(fx)
+
+# Examples
+```julia
+# Transform a polynomial in x to a polynomial in u=tanh(fx)
+x_poly = Polynomial([1.0, 2.0, 3.0])  # 1 + 2x + 3x²
+f = 0.48
+u_poly = get_p_u(coeffs(x_poly), f)
+
+# For larger polynomials, use the more efficient linear transformation
+# This is equivalent but much faster for larger degree polynomials:
+ufromx_mat = get_LinearTrafoToCoeffs_u(length(coeffs(x_poly))-1, f)
+u_poly_fast = Polynomial(ufromx_mat * coeffs(x_poly))
+```
+
+# Notes
+- This implementation is relatively slow for high-degree polynomials
+- For better performance with multiple transformations, use `get_LinearTrafoToCoeffs_u` instead
+"""
 function get_p_u(coeffs_x::Vector{Float64},f::Float64)
     @variables x u
     x = taylor(atanh(u)/f, u, 0:(length(coeffs_x)-1), rationalize=false)
@@ -183,7 +438,50 @@ function get_p_u(coeffs_x::Vector{Float64},f::Float64)
     return p_u
 end
 
-""" get linear transform polynomial coeffs from x to u=tanh(fx), to be used as res*coeffs_x """
+"""
+    get_LinearTrafoToCoeffs_u(max_order::Int, f::Float64) -> Matrix{Float64}
+
+Get the linear transformation matrix to convert polynomial coefficients from x to u=tanh(fx).
+
+Returns a matrix that, when multiplied with coefficients of a polynomial in x, 
+gives the coefficients for the same polynomial expressed in u=tanh(fx).
+
+# Arguments
+- `max_order::Int`: Maximum order of the polynomial (must be ≤ 16)
+- `f::Float64`: Scaling factor in the tanh transformation
+
+# Returns
+- `Matrix{Float64}`: Transformation matrix of size `(max_order+1) × (max_order+1)`
+
+# Examples
+```julia
+# Transform a polynomial from x-space to u-space
+f = 0.48
+x_vec = 0:0.1:4.0
+u_vec = tanh.(f .* x_vec)
+
+# Get original polynomial coefficients
+coeffs_x = [1.0, 0.5, 0.25]  # 1 + 0.5x + 0.25x²
+p_x = Polynomial(coeffs_x)
+
+# Transform to u-space
+ufromx_mat = get_LinearTrafoToCoeffs_u(length(coeffs_x)-1, f)
+p_u = Polynomial(ufromx_mat * coeffs_x)
+
+# Compare evaluations
+y_x = p_x.(x_vec)
+y_u = p_u.(u_vec)  # Should match y_x
+```
+
+# Notes
+- More efficient than `get_p_u` for repeated transformations
+- Precomputed for polynomials up to order 16
+- Used in u-Padé resummation techniques for better convergence
+- The transformation is defined as x = atanh(u)/f
+
+# Throws
+- `ErrorException` if `max_order > 16`
+"""
 function get_LinearTrafoToCoeffs_u(max_order::Int, f::Float64)::Matrix{Float64}
 
     if max_order > 16
@@ -222,7 +520,44 @@ end
 
 
 ###### k-space functions
-""" create a linear interpolation between an arbitrary number of (high symmetry) points in BZ """
+"""
+    create_brillouin_zone_path(points, num_samples::Int) -> (Vector{NTuple{N,Float64}}, Vector{Int})
+
+Create a linear interpolation path between high-symmetry points in a Brillouin zone.
+
+This function takes a list of points (typically high-symmetry points) and creates a path
+through them with a specified number of sampling points, distributed proportionally to
+segment lengths.
+
+# Arguments
+- `points`: List of points in the Brillouin zone, each as a tuple of coordinates
+- `num_samples::Int`: Total number of points to generate along the path
+
+# Returns
+- `Vector{NTuple{N,Float64}}`: List of interpolated points along the path
+- `Vector{Int}`: Indices of the original input points in the interpolated path
+
+# Examples
+```julia
+# Create a path through high-symmetry points in a triangular lattice
+Γ, K, M = (0,0), (2π/3, 2π/sqrt(3)), (0, 2π/sqrt(3))
+path = [Γ, K, M, Γ]  # Path through high-symmetry points
+pathticks = ["Γ", "K", "M", "Γ"]  # Labels for plotting
+
+# Generate 200 points along this path
+k_vec, kticks_positions = create_brillouin_zone_path(path, 200)
+
+# Use for plotting band structure or dispersion relations
+plt = plot(xlabel="k", ylabel="ω")
+plot!(plt, 0:length(k_vec)-1, dispersion_function.(k_vec), 
+      xticks=(kticks_positions .- 1, pathticks))
+```
+
+# Notes
+- The number of points per segment is proportional to the segment length
+- The original input points are always included in the output
+- Useful for creating paths for spectral function plots or band structure plots
+"""
 function create_brillouin_zone_path(points, num_samples::Int)
     # Calculate distances between consecutive points
     distances = [norm(p2 .- p1) for (p1, p2) in zip(points[1:end-1], points[2:end])]
@@ -264,7 +599,52 @@ end
 
 
 #Fourier Transforms
-""" computes the spatial FT of c_iipDyn for momentum k, assumes inversion symmetry of the lattice to get real FT transform, sums over all basis states"""
+"""
+    get_c_k(k::Tuple{Vararg{<:Real}}, c_iipDyn_mat::Array{T}, hte_lattice::Dyn_HTE_Lattice) -> T where {T}
+    get_c_k(kvec::AbstractArray{<:Tuple{Vararg{<:Real}}}, c_iipDyn_mat::Array{T}, hte_lattice::Dyn_HTE_Lattice) -> Array{T} where {T}
+
+Compute the spatial Fourier transform of dynamic correlators at momentum k.
+
+This function calculates the Fourier transform of real-space correlators to reciprocal space,
+assuming inversion symmetry to produce a real result. It sums over all basis states.
+
+# Arguments
+- `k::Tuple{Vararg{<:Real}}` or `kvec::AbstractArray{<:Tuple{Vararg{<:Real}}}`: Single momentum vector or array of momentum vectors
+- `c_iipDyn_mat::Array{T}`: Matrix of real-space dynamic correlators
+- `hte_lattice::Dyn_HTE_Lattice`: Object containing lattice information
+
+# Returns
+- Single k-point version: Value of the Fourier transform at momentum k with the same type as input correlators
+- Multiple k-point version: Array of Fourier transforms with the same shape as `kvec`
+
+# Examples
+```julia
+# Calculate correlator at a specific k-point K
+k = (2π/3, 2π/sqrt(3))  # K-point in triangular lattice
+c_kDyn = get_c_k(k, c_iipDyn_mat, hte_lattice)
+
+# Create a path through high-symmetry points
+path = [Γ, K, M, Γ]  # Common high-symmetry points in triangular lattice
+k_vec, kticks_positions = create_brillouin_zone_path(path, 200)
+
+# Calculate correlators along the path
+c_k_vec = get_c_k(k_vec, c_iipDyn_mat, hte_lattice)
+
+# Create a 2D grid of k-points for a BZ slice
+N = 50
+kx = (1:N)*2π/N
+ky = (1:N)*2π/N
+kmat = Tuple.([[1,1/sqrt(3)].*x .+ [1,-1/sqrt(3)].*y for x in kx, y in ky])
+c_kDyn_grid = get_c_k(kmat, c_iipDyn_mat, hte_lattice)
+```
+
+# Notes
+- Uses cosine transform to ensure real output assuming inversion symmetry
+- Small values below 1e-12 are optionally set to zero (commented out in code)
+- Result is normalized by the number of center sites
+- Multiple k-point version uses broadcasting to efficiently apply the single k-point version
+- Maintains the same shape/dimensionality as the input array when using the multiple k-point version
+"""
 function get_c_k(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
 
     lattice = hte_lattice.lattice
@@ -293,14 +673,54 @@ function get_c_k(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dy
 
     return return c_kDyn
 end
-
-
 function get_c_k(kvec::AbstractArray{<:Tuple{Vararg{<:Real}}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
     fourier_transform(k) = get_c_k(k,c_iipDyn_mat,hte_lattice) 
     return fourier_transform.(kvec)
 end
 
-"""computes the inverse fourier transform for sublattice resolved fourier transforms"""
+""""
+    inverse_fourier_transform(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}, 
+                             c_kDyn::AbstractArray{T},
+                             hte_lattice::Dyn_HTE_Lattice) -> Matrix{T} where {T}
+
+Compute the inverse Fourier transform from reciprocal space to real space.
+
+This function transforms k-space correlators back to real space, calculating correlations
+between all lattice sites and basis sites.
+
+# Arguments
+- `kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}`: Array of momentum vectors
+- `c_kDyn::AbstractArray{T}`: Array of k-space correlators corresponding to `kvals`
+- `hte_lattice::Dyn_HTE_Lattice`: Object containing lattice information
+
+# Returns
+- `Matrix{T}`: Matrix of real-space correlators with dimensions `[length(lattice), length(lattice.unitcell.basis)]`
+
+# Examples
+```julia
+# Create a grid of k-points
+N = 50
+kx = (1:N)*2π/N
+ky = (1:N)*2π/N
+kmat = Tuple.([[1,1/sqrt(3)].*x .+ [1,-1/sqrt(3)].*y for x in kx, y in ky])
+
+# Calculate k-space correlators
+c_kDyn = get_c_k(kmat, c_iip_triang, triang_lattice)
+
+# Apply a transformation in k-space
+invstruc = calc_taylorinvmat_fun.(c_kDyn)
+
+# Transform back to real space
+invcorrs_triang = inverse_fourier_transform(kmat, invstruc, triang_lattice)
+```
+
+# Throws
+- `ErrorException` if `c_kDyn` and `kvals` have different sizes
+
+# Notes
+- Uses cosine transform assuming inversion symmetry
+- Result is normalized by the number of k-points
+"""
 function inverse_fourier_transform(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
     ,c_kDyn::AbstractArray{T}
     ,
@@ -339,10 +759,58 @@ function inverse_fourier_transform(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
 end
 
 #Sublattice Resolved Fourier Transforms
-""" computes the sublattice resolved spatial FT of c_iipDyn for momentum k
-    assumes inversion symmetry of the lattice to get real FT transform """
+"""
+    get_c_k_subl(k::Tuple{Vararg{<:Real}}, c_iipDyn_mat::Array{T}, hte_lattice::Dyn_HTE_Lattice) -> Matrix{Matrix{Float64}} where {T}
+    get_c_k_subl(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}, c_iipDyn_mat::Array{T}, hte_lattice::Dyn_HTE_Lattice) -> Array{Matrix{Matrix{Float64}}} where {T}
+
+Compute the sublattice-resolved Fourier transform at momentum k.
+
+This function calculates the sublattice-resolved Fourier transform, producing a matrix where
+each element [b1,b2] represents correlations between sublattices b1 and b2.
+
+# Arguments
+- `k::Tuple{Vararg{<:Real}}` or `kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}`: Single momentum vector or array of momentum vectors
+- `c_iipDyn_mat::Array{T}`: Matrix of real-space dynamic correlators
+- `hte_lattice::Dyn_HTE_Lattice`: Object containing lattice information
+
+# Returns
+- Single k-point version: `Matrix{Matrix{Float64}}` with dimensions `[basis_size, basis_size]` where each element contains correlator coefficients
+- Multiple k-point version: Array of sublattice-resolved Fourier transforms with the same shape as `kvals`
+
+# Examples
+```julia
+# Calculate sublattice-resolved correlator for a single k-point
+k_point = (2π/3, 2π/sqrt(3))  # K-point
+c_k_subl = get_c_k_subl(k_point, c_iip_kagome, kagome_lattice)
+
+# Shape of result is [basis_size, basis_size] matrices of coefficients
+println("Sublattices: ", size(c_k_subl))  # For kagome, this is [3,3]
+
+# Create a 2D grid of k-points
+N = 30
+kx = (1:N)*2π/N
+ky = (1:N)*2π/N
+kmat = Tuple.([[1,1/sqrt(3)].*x .+ [1,-1/sqrt(3)].*y for x in kx, y in ky])
+
+# Calculate sublattice-resolved correlators for entire grid
+c_kDyn = get_c_k_subl(kmat, c_iip_kagome, kagome_lattice)
+
+# Process the results (example: calculate inverse transform)
+invstruc = Array{Matrix{Taylor1{Float64}}}(undef, N, N)
+for i=1:N, j=1:N
+    invstruc[i,j] = calc_taylorinvmat_fun(c_kDyn[i,j])
+end
+invcorrs_kagome = inverse_fourier_transform_subl(kmat, invstruc, kagome_lattice)
+```
+
+# Notes
+- Uses complex exponential transform with e^(-i k·r) to allow for phase relationships between sublattices
+- Takes the real part of the result assuming physical correlators should be real
+- Uses `find_site_basis_label` to identify which sites belong to which sublattice
+- Multiple k-point version uses multithreading with `@Threads.threads` for parallel computation
+- Multiple k-point version returns a reshaped array matching the dimensions of the input `kvals`
+"""
 function get_c_k_subl(k::Tuple{Vararg{<:Real}},c_iipDyn_mat::Array{T},hte_lattice::Dyn_HTE_Lattice) where {T}
-   
     lattice = hte_lattice.lattice
     center_sites = hte_lattice.basis_positions
 
@@ -382,7 +850,52 @@ function get_c_k_subl(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}},c_iipDyn_mat
 end
 
 
-"""computes the inverse sublattice resolved fourier transform"""
+"""
+    inverse_fourier_transform_subl(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}},
+                                  c_kDyn_subl::Union{AbstractVector{Matrix{T}}, AbstractMatrix{Matrix{T}}, AbstractArray{Matrix{T}}},
+                                  hte_lattice::Dyn_HTE_Lattice) -> Matrix{T} where {T}
+
+Compute the inverse sublattice-resolved Fourier transform.
+
+This function transforms sublattice-resolved k-space correlators back to real space,
+calculating correlations between all lattice sites and basis sites.
+
+# Arguments
+- `kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}`: Array of momentum vectors
+- `c_kDyn_subl`: Array of sublattice-resolved k-space correlators corresponding to `kvals`
+- `hte_lattice::Dyn_HTE_Lattice`: Object containing lattice information
+
+# Returns
+- `Matrix{T}`: Matrix of real-space correlators with dimensions `[length(lattice), length(lattice.unitcell.basis)]`
+
+# Examples
+```julia
+# Create a grid of k-points and calculate sublattice-resolved correlators
+N = 30
+kx = (1:N)*2π/N
+ky = (1:N)*2π/N
+kmat = Tuple.([[1,1/sqrt(3)].*x .+ [1,-1/sqrt(3)].*y for x in kx, y in ky])
+c_kDyn = get_c_k_subl(kmat, c_iip_kagome, kagome_lattice)
+
+# Apply a transformation in k-space
+invstruc = Array{Matrix{Taylor1{Float64}}}(undef, N, N)
+for i=1:N, j=1:N
+    invstruc[i,j] = calc_taylorinvmat_fun(c_kDyn[i,j])
+end
+
+# Transform back to real space
+invcorrs_kagome = inverse_fourier_transform_subl(kmat, invstruc, kagome_lattice)
+```
+
+# Throws
+- `ErrorException`: If `c_kDyn_subl` and `kvals` have different sizes
+
+# Notes
+- Uses complex exponential transform with e^(i k·r) for the inverse transform
+- Takes the real part of the result assuming physical correlators should be real
+- Result is normalized by the number of k-points
+- Uses parallelization with `@Threads.threads` for the inner loop
+"""
 function inverse_fourier_transform_subl(kvals::AbstractArray{<:Tuple{Vararg{<:Real}}}
     ,c_kDyn_subl::Union{
     AbstractVector{Matrix{T}},
@@ -432,8 +945,34 @@ end
 
 
 ###### moments, continued fractions and dynamical spin structure factors
-""" get the moments m(0),m(2)),m(4),...,m(2r_max) from the coefficients c_kDyn
-(need to flip the even indices in front of x^odd to comply with definition of c)v"""
+"""
+    get_moments_from_c_kDyn(c_kDyn::Matrix{Float64}) -> Vector{Polynomial{Float64}}
+
+Extract frequency moments from dynamic correlator coefficients.
+
+Computes the moments m(0), m(2), m(4), ..., m(2r_max) from the coefficients of the
+dynamic correlator in k-space, applying the necessary sign flips to follow the mathematical
+definition of moments.
+
+# Arguments
+- `c_kDyn::Matrix{Float64}`: Matrix of dynamic correlator coefficients in k-space
+
+# Returns
+- `Vector{Polynomial{Float64}}`: Vector of moment polynomials [m₀, m₂, m₄, ...]
+
+# Examples
+```julia
+# Calculate moments for a k-point in a triangular lattice
+k = (2π/3, 2π/sqrt(3))  # K-point
+c_kDyn = get_c_k(k, c_iipDyn_mat, hte_lattice)
+m_vec = get_moments_from_c_kDyn(c_kDyn)
+```
+
+# Notes
+- The function generalizes pattern: m₀=[+1,-1,+1,...], m₂=[+1,-1,+1,...], m₄=[-1,+1,-1,...], etc.
+- The maximum moment order is determined by the size of the input matrix
+- This implementation handles arbitrary-order moments up to r_max = floor(size(c_kDyn)[1]/2)
+"""
 function get_moments_from_c_kDyn(c_kDyn::Matrix{Float64})
    
     ### generalizes the following which only works for max_order=12 (r_max=6)
@@ -455,7 +994,46 @@ function get_moments_from_c_kDyn(c_kDyn::Matrix{Float64})
     return m_vec
 end
 
- """ convert [m0,m2,m4,...] of any length <9 to [δ0,δ1,...] of the same length, also return r_vec=[0,1,2,...] """
+ """
+    fromMomentsToδ(m_vec::Vector{Float64}) -> (Vector{Float64}, Vector{Float64})
+    fromMomentsToδ(m_vec::Vector{Polynomial{Float64, :x}}) -> Vector{Polynomial{Float64}}
+
+Convert moments [m₀, m₂, m₄, ...] to continued fraction parameters [δ₀, δ₁, ...].
+
+This function implements the mathematical transformation from frequency moments to the
+δ parameters used in continued fraction expansions for spectral functions.
+
+# Arguments
+- `m_vec`: Vector of moments, either as scalars or polynomials in temperature (x=J/T)
+
+# Returns
+- For scalar moments: Tuple of (δ vector, r vector of indices [0,1,2,...])
+- For polynomial moments: Vector of δ polynomials
+
+# Examples
+```julia
+# Convert scalar moments to δ parameters
+k = (2π/3, 2π/sqrt(3))  # K-point
+x0 = 2.0  # Fixed temperature parameter x=J/T
+m0_vec = [m_vec[1+r](0)/x0 * get_pade(p_u, 7-r, 6-r)(u0) for r in 0:3]
+δ_vec, r_vec = fromMomentsToδ(m0_vec)
+
+# Plot δ parameters
+scatter!(plt_δ, r_vec, δ_vec)
+
+# Extrapolate δ parameters for continued fraction
+δ_vec_ext = extrapolate_δvec(δ_vec, r_max, r_max, 4000, true)
+
+# Convert polynomial moments to δ polynomials
+δ_poly_vec = fromMomentsToδ(m_vec)
+```
+
+# Notes
+- Implementation includes explicit formulas for up to 9 moments (δ₀ to δ₈)
+- For scalar moments, result includes indices r=[0,1,2,...] for convenience in plotting
+- For polynomial moments, limited to 7 moments due to computational complexity
+- Assertion error if input has more than 9 moments (scalar) or 7 moments (polynomial)
+"""
 function fromMomentsToδ(m_vec::Vector{Float64})
    
     @assert length(m_vec)<=9
@@ -533,7 +1111,41 @@ function fromMomentsToδ(m_vec::Vector{Polynomial{Float64, :x}})
 end
 
 
-""" continued fraction in variable s using δ_vec=[δ0,δ1,...,δr] and r-pole termination time τ"""
+"""
+    contFrac(s::Number, δ_vec::Vector{Float64}) -> Number
+
+Evaluate a continued fraction at complex frequency s using δ parameters.
+
+This function recursively evaluates the continued fraction representation of the dynamic
+correlator using the δ parameters from the moment expansion.
+
+# Arguments
+- `s::Number`: Complex frequency at which to evaluate (typically s = iω + η)
+- `δ_vec::Vector{Float64}`: Vector of δ parameters [δ₀, δ₁, ..., δᵣ]
+
+# Returns
+- Value of the continued fraction at frequency s
+
+# Examples
+```julia
+# Calculate dynamical structure factor using continued fraction
+x0 = 2.0  # Temperature parameter x=J/T
+w = 1.5   # Frequency ω/J
+η = 0.02  # Broadening parameter
+
+# Get δ parameters and extrapolate
+δ_vec, r_vec = fromMomentsToδ(m0_vec)
+δ_vec_ext = extrapolate_δvec(δ_vec, r_max, r_max, 4000, true)
+
+# Evaluate continued fraction for spectral function
+S_kw = JS(δ_vec_ext, x0, w, η)  # JS function uses contFrac internally
+```
+
+# Notes
+- If `δ_vec` has only one element, returns sqrt(abs(δ₀))
+- Otherwise recursively computes: δ₀/(s + contFrac(s, δ₁...δᵣ))
+- Used internally by the `JS` function to compute spectral functions
+"""
 function contFrac(s::Number,δ_vec::Vector{Float64})::Number
     
     if length(δ_vec)==1
@@ -543,10 +1155,61 @@ function contFrac(s::Number,δ_vec::Vector{Float64})::Number
     end
 end
 
-""" extrapolate continued fraction parameters δ_vec=[δ[0],δ[1],...,δ[R]] 
-    using a linear interpolation for δ_vec[r_min] to δ[r_max]
-    extrapolate δ[r_max+1]...δ[r_ext]. 
-    If intercept0=true use line through origin. """
+"""
+    extrapolate_δvec(δ_vec::Vector{Float64}, r_min::Int, r_max::Int, r_ext::Int, intercept0::Bool) -> Vector{Float64}
+
+Extrapolate continued fraction parameters δ_vec=[δ₀, δ₁, ..., δᵣ] to higher orders using linear fitting.
+
+This function fits a linear model to δ-parameters in the range r_min to r_max, then extrapolates 
+additional parameters up to r_ext. The function supports fitting through the origin if needed.
+
+# Arguments
+- `δ_vec::Vector{Float64}`: Vector of existing δ parameters to extend
+- `r_min::Int`: Minimum r index to use for fitting (inclusive)
+- `r_max::Int`: Maximum r index to use for fitting (inclusive)
+- `r_ext::Int`: Target maximum r index after extrapolation
+- `intercept0::Bool`: If true, force fit line through origin; otherwise include intercept term
+
+# Returns
+- `Vector{Float64}`: Extended vector of δ parameters with length r_ext+1
+
+# Examples
+```julia
+# Calculate moments and δ parameters for triangular lattice at wavevector K
+k = (2π/3, 2π/sqrt(3))  # K-point
+c_kDyn = get_c_k(k, c_iipDyn_mat, hte_lattice)
+m_vec = get_moments_from_c_kDyn(c_kDyn)
+f = 0.55  # Parameter for u-substitution
+
+# Get moment values at specific temperature x0
+x0 = 2.0
+u0 = tanh(f * x0)
+r_max = 3
+m0_vec = Float64[]
+for r in 0:r_max
+    xm_norm_r = coeffs(Polynomial([0,1]) * (m_vec[1+r]/m_vec[1+r](0)))
+    ufromx_mat = get_LinearTrafoToCoeffs_u(n_max+1, f)
+    p_u = Polynomial(ufromx_mat[1:n_max+2-2*r,1:n_max+2-2*r] * xm_norm_r)
+    push!(m0_vec, m_vec[1+r](0)/x0 * get_pade(p_u, 7-r, 6-r)(u0))
+end
+
+# Convert moments to δ parameters and extrapolate
+δ_vec, r_vec = fromMomentsToδ(m0_vec)
+δ_vec_ext = extrapolate_δvec(δ_vec, r_max, r_max, 4000, true)
+
+# Use extrapolated parameters to calculate spectral function
+S_kw = [JS(δ_vec_ext, x0, w, 0.02) for w in 0:0.02:3.0]
+```
+
+# Notes
+- Uses `LsqFit.curve_fit` to perform the linear regression
+- If `intercept0=true`, uses model f(t) = a·t; otherwise uses f(t) = a·t + b
+- The original δ parameters (δ₀ to δᵣₘₐₓ) are preserved in the output
+- Typically used to extend δ parameters for continued fraction evaluation of dynamic correlators
+
+# Throws
+- `AssertionError` if r_max < r_min, r_ext ≤ r_max, or r_max+1 > length(δ_vec)
+"""
 function extrapolate_δvec(δ_vec::Vector{Float64},r_min::Int,r_max::Int,r_ext::Int,intercept0::Bool)
     @assert r_max >= r_min
     @assert r_ext > r_max
@@ -565,7 +1228,54 @@ function extrapolate_δvec(δ_vec::Vector{Float64},r_min::Int,r_max::Int,r_ext::
     end
 end
 
-""" get dynamical spin structure factor (times J) from δ_wec at w=ω/J and broadening η"""
+"""
+    JS(δ_vec::Vector{Float64}, x::Float64, w::Float64, η::Float64) -> Float64
+
+Calculate the dynamic spin structure factor J·S(k,ω) at frequency ω/J = w and temperature x = J/T.
+
+This function evaluates the dynamic structure factor using a continued fraction representation
+with δ parameters. It includes the proper frequency-dependent thermal factor.
+
+# Arguments
+- `δ_vec::Vector{Float64}`: Vector of δ parameters from a continued fraction expansion
+- `x::Float64`: Inverse temperature parameter x = J/T
+- `w::Float64`: Frequency parameter ω/J
+- `η::Float64`: Broadening parameter (imaginary part added to frequency)
+
+# Returns
+- `Float64`: Value of J·S(k,ω) at the specified parameters
+
+# Examples
+```julia
+# Calculate dynamic structure factor for pyrochlore lattice at K-point
+# across a frequency range at temperature parameter x0=4 (T/J=0.25)
+k = (4π, 4π, 0)  # K-point in pyrochlore
+x0 = 4.0
+w_vec = 0:0.05:5.0
+η = 0.02  # Broadening
+
+# Get δ parameters (assuming they've been calculated and extrapolated)
+δ_vec_ext = extrapolate_δvec(δ_vec, r_min, r_max, 4000, true)
+
+# Calculate spectral function across frequency range
+spectrum = [JS(δ_vec_ext, x0, w, η) for w in w_vec]
+
+# Plot the result
+plot(w_vec, spectrum, xlabel="ω/J", ylabel="J·S(k,ω)", 
+     title="Dynamic structure factor")
+```
+
+# Notes
+- Uses `contFrac` function to evaluate the continued fraction expression
+- Special cases handled: x=0 or w=0 returns simple spectral weight without thermal factor
+- For w>0, includes thermal factor x·w/(1-exp(-x·w)) to relate spectral function to structure factor
+- The result is properly normalized according to sum rules
+
+# See Also
+- `contFrac`: Evaluates the continued fraction representation
+- `fromMomentsToδ`: Converts moments to δ parameters
+- `extrapolate_δvec`: Extends δ parameters for accurate continued fraction evaluation
+"""
 function JS(δ_vec::Vector{Float64},x::Float64,w::Float64,η::Float64)::Float64
     res = 1/π * real(contFrac(1im * w + η,δ_vec))
     if x==0.0 || w==0.0
@@ -576,9 +1286,73 @@ function JS(δ_vec::Vector{Float64},x::Float64,w::Float64,η::Float64)::Float64
 end 
 
 
-""" get the dynamical spin structure factor from the correlation matrix c_iipDyn_mat 
-using pade approximants for the moments either in the variable x = J/T ("pade") or in the variable
-u = tanh(f*x) ("u_pade")   """
+"""
+    get_JSkw_mat(method::String, x::Float64, k_vec::Vector, w_vec::Vector{Float64}, 
+                c_iipDyn_mat::Array{Matrix{Rational{Int128}}}, lattice::Dyn_HTE_Lattice; 
+                f::Float64=0.48, η::Float64=0.01, r_min::Int=3, r_max::Int=3, 
+                r_ext::Int=1000, intercept0::Bool=true) -> Matrix{Float64}
+
+Calculate dynamic spin structure factors J·S(k,ω) for multiple k-points and frequencies.
+
+This function computes the dynamical structure factor matrix for a range of k-points
+and frequencies using either standard Padé approximants ("pade") or the improved 
+u-transformation Padé method ("u_pade").
+
+# Arguments
+- `method::String`: Approximation method, either "pade" or "u_pade"
+- `x::Float64`: Inverse temperature parameter x = J/T
+- `k_vec::Vector`: Vector of k-points at which to calculate the structure factor
+- `w_vec::Vector{Float64}`: Vector of frequency values ω/J
+- `c_iipDyn_mat::Array{Matrix{Rational{Int128}}}`: Matrix of dynamic correlator coefficients
+- `lattice::Dyn_HTE_Lattice`: Lattice information object
+- `f::Float64=0.48`: Parameter for tanh transformation when using "u_pade" method
+- `η::Float64=0.01`: Broadening parameter for spectral functions
+- `r_min::Int=3`: Minimum r value for δ parameter extrapolation
+- `r_max::Int=3`: Maximum r value for δ parameter extrapolation
+- `r_ext::Int=1000`: Target r value for extrapolation
+- `intercept0::Bool=true`: Whether to force linear extrapolation through origin
+
+# Returns
+- `Matrix{Float64}`: Matrix of J·S(k,ω) values with dimensions [length(k_vec), length(w_vec)]
+
+# Examples
+```julia
+# Calculate spectral function along a path in the Brillouin zone
+# for pyrochlore lattice at temperature x0=4 (T/J=0.25)
+path = [(4π, 4π, -4π + 0.01), (4π, 4π, 0), (4π, 4π, 4π - 0.01)]
+pathticks = ["Γ", "W", "Γ"]
+Nk = 56
+k_vec, kticks_positions = create_brillouin_zone_path(path, Nk)
+
+# Define frequency range
+w_vec = collect(0:0.055:3.0)
+x0 = 4.0  # Temperature parameter (T/J = 0.25)
+
+# Calculate structure factor matrix
+JSkw_mat = get_JSkw_mat("u_pade", x0, k_vec, w_vec, c_iipDyn_mat, hte_lattice,
+                        f=0.6, η=0.02, r_min=3, r_max=3, r_ext=2000)
+
+# Plot results as heatmap
+heatmap(collect(0:Nk)/(Nk), w_vec, JSkw_mat', 
+        xticks=(kticks_positions.-1)/Nk, xticklabels=pathticks,
+        xlabel="k", ylabel="ω/J", title="J·S(k,ω)",
+        colormap=:viridis, c=:heat)
+```
+
+# Notes
+- For each k-point, calculates moments, applies Padé approximants, and derives δ parameters
+- For "u_pade" method, precomputes transformation matrices for efficiency
+- Handles special case of x=0 differently
+- Issues warning if negative δ parameters are detected during extrapolation
+- Progress is shown by printing k-point position during computation
+
+# See Also
+- `get_moments_from_c_kDyn`: Extracts frequency moments from dynamic correlator
+- `get_pade`: Constructs Padé approximants
+- `fromMomentsToδ`: Converts moments to δ parameters
+- `extrapolate_δvec`: Extends δ parameters to higher orders
+- `JS`: Evaluates dynamic structure factor at single k,ω point
+"""
 function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},c_iipDyn_mat::Array{Matrix{Rational{Int128}}},lattice::Dyn_HTE_Lattice;f::Float64=0.48,η::Float64=0.01,r_min::Int=3,r_max::Int=3,r_ext::Int=1000,intercept0::Bool=true)
 
     JSkw_mat = 1.0*zeros(length(k_vec),length(w_vec))
@@ -653,6 +1427,59 @@ function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Floa
     return JSkw_mat
 end
 
+
+"""
+    extrapolate_series(series, method::String, parameters) -> Polynomial
+
+Extrapolate a series using specified approximation method with given parameters.
+
+This function provides a unified interface to different series extrapolation techniques,
+applying the chosen method with provided parameters to the input series.
+
+# Arguments
+- `series`: Series to extrapolate (typically a `Polynomial`)
+- `method::String`: Extrapolation method, either "pade" or "u_pade"
+- `parameters`: Method-specific parameters:
+  - For "pade": (N, M) degrees for numerator and denominator
+  - For "u_pade": (N, M, f) where f is the scaling factor for tanh transformation
+
+# Returns
+- Extrapolated result as a `Polynomial` or rational function
+
+# Examples
+```julia
+# Extract and extrapolate moments from chain lattice correlation data
+k = 0.2*pi  # Define fixed wavevector
+x_vec = 0:0.01:4.5  # Temperature range
+c_kDyn_mat = get_c_k([(k,0.0)], c_iipDyn_mat, hte_lattice)[1]
+
+# Calculate moments
+m_vec = get_moments_from_c_kDyn(c_kDyn_mat)
+m_vec_times_x = [m_vec[i]*Polynomial([0,1]) for i=1:length(m_vec)]
+
+# Extrapolate using standard Padé method
+m_vec_extrapolated_pade = []
+for m_idx=1:length(m_vec)-2
+    push!(m_vec_extrapolated_pade, extrapolate_series(m_vec[m_idx], "pade", 
+                                                     (7-m_idx, 7-m_idx)))
+end
+
+# Extrapolate using u-Padé method
+f = 0.48
+m_vec_times_x_extrapolated_u_pade = []
+for m_idx=1:length(m_vec)-2
+    push!(m_vec_times_x_extrapolated_u_pade, extrapolate_series(m_vec_times_x[m_idx], 
+                                            "u_pade", (7-m_idx, 8-m_idx, f)))
+end
+
+```
+
+# Notes
+- For "pade", applies a [N,M] Padé approximant directly to the series
+- For "u_pade", first applies the substitution u = tanh(f·x) then constructs a Padé approximant
+- Parameters for both methods are integers representing the degrees of the approximant
+- The u-transformation often provides better convergence for high-temperature series
+"""
 function extrapolate_series(series,method::String,parameters) 
     if method == "pade"
         return get_pade(series,Int64(parameters[1]),Int64(parameters[2]))
@@ -667,8 +1494,45 @@ end
 
 
 """
-Find the smallest x in [x_min, x_max] such that |f1(x) - f2(x)| > epsilon.
-Returns the x value or `nothing` if no such point exists.
+    find_divergence_point(f1, f2, epsilon; x_min=0.0, x_max=10.0, step=0.01) -> Union{Float64, Nothing}
+
+Find the smallest x value where two functions diverge beyond a specified threshold.
+
+This utility function scans through a range of x values and identifies the first point
+where the absolute difference between two functions exceeds a given epsilon.
+
+# Arguments
+- `f1`: First function to compare
+- `f2`: Second function to compare
+- `epsilon`: Threshold for determining significant divergence
+- `x_min::Float64=0.0`: Start of search interval
+- `x_max::Float64=10.0`: End of search interval
+- `step::Float64=0.01`: Step size for searching
+
+# Returns
+- `Union{Float64, Nothing}`: The x value where divergence occurs, or `nothing` if no divergence is found
+
+# Examples
+```julia
+# Compare different Padé approximants for a correlator to find where they diverge
+k = (2π/3, 2π/sqrt(3))  # K-point in triangular lattice
+p_x = get_TGiip_Matsubara_xpoly(c_iipDyn_mat, 1, 1, 0)  # m=0 Matsubara correlator
+
+# Create two different Padé approximants
+pade66 = get_pade(p_x, 6, 6)
+pade55 = get_pade(p_x, 5, 5)
+
+# Find where they start to diverge significantly
+div_point = find_divergence_point(pade66, pade55, 0.01, x_min=0.0, x_max=5.0)
+
+```
+
+# Notes
+- Uses a simple stepping algorithm that scans from x_min to x_max
+- Identifies the first transition from |f1(x) - f2(x)| ≤ epsilon to > epsilon
+- Returns the midpoint between the last non-divergent point and first divergent point
+- Returns `nothing` if no divergence is detected in the specified range
+- Useful for determining the reliability range of different approximation methods
 """
 function find_divergence_point(f1, f2, epsilon; x_min=0.0, x_max=10.0, step=0.01)
     diff(x) = abs(f1(x) - f2(x))

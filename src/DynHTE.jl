@@ -38,7 +38,6 @@ export
     unique_Graph,
     GraphG,
     Graph,
-    InteractionMatrix,
     gG_properties
 
 # Export the functions from ConvenienceFunctions.jl
@@ -81,6 +80,4 @@ export
     graphplot
 
 end
-
-
 
