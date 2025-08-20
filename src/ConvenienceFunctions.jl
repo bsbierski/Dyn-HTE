@@ -1372,10 +1372,10 @@ of the continued fraction expansion get extrapolated linearly, according to the 
 - `c_iipDyn_mat::Array{Matrix{Rational{Int128}}}`: Matrix of real-space dynamic correlators
 - `lattice::Dyn_HTE_Lattice`: Lattice information object
 - `f::Float64=0.48`: Parameter for tanh transformation when using "u_pade" method
-- `η::Float64=0.01`: Broadening parameter for analytic continuation
+- `η::Float64=0.01`: DEPRECATED Broadening parameter for analytic continuation
 - `r_min::Int=3`: Minimum r value for δ parameter extrapolation
 - `r_max::Int=3`: Maximum r value for δ parameter extrapolation
-- `r_ext::Int=1000`: Target r value for extrapolation
+- `r_ext::Int=1000`: DEPRECATED Target r value for extrapolation
 - `intercept0::Bool=true`: Whether to force linear extrapolation through origin
 
 # Returns
@@ -1481,7 +1481,7 @@ function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Floa
             δ_vec = [0.0,1.0]
             r_max_eff = 0
         else
-            extrap_params = get_extrapolation_params(δ_vec[1:r_max_eff+1],r_min_eff,r_max_eff,true)
+            extrap_params = get_extrapolation_params(δ_vec[1:r_max_eff+1],r_min_eff,r_max_eff,intercept0)
         end
         
         JSkw_mat[k_pos,:] = [JSwithTerminator(δ_vec[1:r_max_eff+1] ,x,w,extrap_params) for w in w_vec]
