@@ -270,19 +270,29 @@ end
 
 """
     neutral_elem(g::sym_element) -> sym_element
+    neutral_elem(G::sym_group) -> sym_element
 
-Returns the identity element of the same dimension as `g`.
+Returns the identity element of a symmetry element or group.
 
 # Arguments
 - `g::sym_element`: Reference symmetry element
+- `G::sym_group`: Symmetry group
 
 # Returns
-- `sym_element`: Identity element (identity matrix and zero translation)
+- `sym_element`: Identity element (identity matrix and zero translation) with same dimension as the input
 
 # Examples
 ```julia
+# From a symmetry element
 g = sym_element([0 1; -1 0], [1.0, 2.0])  # 2D rotation
 id = neutral_elem(g)  # 2D identity element
+
+# From a symmetry group
+id = neutral_elem(G)  # Gets identity based on first element of G
+function neutral_elem(g::sym_element)::sym_element
+    d = length(g.gVec)
+    sym_element(Matrix(I, d, d), zeros(Float64, d))
+end
 ```
 """
 function neutral_elem(g::sym_element)::sym_element
@@ -290,22 +300,6 @@ function neutral_elem(g::sym_element)::sym_element
     sym_element(Matrix(I, d, d), zeros(Float64, d))
 end
 
-"""
-    neutral_elem(G::sym_group) -> sym_element
-
-Returns the identity element for the group `G`, based on its first element.
-
-# Arguments
-- `G::sym_group`: Symmetry group
-
-# Returns
-- `sym_element`: Identity element with same dimension as elements in `G`
-
-# Examples
-```julia
-id = neutral_elem(G)
-```
-"""
 function neutral_elem(G::sym_group)::sym_element
     return neutral_elem(G.elements[1])
 end
@@ -388,8 +382,8 @@ g_inv = inverse(g)  # Inverse transformation
 ```
 """
 function inverse(g1::sym_element)
-    gMat = inv(g1.gMat)
-    gVec = -inv(g1.gMat) * g1.gVec
+    gMat = transpose(g1.gMat)
+    gVec = -transpose(g1.gMat) * g1.gVec
     sym_element(gMat, gVec)
 end
 

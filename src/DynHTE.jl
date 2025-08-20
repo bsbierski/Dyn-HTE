@@ -6,6 +6,8 @@ using Symbolics, RobustPade, Polynomials, DifferentialEquations, LsqFit
 using TaylorSeries, LinearAlgebra, SparseArrays, Combinatorics
 using Random, JLD2
 
+import HypergeometricFunctions.pFq
+import SpecialFunctions.gamma
 import GraphRecipes.graphplot
 
 # Add a function to access data paths
@@ -69,6 +71,9 @@ export
     fromMomentsToδ,
     contFrac,
     extrapolate_δvec,
+    ContFracTerminator,
+    get_extrapolation_params,
+    JSwithTerminator,
     JS,
     get_JSkw_mat,
     extrapolate_series,

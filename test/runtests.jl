@@ -1,6 +1,11 @@
 using DynHTE
 using Test
 using Graphs,SimpleWeightedGraphs,Polynomials,LinearAlgebra
+
+# ContinuedFractionTerminator
+import HypergeometricFunctions.pFq
+import SpecialFunctions.gamma
+import DynHTE: ContFracTerminator
 #LatticeSymmetries
 import DynHTE: sym_element, sym_group, translation_group, 
                 is_element, mod!, neutral_elem, ∘, 

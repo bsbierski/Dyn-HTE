@@ -20,3 +20,6 @@ Square_Lattice_BSch
 Dyn-HTE.jl
 Manifest.toml
 docs/build
+.DS_Store
+examples/.DS_Store
+examples/.DS_Store

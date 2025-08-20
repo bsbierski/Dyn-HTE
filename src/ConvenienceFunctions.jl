@@ -1126,21 +1126,6 @@ correlator using the δ parameters from the moment expansion.
 # Returns
 - Value of the continued fraction at frequency s
 
-# Examples
-```julia
-# Calculate dynamical structure factor using continued fraction
-x0 = 2.0  # Temperature parameter x=J/T
-w = 1.5   # Frequency ω/J
-η = 0.02  # Broadening parameter
-
-# Get δ parameters and extrapolate
-δ_vec, r_vec = fromMomentsToδ(m0_vec)
-δ_vec_ext = extrapolate_δvec(δ_vec, r_max, r_max, 4000, true)
-
-# Evaluate continued fraction for spectral function
-S_kw = JS(δ_vec_ext, x0, w, η)  # JS function uses contFrac internally
-```
-
 # Notes
 - If `δ_vec` has only one element, returns sqrt(abs(δ₀))
 - Otherwise recursively computes: δ₀/(s + contFrac(s, δ₁...δᵣ))
@@ -1154,6 +1139,33 @@ function contFrac(s::Number,δ_vec::Vector{Float64})::Number
         return δ_vec[1]/(s+contFrac(s,δ_vec[2:end]))
     end
 end
+
+"""
+    contFrac(s::Number, δ_vec::Vector{Float64}) -> Number
+
+Evaluate an infinite continued fraction at complex frequency s using δ parameters.
+
+This function recursively evaluates the continued fraction representation of the dynamic
+correlator using the δ parameters from the moment expansion.
+
+It uses a terminator function that formally corresponds to a linear growth of the δ parameters beyond the last specified δ.
+The linear growth is given by the equation δr = a*(r-(length(δ_vec)-1)) + b
+
+# Arguments
+- `s::Number`: Complex frequency at which to evaluate (typically s = iω + η)
+- `δ_vec::Vector{Float64}`: Vector of δ parameters [δ₀, δ₁, ..., δᵣ]
+- `a::Float64`: Slope of the linear growth for δ beyond the last specified δ
+- `b::Float64`: Intercept of the linear growth for δ beyond the last specified δ
+"""
+function contFracwithTerminator(s::Number,δ_vec::Vector{Float64},a::Float64,b::Float64)::Number
+    
+    if length(δ_vec)==1
+        return  δ_vec[1]*ContFracTerminator(s,a,b)
+    else
+        return δ_vec[1]/(s+contFracwithTerminator(s,δ_vec[2:end],a,b))
+    end
+end
+
 
 """
     extrapolate_δvec(δ_vec::Vector{Float64}, r_min::Int, r_max::Int, r_ext::Int, intercept0::Bool) -> Vector{Float64}
@@ -1175,30 +1187,12 @@ additional parameters up to r_ext. The function supports fitting through the ori
 
 # Examples
 ```julia
-# Calculate moments and δ parameters for triangular lattice at wavevector K
-k = (2π/3, 2π/sqrt(3))  # K-point
-c_kDyn = get_c_k(k, c_iipDyn_mat, hte_lattice)
-m_vec = get_moments_from_c_kDyn(c_kDyn)
-f = 0.55  # Parameter for u-substitution
-
-# Get moment values at specific temperature x0
-x0 = 2.0
-u0 = tanh(f * x0)
-r_max = 3
-m0_vec = Float64[]
-for r in 0:r_max
-    xm_norm_r = coeffs(Polynomial([0,1]) * (m_vec[1+r]/m_vec[1+r](0)))
-    ufromx_mat = get_LinearTrafoToCoeffs_u(n_max+1, f)
-    p_u = Polynomial(ufromx_mat[1:n_max+2-2*r,1:n_max+2-2*r] * xm_norm_r)
-    push!(m0_vec, m_vec[1+r](0)/x0 * get_pade(p_u, 7-r, 6-r)(u0))
-end
+given a vector of moments m0_vec = [m₀, m₂, m₄, m₆, m₈]
 
 # Convert moments to δ parameters and extrapolate
 δ_vec, r_vec = fromMomentsToδ(m0_vec)
-δ_vec_ext = extrapolate_δvec(δ_vec, r_max, r_max, 4000, true)
+δ_vec_ext = extrapolate_δvec(δ_vec, r_max, r_max, r_ext, true)
 
-# Use extrapolated parameters to calculate spectral function
-S_kw = [JS(δ_vec_ext, x0, w, 0.02) for w in 0:0.02:3.0]
 ```
 
 # Notes
@@ -1227,6 +1221,77 @@ function extrapolate_δvec(δ_vec::Vector{Float64},r_min::Int,r_max::Int,r_ext::
         return vcat(δ_vec[1:r_max+1],[fab(r,fit.param) for r in r_max+1:r_ext+1])
     end
 end
+
+function get_extrapolation_params(δ_vec::Vector{Float64},r_min::Int,r_max::Int,intercept0::Bool)
+    @assert r_max >= r_min
+    @assert r_max+1 <= length(δ_vec)
+    ### define linear fit-function, fit and extrapolate
+    if intercept0 
+        function fa(t,p) return p[1] .* t end  
+        p0 = [1.0]
+        fit = LsqFit.curve_fit(fa, r_min:r_max, δ_vec[r_min+1:r_max+1], p0)
+        return [fit.param[1],0.0]  # return slope and intercept
+    else 
+        function fab(t,p) return p[1] .* t .+ p[2] end
+        p0 = [1.0,0.0]
+        fit = LsqFit.curve_fit(fab, r_min:r_max, δ_vec[r_min+1:r_max+1], p0)
+        return fit.param # return slope and intercept
+    end
+end
+
+
+
+"""
+    hermiteH(ν::Real, z::Number) -> Number
+"""
+function hermiteH(ν::Real, z::Number)
+    # promote to a common complex type
+    T = Base.promote_type(typeof(ν + zero(ν)), typeof(z + zero(z)))
+    νT = complex(T(ν))
+    zT = complex(T(z))
+
+    a1, b1 = -νT/2, T(1)/2
+    a2, b2 = T(1)/2 - νT/2, T(3)/2
+
+    #Factoring out exponential term
+    M1 = #= exp(zT^2)* =#pFq((b1-a1,), (b1,), -zT^2)          # 1F1(-ν/2; 1/2; z^2)
+    M2 = #= exp(zT^2)* =#pFq((b2-a2,), (b2,), -zT^2)          # 1F1(1/2 - ν/2; 3/2; z^2)
+
+    return sqrt(pi)  *  #= (2^νT) *  =#( M1 / gamma((1 - ν)/2) - (2*zT) * M2 / gamma(-ν/2) )
+end
+
+"""
+    ContFracTerminator( z::Number, a::Real, b::Real) -> Number
+
+    Exact expresssion for a continued fraction with parameters  δr = a*r +b,
+"""
+function ContFracTerminator(z::Number,a::Real, b::Real)
+     σ = a
+     c = b
+    return 1/2* sqrt(2/σ) * hermiteH(-(σ + c)/σ, z / sqrt(2*σ)) / hermiteH(-c/σ, z / sqrt(2*σ))
+end
+
+
+
+function JSwithTerminator(δ_vec::Vector{Float64},x::Float64,w::Float64,extrap_params::Vector{Float64})::Float64
+    a = extrap_params[1]
+    b = extrap_params[2] + (length(δ_vec)-1)*a 
+    if a < 0.0
+        println("Slope of δ extrapolation must be non-negative")
+        #throw(ErrorException("Slope of δ extrapolation must be non-negative"))
+        a = abs(a)
+    end
+
+    res = 1/π * real(contFracwithTerminator(1im * w ,δ_vec,a,b))
+    if x==0.0 || w==0.0
+        return res
+    else
+        return  x * w * 1/ (1 - exp(-x * w)) * res
+    end
+end 
+
+
+
 
 """
     JS(δ_vec::Vector{Float64}, x::Float64, w::Float64, η::Float64) -> Float64
@@ -1258,7 +1323,7 @@ w_vec = 0:0.05:5.0
 δ_vec_ext = extrapolate_δvec(δ_vec, r_min, r_max, 4000, true)
 
 # Calculate spectral function across frequency range
-spectrum = [JS(δ_vec_ext, x0, w, η) for w in w_vec]
+spectrum = [JS(δ_vec, x0, w, η) for w in w_vec]
 
 # Plot the result
 plot(w_vec, spectrum, xlabel="ω/J", ylabel="J·S(k,ω)", 
@@ -1408,19 +1473,25 @@ function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Floa
         end
 
 
-        ###Now extrapolte deltas
-        δ_vec_ext = extrapolate_δvec(δ_vec,r_min,r_max,r_ext,intercept0)
+        ### exact extraplotation to r->infinity 
 
+       
+       # find last index where δ_vec is non-negative
+        idx = findfirst(<(0), δ_vec)
+        lastidx = isnothing(idx) ? length(δ_vec) : idx - 1
+        r_max_eff = min(lastidx - 1, r_max)
+        r_min_eff = min(r_min, r_max_eff)
 
-        #if deltas have negative slope give warning
-        if δ_vec_ext[end] <0
-            δ_vec_ext = extrapolate_δvec(δ_vec,2,2,r_ext,false)
-            println("WARNING: NEGATIVE δ parameters (pade might fail)")
-            
+        if r_max_eff < 1
+            println("WARNING: negative δ1, putting δ0 = 0")
+            extrap_params = [1.0,0.0]
+            δ_vec = [0.0,1.0]
+            r_max_eff = 0
         else
-            JSkw_mat[k_pos,:] = [JS(δ_vec_ext ,x,w,η) for w in w_vec]
+            extrap_params = get_extrapolation_params(δ_vec[1:r_max_eff+1],r_min_eff,r_max_eff,true)
         end
-
+        
+        JSkw_mat[k_pos,:] = [JSwithTerminator(δ_vec[1:r_max_eff+1] ,x,w,extrap_params) for w in w_vec]
         
     end
 

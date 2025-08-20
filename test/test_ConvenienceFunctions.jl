@@ -28,6 +28,21 @@
         # Test maximum order constraint
         @test_throws ErrorException get_LinearTrafoToCoeffs_u(17, 1.0)
     end
+
+
+    @testset "Continued Fraction Terminator" begin
+
+       F(x, c , σ) = ContFracTerminator( σ,c, x)
+
+        g(x) = begin
+             c = BigFloat(4.123)
+                σ = BigFloat(2.12512)
+                x * F(x, c,σ) + (c + 1*σ) * F(x, c,σ) * F(x, c + 1*σ,σ) - 1
+        end
+        xs = range(-5.0, 5.0; length=20)
+        ys = round.([real(g(x)) for x in xs]; digits=10)
+        @test ys ≈ zeros(length(xs))
+    end
     
     @testset "Brillouin Zone Path" begin
         # Test with 2D points
@@ -150,3 +165,7 @@
 end
 
 
+
+
+
+       
