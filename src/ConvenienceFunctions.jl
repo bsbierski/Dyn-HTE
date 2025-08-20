@@ -1357,21 +1357,22 @@ end
                 f::Float64=0.48, η::Float64=0.01, r_min::Int=3, r_max::Int=3, 
                 r_ext::Int=1000, intercept0::Bool=true) -> Matrix{Float64}
 
-Calculate dynamic spin structure factors J·S(k,ω) for multiple k-points and frequencies.
+Calculate dynamic spin structure factors J·S(k,ω) for given k-points and frequencies.
 
 This function computes the dynamical structure factor matrix for a range of k-points
-and frequencies using either standard Padé approximants ("pade") or the improved 
-u-transformation Padé method ("u_pade").
+and frequencies. The bare series of the moments gets extrapolated with a specified method ("pade" or "u_pade") and the delta coeffficients 
+of the continued fraction expansion get extrapolated linearly, according to the parameters "r_min", "r_max" and "r_ext".
+
 
 # Arguments
 - `method::String`: Approximation method, either "pade" or "u_pade"
 - `x::Float64`: Inverse temperature parameter x = J/T
 - `k_vec::Vector`: Vector of k-points at which to calculate the structure factor
 - `w_vec::Vector{Float64}`: Vector of frequency values ω/J
-- `c_iipDyn_mat::Array{Matrix{Rational{Int128}}}`: Matrix of dynamic correlator coefficients
+- `c_iipDyn_mat::Array{Matrix{Rational{Int128}}}`: Matrix of real-space dynamic correlators
 - `lattice::Dyn_HTE_Lattice`: Lattice information object
 - `f::Float64=0.48`: Parameter for tanh transformation when using "u_pade" method
-- `η::Float64=0.01`: Broadening parameter for spectral functions
+- `η::Float64=0.01`: Broadening parameter for analytic continuation
 - `r_min::Int=3`: Minimum r value for δ parameter extrapolation
 - `r_max::Int=3`: Maximum r value for δ parameter extrapolation
 - `r_ext::Int=1000`: Target r value for extrapolation
@@ -1382,40 +1383,32 @@ u-transformation Padé method ("u_pade").
 
 # Examples
 ```julia
-# Calculate spectral function along a path in the Brillouin zone
-# for pyrochlore lattice at temperature x0=4 (T/J=0.25)
-path = [(4π, 4π, -4π + 0.01), (4π, 4π, 0), (4π, 4π, 4π - 0.01)]
-pathticks = ["Γ", "W", "Γ"]
-Nk = 56
-k_vec, kticks_positions = create_brillouin_zone_path(path, Nk)
+# define the lattice geometry
+hte_lattice = getLattice(n_max,"chain")
 
-# Define frequency range
-w_vec = collect(0:0.055:3.0)
-x0 = 4.0  # Temperature parameter (T/J = 0.25)
+#calculate the correlation function for all site combinations
+c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs)
 
-# Calculate structure factor matrix
-JSkw_mat = get_JSkw_mat("u_pade", x0, k_vec, w_vec, c_iipDyn_mat, hte_lattice,
-                        f=0.6, η=0.02, r_min=3, r_max=3, r_ext=2000)
+# define k and ω vectors 
+k_vec = [(k*pi,0.0) for k in 0:0.1:2]
+w_vec = collect(-3:0.1:3)
 
-# Plot results as heatmap
-heatmap(collect(0:Nk)/(Nk), w_vec, JSkw_mat', 
-        xticks=(kticks_positions.-1)/Nk, xticklabels=pathticks,
-        xlabel="k", ylabel="ω/J", title="J·S(k,ω)",
-        colormap=:viridis, c=:heat)
+#calculate the spin structure factor for the given k and ω 
+JSkw_mat = get_JSkw_mat("u_pade",4.0,k_vec,w_vec,c_iipDyn_mat,hte_lattice,r_min=3,r_max=3,r_ext=2000,f=0.48)
+
+
 ```
 
 # Notes
-- For each k-point, calculates moments, applies Padé approximants, and derives δ parameters
-- For "u_pade" method, precomputes transformation matrices for efficiency
-- Handles special case of x=0 differently
 - Issues warning if negative δ parameters are detected during extrapolation
 - Progress is shown by printing k-point position during computation
+- The "u_pade" method usually is more stable for small temperatures, but trivially gets constant for even smaller temperatures due to the saturation of tanh(f·x)
 
 # See Also
 - `get_moments_from_c_kDyn`: Extracts frequency moments from dynamic correlator
 - `get_pade`: Constructs Padé approximants
 - `fromMomentsToδ`: Converts moments to δ parameters
-- `extrapolate_δvec`: Extends δ parameters to higher orders
+- `extrapolate_δvec`: Extrapolates δ parameters linearly
 - `JS`: Evaluates dynamic structure factor at single k,ω point
 """
 function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},c_iipDyn_mat::Array{Matrix{Rational{Int128}}},lattice::Dyn_HTE_Lattice;f::Float64=0.48,η::Float64=0.01,r_min::Int=3,r_max::Int=3,r_ext::Int=1000,intercept0::Bool=true)
@@ -1502,54 +1495,33 @@ end
 """
     extrapolate_series(series, method::String, parameters) -> Polynomial
 
-Extrapolate a series using specified approximation method with given parameters.
+Extrapolate a polynomial using specified approximation method with given parameters.
 
 This function provides a unified interface to different series extrapolation techniques,
 applying the chosen method with provided parameters to the input series.
 
 # Arguments
-- `series`: Series to extrapolate (typically a `Polynomial`)
+- `series`: Polynomial to extrapolate 
 - `method::String`: Extrapolation method, either "pade" or "u_pade"
 - `parameters`: Method-specific parameters:
   - For "pade": (N, M) degrees for numerator and denominator
   - For "u_pade": (N, M, f) where f is the scaling factor for tanh transformation
 
 # Returns
-- Extrapolated result as a `Polynomial` or rational function
+- Extrapolated result as a rational function, either in x or in u
 
 # Examples
 ```julia
-# Extract and extrapolate moments from chain lattice correlation data
-k = 0.2*pi  # Define fixed wavevector
-x_vec = 0:0.01:4.5  # Temperature range
-c_kDyn_mat = get_c_k([(k,0.0)], c_iipDyn_mat, hte_lattice)[1]
-
-# Calculate moments
-m_vec = get_moments_from_c_kDyn(c_kDyn_mat)
-m_vec_times_x = [m_vec[i]*Polynomial([0,1]) for i=1:length(m_vec)]
-
-# Extrapolate using standard Padé method
-m_vec_extrapolated_pade = []
-for m_idx=1:length(m_vec)-2
-    push!(m_vec_extrapolated_pade, extrapolate_series(m_vec[m_idx], "pade", 
-                                                     (7-m_idx, 7-m_idx)))
-end
-
-# Extrapolate using u-Padé method
-f = 0.48
-m_vec_times_x_extrapolated_u_pade = []
-for m_idx=1:length(m_vec)-2
-    push!(m_vec_times_x_extrapolated_u_pade, extrapolate_series(m_vec_times_x[m_idx], 
-                                            "u_pade", (7-m_idx, 8-m_idx, f)))
-end
+# Extrapolate a Polynomial via a a [N,M] Padé approximant
+poly = Polynomial([1,2,3,4,5,6])
+extrapolated_poly = extrapolate_series(poly,"pade",[3,2]))
 
 ```
 
 # Notes
 - For "pade", applies a [N,M] Padé approximant directly to the series
 - For "u_pade", first applies the substitution u = tanh(f·x) then constructs a Padé approximant
-- Parameters for both methods are integers representing the degrees of the approximant
-- The u-transformation often provides better convergence for high-temperature series
+- The "u_pade" method usually is more stable for small temperatures, but trivially gets constant for even smaller temperatures due to the saturation of tanh(f·x)
 """
 function extrapolate_series(series,method::String,parameters) 
     if method == "pade"
