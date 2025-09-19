@@ -2,9 +2,11 @@ module DynHTE
 
 using Plots
 using Graphs, SimpleWeightedGraphs, Parameters
-using Symbolics, RobustPade, Polynomials, DifferentialEquations, LsqFit
+using Symbolics, Polynomials, DifferentialEquations, LsqFit
 using TaylorSeries, LinearAlgebra, SparseArrays, Combinatorics
 using Random, JLD2
+using PaddedViews, ToeplitzMatrices
+
 
 import HypergeometricFunctions.pFq
 import SpecialFunctions.gamma
@@ -20,6 +22,7 @@ export data_dir
 
 
 # Include all component files
+include("RobustPade.jl")
 include("Structs.jl")
 include("vf2_edited.jl")
 include("Lattice.jl")

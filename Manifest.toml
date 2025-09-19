@@ -2,7 +2,7 @@
 
 julia_version = "1.11.2"
 manifest_format = "2.0"
-project_hash = "e5c3220a33cc9541c64c10ed573fe94606121c51"
+project_hash = "b38e5851c8afc571a125421148b26b023703f373"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "60665b326b75db6517939d0e1875850bc4a54368"
@@ -2242,14 +2242,6 @@ deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "58cdd8fb2201a6267e1db87ff148dd6c1dbd8ad8"
 uuid = "f50d1b31-88e8-58de-be2c-1cc44531875f"
 version = "0.5.1+0"
-
-[[deps.RobustPade]]
-deps = ["LinearAlgebra", "PaddedViews", "Polynomials", "TaylorSeries", "ToeplitzMatrices"]
-git-tree-sha1 = "394615b4beba8fdd7e9de283b2be3815609b4287"
-repo-rev = "main"
-repo-url = "https://github.com/mjp98/RobustPade.jl"
-uuid = "b6330c75-f9ac-4258-a16a-0222d98b9b6c"
-version = "0.1.4"
 
 [[deps.RuntimeGeneratedFunctions]]
 deps = ["ExprTools", "SHA", "Serialization"]

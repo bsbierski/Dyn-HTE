@@ -23,3 +23,10 @@ docs/build
 .DS_Store
 examples/.DS_Store
 examples/.DS_Store
+examples/SpinCluster/c_iipDyn_matXXZ.jld2
+examples/Pyrochlore_Lattice/220_linecuts/wS(w,q)/wTSqw_cutwS220_T4.txt
+examples/Pyrochlore_Lattice/220_linecuts/wS(w,q)/wTSqw_cutwS221_T4.txt
+examples/Pyrochlore_Lattice/220_linecuts/wS(w,q)/wTSqw_cutwS2205_T4.txt
+examples/Pyrochlore_Lattice/220_linecuts/S(w,q)/wTSqw_cutS221_T4.txt
+examples/Pyrochlore_Lattice/220_linecuts/S(w,q)/wTSqw_cutS220_T4.txt
+examples/Pyrochlore_Lattice/220_linecuts/S(w,q)/wTSqw_cutS2205_T4.txt

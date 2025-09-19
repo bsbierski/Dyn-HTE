@@ -10,19 +10,19 @@ Convert a numerical spin length to a standardized string representation.
 - A string in the format "S{n}" for integer spins or "S{n}half" for half-integer spins
   where {n} is the numerator of the rationalized spin length
 
-# Examples
-```julia
-create_spin_string(1)    # returns "S1"
-create_spin_string(1.5)  # returns "S3half"
-create_spin_string(1/2)  # returns "S1half"
-```
+  # Examples
+ ```julia
+ create_spin_string(1)    # returns "S1"
+ create_spin_string(1.5)  # returns "S3half"
+ create_spin_string(1/2)  # returns "S1half"
+ ```
 
-# Throws
-- `ErrorException` if the spin length cannot be represented as an integer or half-integer value
+ # Throws
+ - `ErrorException` if the spin length cannot be represented as an integer or half-integer value
 
-# Notes
-- Input is automatically converted to a rational number using `rationalize(1.0*s)`
-- Only supports integer and half-integer spin values (denominator must be 1 or 2)
+ # Notes 
+ - Input is automatically converted to a rational number using `rationalize(1.0*s)`
+ - Only supports integer and half-integer spin values (denominator must be 1 or 2)
 """
 function create_spin_string(s)
     spin_length = rationalize(1.0*s)
@@ -59,12 +59,6 @@ and all sites in the graph.
 # Notes
 - The second method provides significant performance improvements by leveraging lattice symmetries
   to reduce the number of correlation calculations needed
-- Automatically detects and applies lattice symmetries using `getSymmetryGroup` (second method)
-- Falls back to the standard algorithm if symmetries aren't available for the lattice type
-- Calculations are parallelized using `Threads.@threads 
-- The actual maximum order is limited by `min(max_order, unique_graphs.max_order)`
-- Uses `Calculate_Correlator_fast` for the underlying computation
-- Output dimensions are `[nv(Graph), length(basis_positions)]`
 
 # Examples
 ```julia
@@ -181,8 +175,6 @@ correlations by performing the appropriate frequency summation with predefined c
 c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice, hte_graphs)
 c_iipEqualTime_mat = get_c_iipEqualTime_mat(c_iipDyn_mat)
 
-# Compare with literature values (for triangular lattice)
-coeffs = [sum(c_iipEqualTime_mat[i,1][n+1] for i in 1:hte_lattice.lattice.length) for n in 0:12]
 ```
 
 # Notes
@@ -222,25 +214,6 @@ spatial indices (i,ip) at Matsubara frequency index m.
 
 # Returns
 - `Polynomial{Float64}`: Polynomial representation of the Matsubara correlator in variable x
-
-# Examples
-```julia
-# Get the m=0 Matsubara correlator at wavevector K
-k = (2π/3, 2π/sqrt(3))  # K-point in Brillouin zone
-m = 0
-p_x = sum([cos(dot(k, getSitePosition(hte_lattice.lattice, i) .- 
-          getSitePosition(hte_lattice.lattice, hte_lattice.basis_positions[1]))) * 
-          get_TGiip_Matsubara_xpoly(c_iipDyn_mat, i, 1, m) 
-          for i in 1:hte_lattice.lattice.length])
-
-# Apply Padé approximation to the polynomial
-pade_approx = get_pade(p_x, 6, 6)
-```
-
-# Notes
-- For m=0, uses the first column of the coefficient matrix directly
-- For m≠0, computes a weighted sum over frequency components with weight 1/(2πm)^(2l)
-- Sign alternation is applied using `flipEvenIndexEntries`
 """
 function get_TGiip_Matsubara_xpoly(c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}},i::Int,ip::Int,m::Int)
     n_max = size(c_iipDyn_mat[1,1])[1]-1
@@ -267,17 +240,6 @@ at even indices by -1. This changes an expansion in ''-x'' to an expansion in ''
 
 # Returns
 - A vector of the same type and length as the input, but with alternating signs
-
-# Examples
-```julia
-# Simple vector transformation
-flipEvenIndexEntries([1, 2, 3, 4])  # Returns [1, -2, 3, -4]
-
-# changes expansion in (-x) to expansion in (x)
-k = (0, 0)  # Gamma point in Brillouin zone
-coeffs_x = flipEvenIndexEntries(get_c_k(k, c_iipEqualTime_mat, hte_lattice))
-p_x = Polynomial(coeffs_x)
-```
 """
 function flipEvenIndexEntries(v)
     signs = [-1*(-1)^n for n in eachindex(v)]
@@ -317,10 +279,6 @@ pade_55 = get_pade(p_x, 5, 5)
 y_vec_66 = pade_66.(x_vec)
 y_vec_55 = pade_55.(x_vec)
 ```
-
-# Notes
-- Uses `robustpade` internally to avoid numerical issues
-- The approximant will match the Taylor series of the original function up to order N+M
 """
 function get_pade(p::Polynomial,N::Int,M::Int)
     
@@ -1271,8 +1229,6 @@ function ContFracTerminator(z::Number,a::Real, b::Real)
     return 1/2* sqrt(2/σ) * hermiteH(-(σ + c)/σ, z / sqrt(2*σ)) / hermiteH(-c/σ, z / sqrt(2*σ))
 end
 
-
-
 function JSwithTerminator(δ_vec::Vector{Float64},x::Float64,w::Float64,extrap_params::Vector{Float64})::Float64
     a = extrap_params[1]
     b = extrap_params[2] + (length(δ_vec)-1)*a 
@@ -1483,7 +1439,6 @@ function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Floa
         else
             extrap_params = get_extrapolation_params(δ_vec[1:r_max_eff+1],r_min_eff,r_max_eff,intercept0)
         end
-        
         JSkw_mat[k_pos,:] = [JSwithTerminator(δ_vec[1:r_max_eff+1] ,x,w,extrap_params) for w in w_vec]
         
     end

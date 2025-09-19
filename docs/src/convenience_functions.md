@@ -82,6 +82,7 @@ extrapolate_δvec
 ```@docs
 JS
 get_JSkw_mat
+ContFracTerminator
 ```
 
 ## Series Extrapolation
