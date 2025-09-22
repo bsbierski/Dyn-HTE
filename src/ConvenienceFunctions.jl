@@ -35,6 +35,7 @@ function create_spin_string(s)
     end
     return "S"*string(numerator(spin_length))*is_half
 end
+
 """
     get_c_iipDyn_mat(Graph, basis_positions::Vector{<:Int}, hte_graphs::Dyn_HTE_Graphs; 
                     verbose=false, max_order=12) -> Array{Matrix{Rational{Int128}}}
@@ -357,7 +358,7 @@ end
 
 ###### variable transform from x to u=tanh(fx)
 """
-    get_p_u(coeffs_x::Vector{Float64}, f::Float64) -> Polynomial
+get_p_u(coeffs_x::Vector{Float64}, f::Float64) -> Polynomial
 
 Transform a polynomial in variable x to a polynomial in u=tanh(fx).
 
@@ -397,7 +398,7 @@ function get_p_u(coeffs_x::Vector{Float64},f::Float64)
 end
 
 """
-    get_LinearTrafoToCoeffs_u(max_order::Int, f::Float64) -> Matrix{Float64}
+get_LinearTrafoToCoeffs_u(max_order::Int, f::Float64) -> Matrix{Float64}
 
 Get the linear transformation matrix to convert polynomial coefficients from x to u=tanh(fx).
 
@@ -1072,10 +1073,7 @@ end
 """
     contFrac(s::Number, δ_vec::Vector{Float64}) -> Number
 
-Evaluate a continued fraction at complex frequency s using δ parameters.
-
-This function recursively evaluates the continued fraction representation of the dynamic
-correlator using the δ parameters from the moment expansion.
+Recursively evaluate a continued fraction at complex frequency s using δ parameters.
 
 # Arguments
 - `s::Number`: Complex frequency at which to evaluate (typically s = iω + η)
@@ -1221,7 +1219,7 @@ end
 """
     ContFracTerminator( z::Number, a::Real, b::Real) -> Number
 
-    Exact expresssion for a continued fraction with parameters  δr = a*r +b,
+    Exact expresssion for a continued fraction with parameters  δ(r) = a*r +b,
 """
 function ContFracTerminator(z::Number,a::Real, b::Real)
      σ = a

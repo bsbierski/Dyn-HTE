@@ -49,7 +49,7 @@ Due to the size of the precomputed data, this can take a minute.
 ## Publication/Citation
 The theory background for Dyn-HTE and various applications are provided in the following two publications:
 
-[1] Ruben Burkard, Benedikt Schneider, Björn Sbierski, *Dyn-HTE: High-temperature expansion of the dynamic Matsubara spin correlator*, arxiv 2505.23699 (2025)
+[1] Ruben Burkard, Benedikt Schneider, Björn Sbierski, *High-temperature series expansion of the dynamic Matsubara spin correlator*, arxiv 2505.23699 (2025)
 
 [2] Ruben Burkard, Benedikt Schneider, Björn Sbierski, *Dynamic correlations of frustrated quantum spins from high-temperature expansion*, arxiv 2505.14571 (2025)
 
