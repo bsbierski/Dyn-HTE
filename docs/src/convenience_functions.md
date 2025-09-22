@@ -75,6 +75,7 @@ get_moments_from_c_kDyn
 fromMomentsToδ
 contFrac
 extrapolate_δvec
+get_extrapolation_params
 ```
 
 ## Dynamic Structure Factors
@@ -83,6 +84,7 @@ extrapolate_δvec
 JS
 get_JSkw_mat
 ContFracTerminator
+JSwithTerminator
 ```
 
 ## Series Extrapolation
