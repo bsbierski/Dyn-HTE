@@ -1178,6 +1178,41 @@ function extrapolate_δvec(δ_vec::Vector{Float64},r_min::Int,r_max::Int,r_ext::
     end
 end
 
+
+
+"""
+    get_extrapolation_params(δ_vec::Vector{Float64}, r_min::Int, r_max::Int, intercept0::Bool) -> Vector{Float64}
+
+Get linear extrapolation parameters (a, b) for continued fraction terminator.
+
+This function fits a linear model to δ-parameters in the range r_min to r_max and returns 
+the parameters `a` (slope) and `b` (intercept) for use in `ContFracTerminator`. These parameters
+describe the asymptotic behavior δᵣ = a*(r - r_max) + b for r > r_max, which is then used
+in `contFracwithTerminator` to evaluate extrapolated continued fractions.
+
+# Arguments
+- `δ_vec::Vector{Float64}`: Vector of δ parameters [δ₀, δ₁, ..., δᵣ]
+- `r_min::Int`: Minimum r index to use for fitting (inclusive)
+- `r_max::Int`: Maximum r index to use for fitting (inclusive)
+- `intercept0::Bool`: If true, force fit line through origin; otherwise include intercept term
+
+# Returns
+- `Vector{Float64}`: Two-element vector [a, b] where:
+  - `a`: slope of the linear extrapolation
+  - `b`: intercept parameter adjusted for continuation beyond r_max
+
+# Examples
+```julia
+# Get extrapolation parameters for continued fraction terminator
+extrap_params = get_extrapolation_params(δ_vec, r_min, r_max, false)
+a, b = extrap_params[1], extrap_params[2]
+
+# Use in continued fraction evaluation
+result = contFracwithTerminator(s, δ_vec, a, b)
+# or in Dynamic Structure Factor
+JSwithTerminator(δ_vec[1:r_max+1], x, w, extrap_params)
+```
+"""
 function get_extrapolation_params(δ_vec::Vector{Float64},r_min::Int,r_max::Int,intercept0::Bool)
     @assert r_max >= r_min
     @assert r_max+1 <= length(δ_vec)
@@ -1186,13 +1221,17 @@ function get_extrapolation_params(δ_vec::Vector{Float64},r_min::Int,r_max::Int,
         function fa(t,p) return p[1] .* t end  
         p0 = [1.0]
         fit = LsqFit.curve_fit(fa, r_min:r_max, δ_vec[r_min+1:r_max+1], p0)
-        return [fit.param[1],0.0]  # return slope and intercept
+        extrap_params =  [fit.param[1],0.0]  # return slope and intercept
     else 
         function fab(t,p) return p[1] .* t .+ p[2] end
         p0 = [1.0,0.0]
         fit = LsqFit.curve_fit(fab, r_min:r_max, δ_vec[r_min+1:r_max+1], p0)
-        return fit.param # return slope and intercept
+        extrap_params = fit.param # return slope and intercept
     end
+    a = extrap_params[1]
+    b = extrap_params[2] + (length(δ_vec)-1)*a 
+
+    return [a,b]
 end
 
 
@@ -1217,9 +1256,27 @@ function hermiteH(ν::Real, z::Number)
 end
 
 """
-    ContFracTerminator( z::Number, a::Real, b::Real) -> Number
+    ContFracTerminator(z::Number, a::Real, b::Real) -> Number
 
-    Exact expresssion for a continued fraction with parameters  δ(r) = a*r +b,
+Exact expression for a continued fraction terminator with linearly growing parameters.
+
+This function provides the exact analytical terminator for a continued fraction where the 
+parameters follow δ(r) = a*r + b. The terminator is expressed in terms
+of parabolic cylinder functions (Hermite functions) and provides a way to evaluate infinite
+continued fractions with known asymptotic behavior.
+
+# Arguments
+- `z::Number`: Complex argument (typically frequency s = iω + η)
+- `a::Real`: Slope parameter of the linear growth δ(r) = a*r + b
+- `b::Real`: Intercept parameter of the linear growth
+
+# Returns
+- `Number`: Complex value representing the continued fraction terminator
+
+# Notes
+- This function is used internally by `contFracwithTerminator`
+- The parameters a and b are typically obtained from `get_extrapolation_params`
+- Requires that a > 0 for convergence
 """
 function ContFracTerminator(z::Number,a::Real, b::Real)
      σ = a
@@ -1227,9 +1284,56 @@ function ContFracTerminator(z::Number,a::Real, b::Real)
     return 1/2* sqrt(2/σ) * hermiteH(-(σ + c)/σ, z / sqrt(2*σ)) / hermiteH(-c/σ, z / sqrt(2*σ))
 end
 
+"""
+    JSwithTerminator(δ_vec::Vector{Float64}, x::Float64, w::Float64, extrap_params::Vector{Float64}) -> Float64
+
+Compute the dynamic structure factor J(S,ω) using continued fractions with terminator.
+
+This function evaluates the dynamic structure factor (spectral function) at a given frequency
+using the continued fraction representation with an analytical terminator. The terminator
+parameters are obtained from linear extrapolation of the δ parameters, allowing for
+evaluation of the infinite continued fraction.
+
+# Arguments
+- `δ_vec::Vector{Float64}`: Vector of continued fraction parameters [δ₀, δ₁, ..., δᵣ]
+- `x::Float64`: Temperature-related parameter (typically β = 1/T)
+- `w::Float64`: Frequency ω at which to evaluate the structure factor
+- `extrap_params::Vector{Float64}`: Extrapolation parameters [a, b] from `get_extrapolation_params`
+
+# Returns
+- `Float64`: Value of the dynamic structure factor J(S,ω) at the specified frequency
+
+# Mathematical Details
+The function computes:
+```
+J(S,ω) = (x*ω)/(1 - exp(-x*ω)) * (1/π) * Re[CF(iω)]
+```
+
+where CF(iω) is the continued fraction evaluated at s = iω using `contFracwithTerminator`.
+
+For the special cases x=0 or ω=0, it returns the simpler expression:
+```
+J(S,ω) = (1/π) * Re[CF(iω)]
+```
+
+# Notes
+- The extrapolation slope `a = extrap_params[1]` must be non-negative for convergence
+- If a negative slope is detected, the function prints a warning and uses the absolute value
+
+# Examples
+```julia
+# Get extrapolation parameters
+extrap_params = get_extrapolation_params(δ_vec, r_min, r_max, false)
+
+# Evaluate dynamic structure factor
+x = 1.0  # inverse temperature
+w = 2.0  # frequency
+result = JSwithTerminator(δ_vec, x, w, extrap_params)
+```
+"""
 function JSwithTerminator(δ_vec::Vector{Float64},x::Float64,w::Float64,extrap_params::Vector{Float64})::Float64
     a = extrap_params[1]
-    b = extrap_params[2] + (length(δ_vec)-1)*a 
+    b = extrap_params[2]
     if a < 0.0
         println("Slope of δ extrapolation must be non-negative")
         #throw(ErrorException("Slope of δ extrapolation must be non-negative"))

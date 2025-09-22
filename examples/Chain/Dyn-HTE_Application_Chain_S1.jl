@@ -1,5 +1,5 @@
 ######### Dyn-HTE for chain #########
-using JLD2,DelimitedFiles, HDF5, LaTeXStrings,Polynomials
+using JLD2,DelimitedFiles, HDF5, LaTeXStrings,Polynomials,Graphs
 using DynHTE
 
 include("../plotConventions.jl")
@@ -21,7 +21,7 @@ graphplot(hte_lattice.graph,names=1:nv(hte_lattice.graph),markersize=0.2,fontsiz
 
 #### moments and δs of the continued fraction expansion
 #(we will calculate the first four moments at fixed k)
-k= 0.2*pi            #define fixed k 
+k= pi            #define fixed k 
 x_vec = 0:0.01:4.5   #define temperature range of interest
 #Fourier transform the correlation functions at k
 c_kDyn_mat = get_c_k([(k,0.0)],c_iipDyn_mat,hte_lattice)[1]
@@ -93,7 +93,7 @@ display(plt_δ)
 #one can now extrapolate the deltas to infinity via
 deltas_at_x_ext = []
 for x_idx = 1:length(x_vec)
-    δ_vec_ext = extrapolate_δvec(deltas_at_x[x_idx],3,3,1000,false)
+    δ_vec_ext = extrapolate_δvec(deltas_at_x[x_idx],2,3,1000,false)
     push!(deltas_at_x_ext,δ_vec_ext)
 end
 
@@ -107,16 +107,22 @@ end
 display(plt_δ)
 
 
-
+###Consistency check for JSwithTerminator
 
 #we can use the deltas to calculate the spin structure factor (still at fixed k)
-w_vec = -3:0.01:3  #define w
-x_idx = 3          #choose temperature index (relativ to x_vec = [0.5,1.0,2.0,4.0]) 
+w_vec = -3:0.01:5  #define w
+x_idx = 3         #choose temperature index (relativ to x_vec = [0.5,1.0,2.0,4.0]) 
 η = 0.01           #the imaginary part after analytic continuation (η ->0)
 #now calculate the DSF 
 DSF = [JS(deltas_at_x_ext[x_idx] ,x_vec[x_idx],w,η) for w in w_vec]
 
-plt_dsf = Plots.plot(w_vec,DSF,label="",title="DSF at k="*string(k/pi)*"π and x="*string(x_vec[x_idx]),xlabel=L"\omega/J",ylabel=L"JS(k,\omega)",size = (1.5*aps_width,aps_width))
+extrap_params = get_extrapolation_params(deltas_at_x_ext[x_idx][1:4],2,3,false)
+DSF2 = [JSwithTerminator(deltas_at_x_ext[x_idx][1:4], x_vec[x_idx], w, extrap_params) for w in w_vec]
+
+
+Plots.plot(w_vec,DSF2,label="with terminator",title="DSF at k="*string(k/pi)*"π and x="*string(x_vec[x_idx]),xlabel=L"\omega/J",ylabel=L"JS(k,\omega)",size = (1.5*aps_width,aps_width))
+plt_dsf = Plots.plot!(w_vec,DSF,label="r_max = 1000",linestyle = :dash)
+
 
 #SHOW PLOT
 ##############
@@ -127,23 +133,22 @@ display(plt_dsf)
 
 ###SPIN STRUCTURE FACTOR HEATMAPS
 using CairoMakie
-x = 4.0                #define temperature (x=J/T)
-k_step_size = 1/72     #define k step size (in 1/π)
-w_step_size = 0.025    #define ω step size (in 1/J)
+x = 4.0           #define temperature (x=J/T)
+k_step_size = 1/74    #define k step size (in 1/π)
+w_step_size = 0.01    #define ω step size (in 1/J)
 #define k and ω vectors 
 k_vec = vcat(vcat((0.0001,0.0),[(k*pi,0.0) for k in 0:k_step_size:2][2:end-1] ),(1.999*pi,0.0))#[(k,0.0) for k in 0.01:0.0039*2.4:(2*π-0.01)]
 w_vec = collect(-3:w_step_size:3)
 
 #calculate the spin structure factor for the given k and ω 
-JSkw_mat = get_JSkw_mat("u_pade",x,k_vec,w_vec,c_iipDyn_mat,hte_lattice,r_min=3,r_max=3,r_ext=1000,f=0.48)
+@time JSkw_mat = get_JSkw_mat("u_pade",x,k_vec,w_vec,c_iipDyn_mat,hte_lattice,r_min=2,r_max=2,r_ext=1000,f=0.48);
 
 #plot the result
-fig = CairoMakie.Figure(size=(400,400),fontsize=20)
+fig = CairoMakie.Figure(size=(400,400),fontsize=20);
 ax=CairoMakie.Axis(fig[1,1],limits=(0,2,-3,3),xlabel=L"k/ \pi",ylabel=L"\omega/J=w",title="x="*string(x),titlesize=20,xlabelsize=20,ylabelsize=20)
 hm=CairoMakie.heatmap!(ax,[k[1]/π for k in k_vec],w_vec,JSkw_mat,colormap=:viridis,colorrange=(0.0,3.0),highclip=:white)
 
 #SHOW PLOT
 ##############
 display(fig)
-
 
