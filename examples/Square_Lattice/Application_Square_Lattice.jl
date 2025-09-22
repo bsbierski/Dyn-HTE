@@ -9,9 +9,10 @@ spin_length = 1/2
 hte_graphs = load_dyn_hte_graphs(spin_length,L);
 
 hte_lattice = getLattice(L,"square");
+### plot lattice if desired
 #display(graphplot(hte_lattice.graph,names=1:nv(hte_lattice.graph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
 
-### compute all correlations in the lattice (or load them)
+### compute all correlations in the lattice by graph embedding (or load them)
 cd("examples/Square_Lattice/")
 fileName_c = "Square_Lattice_"*create_spin_string(spin_length)*"_c_iipDyn_nmax"*string(n_max)*"_L"*string(L)*".jld2"
 if isfile(fileName_c)
@@ -23,7 +24,7 @@ end
 
 
 #########################################################################################
-###### Dynamic structure factor (DSF) ###################################################
+###### DSF for single k #################################################################
 #########################################################################################
 
 ###### dynamical Matsubara correlator (k-space)
@@ -37,8 +38,6 @@ poly_x = Polynomial([0,1],:x)
 
 x_vec_bare = collect(0:0.025:1.4)
 x_vec = collect(0.0:0.1:2.5)
-
-x0_vec = [1.0,1.25,1.5,1.75]      # for these x the DSF will be computed
 
 ### with u-series
 if true
@@ -54,10 +53,9 @@ if true
     Plots.plot!(plt_m,-x_vec,x_vec,color=:grey,label="x bare");
     Plots.plot!(plt_m,-x_vec,x_vec,color=:grey,linestyle=linestyle_vec[2],label="u Padé [7-r,6-r]");
     Plots.plot!(plt_m,-x_vec,x_vec,color=:grey,linestyle=linestyle_vec[3],label="u Padé [6-r,5-r]");
-    Plots.annotate!(plt_m,3,2,L"$\mathbf{k}=$"*string(k_label)*",  f="*string(f),7);
+    Plots.annotate!(plt_m,1.5,1,L"$\mathbf{k}=$"*string(k_label)*",  f="*string(f),7);
     
     Plots.plot!(plt_m,title="SquareLattice AFM S=1/2: moment at k="*k_label*" (f=$f)")
-    #plot!([2/f,2/f],[0,4],color=:grey,linewidth=10,label="u-freezing",alpha=0.3)
     for r in 0:r_max
         #xm_norm_r = m_vec[1+r]
         xm_norm_r = coeffs(poly_x * (m_vec[1+r]/m_vec[1+r](0)))
@@ -88,6 +86,10 @@ end
 
 
 ### δ_r and DSF for x ∈ x0_vec
+
+### define the x for which the DSF will be computed
+x0_vec = [1.0,1.5,2.0]      
+
 if true
     w_vec = collect(0.0:0.025:5)
     plt_JS = Plots.plot([0,0],[0,0.01],color=:grey,label="Dyn-HTE",xlims=(0,w_vec[end]),xlabel=L"\omega/J=w",ylabel=L"J \, S(\mathbf{k}="*k_label*L",\omega)",legend=:topleft);#,title="SquareLat AFM S=1/2: "*"JS("*k_label*",w)")
@@ -120,7 +122,9 @@ if true
 end
 
 
-### DSF for k-path
+#########################################################################################
+###### DSF for k-path ###################################################################
+#########################################################################################
 if true
     w_vec = collect(0.0:0.025:3.5)
     r_max = 3                
