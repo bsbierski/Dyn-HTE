@@ -177,11 +177,6 @@ Modifies `g.gVec` so it's within the unit cell defined by translation group `T`.
 This ensures the translation vector of g is reduced modulo translations in T,
 bringing it to the canonical form within the unit cell.
 
-# Examples
-```julia
-# Normalize a symmetry element to the unit cell
-mod!(g, T)
-```
 """
 function mod!(g::sym_element, T::translation_group)
     nvec = floor_tol.(inv(T.basis) * g.gVec) # integer part
@@ -287,12 +282,6 @@ Returns the identity element of a symmetry element or group.
 g = sym_element([0 1; -1 0], [1.0, 2.0])  # 2D rotation
 id = neutral_elem(g)  # 2D identity element
 
-# From a symmetry group
-id = neutral_elem(G)  # Gets identity based on first element of G
-function neutral_elem(g::sym_element)::sym_element
-    d = length(g.gVec)
-    sym_element(Matrix(I, d, d), zeros(Float64, d))
-end
 ```
 """
 function neutral_elem(g::sym_element)::sym_element
@@ -348,11 +337,6 @@ Adds symmetry element `g` to group `G` and updates its element count.
 - Adds `g` to G.elements
 - Increments G.n_elements
 
-# Examples
-```julia
-# Add a new reflection to an existing group
-add_element!(new_reflection, symmetry_group)
-```
 """
 function add_element!(g::sym_element, G::sym_group)
     push!(G.elements, g)
@@ -362,7 +346,7 @@ end
 """
     inverse(g1::sym_element) -> sym_element
 
-Returns the inverse of symmetry element `g`.
+Returns the inverse of symmetry element `g` such that g ∘ g⁻¹ = e.
 
 # Arguments
 - `g1::sym_element`: Symmetry element to invert
@@ -379,6 +363,7 @@ For a symmetry element g with matrix M and vector v:
 ```julia
 g = sym_element([0.0 -1.0; 1.0 0.0], [1.0, 0.0])  # Rotation + translation
 g_inv = inverse(g)  # Inverse transformation
+g_inv ∘ g == neutral_elem(g)  # Returns True
 ```
 """
 function inverse(g1::sym_element)
@@ -401,7 +386,7 @@ Computes the commutator of two symmetry elements.
 
 # Mathematical Description
 The commutator measures how far two elements are from commuting.
-If g1 and g2 commute, their commutator equals the identity element.
+If g1 and g2 commute, their commutator equals the neutral element.
 
 # Examples
 ```julia
@@ -422,7 +407,7 @@ end
 """
     find_order(g::sym_element, T::translation_group) -> Int
 
-Finds the smallest positive integer `n` such that g^n = identity.
+Finds the smallest positive integer `n` such that `g^n = identity`.
 
 # Arguments
 - `g::sym_element`: Symmetry element
@@ -442,6 +427,7 @@ return to the identity. Translation vectors are reduced modulo the unit cell.
 # Examples
 ```julia
 # Find the order of a rotation
+T = translation_group([(1.0, 0.0), (0.0, 1.0)])
 rot60 = sym_element([0.5 -sqrt(3)/2; sqrt(3)/2 0.5], [0.0, 0.0])
 order = find_order(rot60, T)  # Should be 6
 ```
@@ -464,6 +450,8 @@ function find_order(g::sym_element,T::translation_group)::Int
     end
 end
 
+
+
 """
     generate_closed_basis(basis::sym_group, T::translation_group) -> sym_group
 
@@ -477,18 +465,12 @@ Generates an overcomplete basis of symmetry elements that is closed under commut
 - `sym_group`: Group containing all original elements plus necessary commutators
 
 # Description
-This function ensures that for any two elements g, h in the result,
-their commutator [g,h] is also in the result. It iteratively adds
+This function ensures that for any two elements g, h in the group,
+their commutator [g,h] is also in the group. It iteratively adds
 commutators until the group is closed under commutation.
 
 # Throws
 - Error if group size exceeds 100 elements, which may indicate an incorrect setup
-
-# Examples
-```julia
-# Generate a commutation-closed group from basic symmetries
-closed_basis = generate_closed_basis(initial_group, T)
-```
 """
 function generate_closed_basis(basis::sym_group, T::translation_group)::sym_group
     Gnew = sym_group(copy(basis.elements))
@@ -704,12 +686,6 @@ Translates a bond so that the first endpoint lies in the first unit cell.
 Shifts both endpoints of the bond by the same translation vector,
 such that r1 lies within the first unit cell. This preserves the
 relative position between r1 and r2 while normalizing the bond position.
-
-# Examples
-```julia
-# Move a bond into the canonical unit cell
-mod!(b, T, lattice.unitcell)
-```
 """
 function mod!(b::bond, T::translation_group, unitcell::UnitCell)
     nvec = b.r1
@@ -749,21 +725,16 @@ end
 """
     bond_matrix(lattice::Lattice, center_sites) -> Matrix{bond}
 
-Constructs a matrix of all bonds between a set of central sites and all sites in the lattice.
+Constructs a matrix of all bonds between a set of center_sites and all sites in the lattice.
 
 # Arguments
 - `lattice::Lattice`: Lattice containing site positions
-- `center_sites`: Indices of central reference sites
+- `center_sites`: Indices of center_sites
 
 # Returns
-- `Matrix{bond}`: Matrix where each row corresponds to a central site, 
+- `Matrix{bond}`: Matrix where each row corresponds to a center_sites, 
   and each column to a target site in the lattice
 
-# Examples
-```julia
-# Get all bonds from sites 1 and 2 to all other sites
-bmat = bond_matrix(lattice, [1, 2])
-```
 """
 function bond_matrix(lattice::Lattice, center_sites)
     mat = Matrix{bond}(undef, length(center_sites), lattice.length)
@@ -781,7 +752,7 @@ end
     sym_reduced_lattice(lattice::Lattice, center_sites, G::sym_group, T::translation_group)
         -> (Dict, Vector{bond}, Dict)
 
-Reduces the full list of bonds in the lattice using the provided symmetry group.
+Reduces the full list of bonds in the lattice using the provided symmetry group. 
 
 # Arguments
 - `lattice::Lattice`: The lattice object with site positions
@@ -867,7 +838,8 @@ end
 """
     getSymmetryGroup(geometry::String) -> (sym_group, translation_group)
 
-Creates symmetry group for a specified lattice geometry.
+Creates symmetry group for a specified lattice geometry. 
+Modify this function to add new lattice types.
 
 # Arguments
 - `geometry::String`: Name of the lattice geometry
@@ -887,11 +859,6 @@ Creates symmetry group for a specified lattice geometry.
 # Throws
 - Error if the requested geometry is not implemented
 
-# Examples
-```julia
-# Get symmetry group for a triangular lattice
-G, T = getSymmetryGroup("triang")
-```
 """
 function getSymmetryGroup(geometry::String)
 
@@ -990,9 +957,13 @@ Takes a rotation R about a point p and returns a symmetry element with:
 # Create a 90° rotation around the point (1,0)
 R = [0 -1; 1 0]  # 90° rotation matrix
 p = [1.0, 0.0]   # Rotation center
-sym = shiftRotation(R, p)
+sym = shiftRotation(R, p) # outputs sym_element([0.0 -1.0; 1.0 0.0], [1.0, -1.0])
 ```
 """
 function shiftRotation(R::Matrix{<:Number}, p::Vector{<:Number})::sym_element
    return  sym_element(R,p-R*p)
 end
+
+R = [0 -1; 1 0]  # 90° rotation matrix
+p = [1.0, 0.0]   # Rotation center
+sym = shiftRotation(R, p)
