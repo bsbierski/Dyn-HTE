@@ -29,7 +29,7 @@ If Dyn-HTE benefits your research, please acknowledge it by citing these referen
 
 The DynHTE.jl package can be installed by invoking the following command in the Julia REPL:
 ```julia
-]  add https://github.com/mjp98/RobustPade.jl, https://github.com/bsbierski/Dyn-HTE/tree/package
+]  add https://github.com/bsbierski/Dyn-HTE/tree/package
 ```
 Since DynHTE.jl depends on the unregistered package RobustPade it needs to be added first. 
 Due to the size of the precomputed data, this can take a minute. 

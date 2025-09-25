@@ -7,8 +7,8 @@ L = 12
 n_max = 1*L
 spin_length = 1/2
 hte_graphs = load_dyn_hte_graphs(spin_length,L);
-
 hte_lattice = getLattice(L,"square");
+
 ### plot lattice if desired
 #display(graphplot(hte_lattice.graph,names=1:nv(hte_lattice.graph),markersize=0.2,fontsize=7,nodeshape=:rect,curves=false))
 
@@ -38,6 +38,7 @@ poly_x = Polynomial([0,1],:x)
 
 x_vec_bare = collect(0:0.025:1.4)
 x_vec = collect(0.0:0.1:2.5)
+x0_vec = [1.0,1.5,2.0] 
 
 ### with u-series
 if true
