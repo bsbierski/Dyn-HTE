@@ -4,7 +4,6 @@ This page documents the functions used for graph generation, manipulation, and e
 
 ## Embedding of Correlators
 
-
 ```@docs
 DynHTE.Calculate_Correlator_fast
 DynHTE.e_fast
@@ -25,7 +24,6 @@ DynHTE.gG_properties
 DynHTE.is_simple_isomorphic
 DynHTE.isIsomorph
 DynHTE.is_symmetric
-DynHTE.findg
 DynHTE.give_unique_gG_vec
 ```
 
@@ -33,7 +31,6 @@ DynHTE.give_unique_gG_vec
 ```@docs
 DynHTE.degeneracy
 DynHTE.totalEdges
-DynHTE.numberOfLeaves
 DynHTE.noLeavesExceptAt
 DynHTE.hasGeneralizedLeaves
 DynHTE.symmetryFactor
@@ -42,16 +39,12 @@ DynHTE.symmetryFactor
 ## Graph Transformation and Manipulation
 
 ```@docs
-DynHTE.addOneEdge
-DynHTE.removeVerticesWithoutEdge!
 DynHTE.toSimpleGraph
-DynHTE.splitToConnectedComp
 ```
 
 ## Graph Generation and Collection
 
 ```@docs
-DynHTE.getAllGraphsNextOrder
 DynHTE.getVacGraphs
 DynHTE.getGraphsG
 ```

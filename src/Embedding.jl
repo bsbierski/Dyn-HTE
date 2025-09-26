@@ -1,8 +1,7 @@
 ### find embedding factors
 
-
 """
-    is_simple_isomorphic(gG1::GraphG, gG2::GraphG) -> Bool
+is_simple_isomorphic(gG1::GraphG, gG2::GraphG) -> Bool
 
 Check if the underlying simple graphs of two GraphG objects are isomorphic.
 
