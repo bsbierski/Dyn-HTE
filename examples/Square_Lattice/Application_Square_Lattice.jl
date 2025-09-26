@@ -17,7 +17,7 @@ fileName_c = "examples/Square_Lattice/Square_Lattice_"*create_spin_string(spin_l
 if isfile(fileName_c)
     c_iipDyn_mat = load_object(fileName_c)
 else
-    @time c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs);
+    c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs);
     save_object(fileName_c,c_iipDyn_mat)
 end
 
@@ -33,7 +33,6 @@ k,k_label = (π/2,π/2), "(piO2,piO2)"
 ### compute moments
 c_kDyn = get_c_k(k,c_iipDyn_mat,hte_lattice)
 m_vec = get_moments_from_c_kDyn(c_kDyn)
-poly_x = Polynomial([0,1],:x)
 
 ### define x vectors for plotting moments, for the bare series and the few x0 where 
 x_vec_bare = collect(0:0.025:1.4)
@@ -61,7 +60,7 @@ Plots.annotate!(plt_m,1.5,1,L"$\mathbf{k}=$"*string(k_label)*",  f="*string(f),7
 Plots.plot!(plt_m,title="SquareLattice AFM S=1/2, k="*k_label*" (f=$f)")
 for r in 0:r_max
     #xm_norm_r = m_vec[1+r]
-    xm_norm_r = coeffs(poly_x * (m_vec[1+r]/m_vec[1+r](0)))
+    xm_norm_r = coeffs(Polynomial([0,1],:x) * (m_vec[1+r]/m_vec[1+r](0)))
     println()
     println("r=$r")
     p_u = Polynomial(ufromx_mat[1:n_max+2-2*r,1:n_max+2-2*r]*xm_norm_r)
@@ -137,7 +136,7 @@ for k_pos in eachindex(k_vec)
     m0 = Float64[]
 
     for r in 0:r_max
-        xm_norm_r = coeffs(poly_x * (m_vec[1+r]/m_vec[1+r](0)))
+        xm_norm_r = coeffs(Polynomial([0,1],:x) * (m_vec[1+r]/m_vec[1+r](0)))
         p_u = Polynomial(ufromx_mat[1:n_max+2-2*r,1:n_max+2-2*r]*xm_norm_r)
         push!(m0,m_vec[1+r](0)/x0 * get_pade(p_u,7-r,6-r)(u0))
     end
