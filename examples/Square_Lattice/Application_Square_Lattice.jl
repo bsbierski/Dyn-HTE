@@ -90,7 +90,7 @@ for x0_pos in eachindex(x0_vec)
     ### plot Dyn-HTE
     δ_vec,r_vec = fromMomentsToδ(m0_vec[x0_pos])
     Plots.scatter!(plt_δ,r_vec,δ_vec,color=thermalCol4_vec[x0_pos],label="x=$x0")
-    Plots.plot!(plt_JS,w_vec,[JSwithTerminator(δ_vec,x0,w,get_extrapolation_params(δ_vec,3,3,true)) for w in w_vec],color=thermalCol4_vec[x0_pos],label="")
+    Plots.plot!(plt_JS,w_vec,[JSwithTerminator(δ_vec,x0,w,get_extrapolation_params(δ_vec,r_max,r_max,true)) for w in w_vec],color=thermalCol4_vec[x0_pos],label="")
 
     ### plot experimental data from DallaPiazza for comparison, adjust factor for relative scaling if needed
     fileName = "examples/Square_Lattice/DallaPiazza_exp_S"*k_label*".csv"

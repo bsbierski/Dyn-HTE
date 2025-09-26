@@ -1,11 +1,10 @@
 #########################################################################################
 ###### 1. Preparations: Lattice and Dyn-HTE for Matsubara correlator ####################
 #########################################################################################
-using JLD2, DelimitedFiles,Polynomials,LinearAlgebra,LsqFit
+using JLD2, DelimitedFiles,Polynomials,LinearAlgebra,LsqFit,CairoMakie
 using DynHTE
 import DynHTE: getSitePosition
 include("../plotConventions.jl")
-
 
 ### load graph evaluations
 spin_length = 1/2
@@ -18,17 +17,14 @@ hte_lattice = getLattice(L,"triang");
 Γ,K,M = (0,0), (2*π/3,2*π/sqrt(3)), (0,2*π/sqrt(3))
 #display(graphplot(hte_lattice.graph,names=1:nv(hte_lattice.graph),markersize=0.2,fontsize=8,nodeshape=:rect,curves=false))
 
-
 ### compute all correlations in the lattice (or load them)
 fileName_c = "examples/Triangular_Lattice/Triangular_Lattice_"*create_spin_string(spin_length)*"_c_iipDyn_nmax"*string(n_max)*"_L"*string(L)*".jld2"
 if isfile(fileName_c)
-    println("loading "*fileName_c)
     c_iipDyn_mat = load_object(fileName_c)
 else
     c_iipDyn_mat = get_c_iipDyn_mat(hte_lattice,hte_graphs);
     save_object(fileName_c,c_iipDyn_mat)
 end
-
 
 #########################################################################################
 ###### 2. Equal-time correlators (crosscheck) ###########################################
@@ -60,10 +56,8 @@ p_u = Polynomial(ufromx_mat*coeffs_x)
 plt = Plots.plot(xlabel="x=J/T",legend=:bottomright,title="Triangular AFM S=1/2: equal-time struc-fac k=$k_label f=$f")
 
 Plots.plot!(plt,x_vec[x_vec .< 1.4], Polynomial(coeffs_x).(x_vec[x_vec .< 1.4]),color=:green,label="x-series",linewidth=0.5)
-
 Plots.plot!(plt,x_vec,get_pade(p_x,6,6).(x_vec),color=:green,linestyle=linestyle_vec[2],label="x-Padé[6,6]")
 Plots.plot!(plt,x_vec,get_pade(p_x,5,5).(x_vec),color=:green,linestyle=linestyle_vec[3],label="x-Padé[5,5]")
-
 Plots.plot!(plt,x_vec,get_pade(p_u,6,6).(u_vec),color=:blue,linestyle=linestyle_vec[2],label="u-Padé[6,6] (f=$f)")
 Plots.plot!(plt,x_vec,get_pade(p_u,5,5).(u_vec),color=:blue,linestyle=linestyle_vec[3],label="u-Padé[5,5] (f=$f)")
 
@@ -77,7 +71,6 @@ end
 xPlots,yPlots=1,1
 plt_final = Plots.plot(plt,  layout=(yPlots,xPlots), size=(aps_width*xPlots,0.62*aps_width*yPlots))
 display(plt_final)
-Plots.savefig(plt_final,"examples/Triangular_Lattice/Triangular_EqualTime_Gk"*k_label*".png")
 
 #########################################################################################
 ###### 3. Static structure factor (iν_m=0) and fit of renormalized MF form (rMF) ########
@@ -115,7 +108,6 @@ if true ### plot χT at k=K vs T
         if pade_pos==1 label="u-Padé (f=$f)" else label="" end
         Plots.plot!(plt_TχK_vs_x,x_vec,get_pade(p_u,pade[1],pade[2]).(u_vec),color=:purple,alpha=0.6,linestyle=linestyle_vec[pade_pos],label=label)
     end
-    display(plt_TχK_vs_x)
 end
 
 if true ###### χ vs k #########  
@@ -185,41 +177,36 @@ if true ###### χ vs k #########
         end
     end
 
-    if true ### plot bold-line diagMC data from [KulaginPRB2013]
-        for (x_pos,x) in enumerate(x_vec)
-            fileNameKulagin = "examples/Triangular_Lattice/Triangular_StaticSusc_Kulagin_GammaKMGamma_T"*string(1/x)*".csv"
-            if isfile(fileNameKulagin)
-                data = readdlm(fileNameKulagin,',',Float64)
-                Plots.scatter!(plt_Tχk_vs_k, data[:,1], data[:,2] / x, markeralpha=0.4, color=thermalCol4_vec[x_pos],label="")
-            end
+    ### plot bold-line diagMC data from [KulaginPRB2013]
+    for (x_pos,x) in enumerate(x_vec)
+        fileNameKulagin = "examples/Triangular_Lattice/Triangular_StaticSusc_Kulagin_GammaKMGamma_T"*string(1/x)*".csv"
+        if isfile(fileNameKulagin)
+            data = readdlm(fileNameKulagin,',',Float64)
+            Plots.scatter!(plt_Tχk_vs_k, data[:,1], data[:,2] / x, markeralpha=0.4, color=thermalCol4_vec[x_pos],label="")
         end
     end
-
-    display(plt_Tχk_vs_k)
 end
 
-if true ### prepare triangular lattice inset
-    Plots.plot!(plt_TχK_vs_x,inset=bbox(0.65,0.36,0.36,0.36),subplot=2)
-    Plots.plot!(plt_TχK_vs_x[2],xlims=(-1.3,1.3),ylims=(-1.2,1.2),aspect_ratio = :equal,xaxis=false,yaxis=false)
-    a1 = [1/2, sqrt(3)/2]
-    a2 = [1, 0]
-    a3 = [-1/2, sqrt(3)/2]
-    for x in -5:1:5, y in -5:1:5
-        r = x*a1 .+ y*a2
-        r1 = r .+ a1
-        r2 = r .+ a2
-        r3 = r .+ a3
-        Plots.plot!(plt_TχK_vs_x[2],[r[1],r1[1]],[r[2],r1[2]],markers=:dot,color=:grey,label="")
-        Plots.plot!(plt_TχK_vs_x[2],[r[1],r2[1]],[r[2],r2[2]],markers=:dot,color=:grey,label="")
-        Plots.plot!(plt_TχK_vs_x[2],[r[1],r3[1]],[r[2],r3[2]],markers=:dot,color=:grey,label="")
-    end
+### prepare triangular lattice inset
+Plots.plot!(plt_TχK_vs_x,inset=bbox(0.65,0.36,0.36,0.36),subplot=2)
+Plots.plot!(plt_TχK_vs_x[2],xlims=(-1.3,1.3),ylims=(-1.2,1.2),aspect_ratio = :equal,xaxis=false,yaxis=false)
+a1 = [1/2, sqrt(3)/2]
+a2 = [1, 0]
+a3 = [-1/2, sqrt(3)/2]
+for x in -5:1:5, y in -5:1:5
+    r = x*a1 .+ y*a2
+    r1 = r .+ a1
+    r2 = r .+ a2
+    r3 = r .+ a3
+    Plots.plot!(plt_TχK_vs_x[2],[r[1],r1[1]],[r[2],r1[2]],markers=:dot,color=:grey,label="")
+    Plots.plot!(plt_TχK_vs_x[2],[r[1],r2[1]],[r[2],r2[2]],markers=:dot,color=:grey,label="")
+    Plots.plot!(plt_TχK_vs_x[2],[r[1],r3[1]],[r[2],r3[2]],markers=:dot,color=:grey,label="")
 end
 
-### finalize
+### finalize plot
 xPlots,yPlots=1,2
 plt_final = Plots.plot(plt_TχK_vs_x,plt_Tχk_vs_k, layout=(yPlots,xPlots), size=(aps_width*xPlots,(0.58)*aps_width*yPlots),dpi=600)
 display(plt_final)
-Plots.savefig(plt_final,"examples/Triangular_Lattice/Triangular_StaticSF.png")
 
 
 #########################################################################################
@@ -227,14 +214,7 @@ Plots.savefig(plt_final,"examples/Triangular_Lattice/Triangular_StaticSF.png")
 #########################################################################################
 
 ###### dynamical Matsubara correlator (k-space)
-
-plt_JS_M = Plots.plot();
-plt_JS_K = Plots.plot();
-kpoints = [(M,"M"),(K,"K")]
-
-for kpoint in kpoints
-k,k_label = kpoint
-
+k,k_label =  (K,"K") ### or (M,"M") 
 
 c_kDyn = get_c_k(k,c_iipDyn_mat,hte_lattice)
 m_vec = get_moments_from_c_kDyn(c_kDyn)
@@ -243,6 +223,7 @@ x_vec_bare = collect(0.0:0.025:1.2)
 x_vec = collect(0.0:0.2:4.0)
 
 x0_vec = 1 ./ [3.0,1.8,1.2,0.95,0.8,0.7,0.6,0.5,0.43,0.38]  # for these x the DSF will be computed
+
 ##### plot DSF and related quantities
 if true
     w_vec = collect(0.0:0.02:3.7)
@@ -271,10 +252,6 @@ if true
         
         Plots.plot!(plt_m,x_vec_bare,Polynomial(xm_norm_r).(x_vec_bare),color=color_vec[r+1],linewidth=0.4,label="r=$r",alpha=0.7) 
 
-        ### x-Padé moments are not well behaved (grow large or negative)
-        #Plots.plot!(plt_m,x_vec,get_pade(p_x,7-r,6-r).(x_vec),color=color_vec[r+1],linestyle=linestyle_vec[2],label="",alpha=0.7)
-        #Plots.plot!(plt_m,x_vec,get_pade(p_x,6-r,5-r).(x_vec),color=color_vec[r+1],linestyle=linestyle_vec[3],label="",alpha=0.7)
-
         Plots.plot!(plt_m,x_vec,get_pade(p_u,7-r,6-r).(u_vec),color=color_vec[r+1],linestyle=linestyle_vec[2],label="",alpha=0.7)
         Plots.plot!(plt_m,x_vec,get_pade(p_u,6-r,5-r).(u_vec),color=color_vec[r+1],linestyle=linestyle_vec[3],label="",alpha=0.7)
 
@@ -286,12 +263,9 @@ if true
         end
     end
 
-    ###### δ_r, JS and A for x ∈ x0_vec
+    ###### δ_r, JS for x ∈ x0_vec
     plt_δ=Plots.plot([0],[0],label="",xlabel=L"r",ylabel=L"\delta_{\mathbf{k},r}",legend=:bottomright)
     plt_JS = Plots.plot(xlims=(0,w_vec[end]),xlabel=L"\omega/J=w",ylabel=L"J \, S(\mathbf{k}="*k_label*L",\omega)",legendfontsize=5.0,legend=:topright)
-    plt_JAo2π = Plots.plot(xlabel=L"\omega/J=w",ylabel=L"J \, A(\mathbf{k}="*k_label*L",\omega)",legend=:topleft)
-
-    #plt_JSw0=Plots.plot([0.55,0.55],[0.0,0.09],xscale=:log10,xlims=(0.1,1.02/x0_vec[1]),label="roton-like energy [Zheng2006]",color=:grey,xlabel=L"T/J=1/x",ylabel=L"J \, S(\mathbf{k}="*k_label*L",\omega \rightarrow 0)",legend=:bottomright)
 
     for x0_pos in eachindex(x0_vec)
         x0 = x0_vec[x0_pos]
@@ -299,26 +273,20 @@ if true
         ### plot Dyn-HTE
         δ_vec,r_vec = fromMomentsToδ(m0_vec[x0_pos])
         Plots.scatter!(plt_δ,r_vec,δ_vec,color=thermalCol13_vec[x0_pos],label="")
-        δ_vec_ext = extrapolate_δvec(δ_vec,r_max,r_max,4000,true)
-        Plots.plot!(plt_δ,r_max+1:6,δ_vec_ext[r_max+2:7],label="",color=thermalCol13_vec[x0_pos])
 
-        JSw_vec = [JS(δ_vec_ext,1.0*x0,w,0.02) for w in w_vec]
+        JSw_vec = [JSwithTerminator(δ_vec,x0,w,get_extrapolation_params(δ_vec,r_max,r_max,true)) for w in w_vec]
 
         if k_label=="K"
             Plots.plot!(plt_JS,w_vec, JSw_vec,color=thermalCol13_vec[x0_pos],label="")
         else
             Plots.plot!(plt_JS,w_vec, JSw_vec,color=thermalCol13_vec[x0_pos],label="T/J="*string(round(1/x0,digits=2)))
         end
-
-        Plots.plot!(plt_JAo2π,w_vec, JSw_vec .* (1 .- exp.(-x0 .* w_vec)),color=thermalCol13_vec[x0_pos],label="")
-        #Plots.scatter!(plt_JSw0,[1/x0],[JSw_vec[1]],color=thermalCol15_vec[x0_pos],label="")
     end
 
     ### plot results
     xPlots,yPlots=3,1
     plt_final = Plots.plot(plt_m, plt_δ, plt_JS, layout=(yPlots,xPlots), size=(0.7*aps_width*xPlots,0.7*aps_width*yPlots))
     display(plt_final)
-    Plots.savefig(plt_final,"examples/Triangular_Lattice/Triangular_DSF_k"*k_label*".png")
 end
 
 ### prepare insets
@@ -344,7 +312,7 @@ if k_label=="M"
 end
 
 ### scaling plot of DSF at k=K (as inset)
-if k_label=="K" && true
+if k_label=="K"
     w_max = 1.0
     w_vec = collect(0.0:0.02:w_max)
     α = 1.1
@@ -359,8 +327,7 @@ if k_label=="K" && true
             ### plot Dyn-HTE
             δ_vec,r_vec = fromMomentsToδ(m0_vec[x0_pos])
             Plots.scatter!(plt_δ,r_vec,δ_vec,color=thermalCol13_vec[x0_pos],label="x=$x0")
-            δ_vec_ext = extrapolate_δvec(δ_vec,length(δ_vec)-1,length(δ_vec)-1,4000,true)
-            JSw_vec = [JS(δ_vec_ext,1.0*x0,w,0.02) for w in w_vec]
+            JSw_vec = [JSwithTerminator(δ_vec,x0,w,get_extrapolation_params(δ_vec,r_max,r_max,true)) for w in w_vec]
 
             Plots.plot!(plt_JS[2],w_vec .* x0, JSw_vec .* (1/x0)^α ,color=thermalCol13_vec[x0_pos],label="")
         end
@@ -368,16 +335,7 @@ if k_label=="K" && true
     display(plt_JS)
 end
 
-### final plot for paper
-if k_label=="K" plt_JS_K = deepcopy(plt_JS) end
-if k_label=="M" plt_JS_M = deepcopy(plt_JS) end
-
-
-
-
-###################################################################################################
-###### background info: scaling plot of DSF at k=K at three different α (in quantum critical fan?)#
-###################################################################################################
+###### background info: scaling plot of DSF at k=K at three different α (in quantum critical fan)##
 if k_label=="K" && true
     w_max = 1.0
     w_vec = collect(0.0:0.02:w_max)
@@ -398,8 +356,7 @@ if k_label=="K" && true
             ### plot Dyn-HTE
             δ_vec,r_vec = fromMomentsToδ(m0_vec[x0_pos])
             Plots.scatter!(plt_δ,r_vec,δ_vec,color=thermalCol13_vec[x0_pos],label="x=$x0")
-            δ_vec_ext = extrapolate_δvec(δ_vec,length(δ_vec)-1,length(δ_vec)-1,4000,true)
-            JSw_vec = [JS(δ_vec_ext,1.0*x0,w,0.02) for w in w_vec]
+            JSw_vec = [JSwithTerminator(δ_vec,x0,w,get_extrapolation_params(δ_vec,r_max,r_max,true)) for w in w_vec]
 
             Plots.plot!(plt_JS_scaled1,w_vec .* x0, JSw_vec .* (1/x0)^α1 ,color=thermalCol13_vec[x0_pos],label="T/J="*string(round(1/x0,digits=2)))
             Plots.plot!(plt_JS_scaled2,w_vec .* x0, JSw_vec .* (1/x0)^α2 ,color=thermalCol13_vec[x0_pos],label="T/J="*string(round(1/x0,digits=2)))
@@ -411,85 +368,59 @@ if k_label=="K" && true
     xPlots,yPlots=3,1
     plt_final = Plots.plot(plt_JS_scaled1,plt_JS_scaled2,plt_JS_scaled3, layout=(yPlots,xPlots), size=(aps_width*xPlots,0.5*aps_width*yPlots))
     display(plt_final)
-    Plots.savefig(plt_final,"examples/Triangular_Lattice/Triangular_JS_k"*k_label*"_scaling.png")
 end
-
-
-end
-
-###### run the above for both K and M and then put together
-xPlots,yPlots=1,2
-plt_final = Plots.plot(plt_JS_M,plt_JS_K, layout=(yPlots,xPlots), size=(aps_width*xPlots,(0.45)*aps_width*yPlots),dpi=600)
-display(plt_final)
-Plots.savefig(plt_final,"examples/Triangular_Lattice/Triangular_DSF.png")
 
 
 
 #########################################################################################
 ###### 5. Dynamic structure factor (DSF): k-path through BZ ############################
 #########################################################################################
+w_vec = collect(0.0:0.01:2.8)
+r_max = 3                
+f=0.55
+ufromx_mat = get_LinearTrafoToCoeffs_u(n_max+1,f)
+poly_x = Polynomial([0,1],:x)
 
-if true
-    w_vec = collect(0.0:0.01:2.8)
-    r_max = 3                
-    f=0.55
-    ufromx_mat = get_LinearTrafoToCoeffs_u(n_max+1,f)
-    poly_x = Polynomial([0,1],:x)
+x0 = 3.0
+u0 = tanh.(f .* x0)
 
-    x0 = 3.0
-    u0 = tanh.(f .* x0)
+### define and generate k-path 
+path = [(0.0001,0.0001),K,M,(0.0001,0.0001)]
+pathticks = ["Γ","K","M","Γ"]
+Nk = 49
+k_vec,kticks_positioins = create_brillouin_zone_path(path, Nk)
 
-    ### define and generate k-path 
-    path = [(0.0001,0.0001),K,M,(0.0001,0.0001)]
-    pathticks = ["Γ","K","M","Γ"]
-    Nk = 49
-    k_vec,kticks_positioins = create_brillouin_zone_path(path, Nk)
-    
-    JSkw_mat = zeros(Nk+1,length(w_vec))
+JSkw_mat = zeros(Nk+1,length(w_vec))
 
-    ### fill JSkw_mat
-    Threads.@threads for k_pos in eachindex(k_vec)
-        @show k_pos
-        k = k_vec[k_pos]
-
-        c_kDyn = get_c_k(k,c_iipDyn_mat,hte_lattice)
-        m_vec = get_moments_from_c_kDyn(c_kDyn)
-        m0 = Float64[]
-
-        for r in 0:r_max
-            xm_norm_r = Polynomials.coeffs(poly_x * (m_vec[1+r]/m_vec[1+r](0)))
-            p_u = Polynomial(ufromx_mat[1:n_max+2-2*r,1:n_max+2-2*r]*xm_norm_r)
-            
-            push!(m0,m_vec[1+r](0)/x0 * get_pade(p_u,7-r,6-r)(u0))
-        end
-
-        δ_vec,r_vec = fromMomentsToδ(m0)
-        δ_vec_ext = extrapolate_δvec(δ_vec,length(δ_vec)-1,length(δ_vec)-1,4000,true)
-        JSkw_mat[k_pos,:] = [JS(δ_vec_ext,1.0*x0,w,0.02) for w in w_vec]
-
+### fill JSkw_mat
+for k_pos in eachindex(k_vec)
+    k = k_vec[k_pos]
+    c_kDyn = get_c_k(k,c_iipDyn_mat,hte_lattice)
+    m_vec = get_moments_from_c_kDyn(c_kDyn)
+    m0 = Float64[]
+    for r in 0:r_max
+        xm_norm_r = Polynomials.coeffs(poly_x * (m_vec[1+r]/m_vec[1+r](0)))
+        p_u = Polynomial(ufromx_mat[1:n_max+2-2*r,1:n_max+2-2*r]*xm_norm_r)
+        
+        push!(m0,m_vec[1+r](0)/x0 * get_pade(p_u,7-r,6-r)(u0))
     end
 
-    JSkw_mat_maxw = [w_vec[argmax(JSkw_mat[k_pos,:])] for k_pos in  eachindex(k_vec)]
+    δ_vec,r_vec = fromMomentsToδ(m0)
+    JSkw_mat[k_pos,:] = [JSwithTerminator(δ_vec,x0,w,get_extrapolation_params(δ_vec,r_max,r_max,true)) for w in w_vec]
 end
+JSkw_mat_maxw = [w_vec[argmax(JSkw_mat[k_pos,:])] for k_pos in  eachindex(k_vec)]
 
-if true
 
-    ### plot JS(k,ω)
-    using CairoMakie
-
-    fig = CairoMakie.Figure(fontsize=8,size=(aps_width,0.6*aps_width));
-    ax=CairoMakie.Axis(fig[1,1],xlabel=L"\mathbf{k}",ylabel=L"\omega/J=w",xlabelsize=8,ylabelsize=8);
-    hm=CairoMakie.heatmap!(ax,collect(0:Nk)/(Nk),w_vec, JSkw_mat,colormap=:viridis,colorrange=(0.001,0.3),highclip=:white);
-    ax.xticks = ((kticks_positioins .- 1)/(Nk),pathticks)
-    CairoMakie.Colorbar(fig[:, end+1], hm,size=8, label = L"J S(\mathbf{k},\omega)")
-    CairoMakie.text!(ax,"x=J/T=$x0",position=[(0.05,2.4)],color=:white)
-    CairoMakie.text!(ax,"f=$f",position=[(0.05,2.1)],color=:white)
-    CairoMakie.scatter!(ax,collect(0:Nk)/(Nk), JSkw_mat_maxw, color=:red, marker=:cross,markersize=5)
-
-    resize_to_layout!(fig);
-    display(fig)
-
-    save("examples/Triangular_Lattice/Triangular_Lattice_JSkw_x$x0"*"_f$f.png",fig; px_per_unit=6.0)
-end
+### plot JS(k,ω)
+fig = CairoMakie.Figure(fontsize=8,size=(aps_width,0.6*aps_width));
+ax=CairoMakie.Axis(fig[1,1],xlabel=L"\mathbf{k}",ylabel=L"\omega/J=w",xlabelsize=8,ylabelsize=8);
+hm=CairoMakie.heatmap!(ax,collect(0:Nk)/(Nk),w_vec, JSkw_mat,colormap=:viridis,colorrange=(0.001,0.3),highclip=:white);
+ax.xticks = ((kticks_positioins .- 1)/(Nk),pathticks)
+CairoMakie.Colorbar(fig[:, end+1], hm,size=8, label = L"J S(\mathbf{k},\omega)")
+CairoMakie.text!(ax,"x=J/T=$x0",position=[(0.05,2.4)],color=:white)
+CairoMakie.text!(ax,"f=$f",position=[(0.05,2.1)],color=:white)
+CairoMakie.scatter!(ax,collect(0:Nk)/(Nk), JSkw_mat_maxw, color=:red, marker=:cross,markersize=5)
+resize_to_layout!(fig);
+display(fig)
 
 
