@@ -2,7 +2,7 @@ module DynHTE
 
 using Plots
 using Graphs, SimpleWeightedGraphs, Parameters
-using Symbolics, Polynomials, DifferentialEquations, LsqFit
+using Symbolics, Polynomials, LsqFit
 using TaylorSeries, LinearAlgebra, SparseArrays, Combinatorics
 using Random, JLD2
 using PaddedViews, ToeplitzMatrices
