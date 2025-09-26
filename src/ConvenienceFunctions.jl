@@ -1216,6 +1216,7 @@ JSwithTerminator(δ_vec[1:r_max+1], x, w, extrap_params)
 function get_extrapolation_params(δ_vec::Vector{Float64},r_min::Int,r_max::Int,intercept0::Bool)
     @assert r_max >= r_min
     @assert r_max+1 <= length(δ_vec)
+    if r_max==r_min && intercept0==false error("extrapolation of δ_vec not possible through just 1 point. Please set intercept0=true") end
     ### define linear fit-function, fit and extrapolate
     if intercept0 
         function fa(t,p) return p[1] .* t end  
@@ -1469,7 +1470,7 @@ JSkw_mat = get_JSkw_mat("u_pade",4.0,k_vec,w_vec,c_iipDyn_mat,hte_lattice,r_min=
 - `extrapolate_δvec`: Extrapolates δ parameters linearly
 - `JS`: Evaluates dynamic structure factor at single k,ω point
 """
-function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},c_iipDyn_mat::Array{Matrix{Rational{Int128}}},lattice::Dyn_HTE_Lattice;f::Float64=0.48,η::Float64=0.01,r_min::Int=3,r_max::Int=3,r_ext::Int=1000,intercept0::Bool=true)
+function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},c_iipDyn_mat::Array{Matrix{Rational{Int128}}},lattice::Dyn_HTE_Lattice;f::Float64=0.48,r_min::Int=3,r_max::Int=3,r_ext::Int=1000,intercept0::Bool=true)
 
     JSkw_mat = 1.0*zeros(length(k_vec),length(w_vec))
 
