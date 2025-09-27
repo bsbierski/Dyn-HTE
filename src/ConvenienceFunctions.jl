@@ -1420,7 +1420,7 @@ Calculate dynamic spin structure factors J·S(k,ω) for given k-points and frequ
 
 This function computes the dynamical structure factor matrix for a range of k-points
 and frequencies. The bare series of the moments gets extrapolated with a specified method ("pade" or "u_pade") and the delta coeffficients 
-of the continued fraction expansion get extrapolated linearly, according to the parameters "r_min", "r_max" and "r_ext".
+of the continued fraction expansion get extrapolated linearly, according to the parameters "r_min", "r_max".
 
 
 # Arguments
@@ -1431,10 +1431,8 @@ of the continued fraction expansion get extrapolated linearly, according to the 
 - `c_iipDyn_mat::Array{Matrix{Rational{Int128}}}`: Matrix of real-space dynamic correlators
 - `lattice::Dyn_HTE_Lattice`: Lattice information object
 - `f::Float64=0.48`: Parameter for tanh transformation when using "u_pade" method
-- `η::Float64=0.01`: DEPRECATED Broadening parameter for analytic continuation
 - `r_min::Int=3`: Minimum r value for δ parameter extrapolation
 - `r_max::Int=3`: Maximum r value for δ parameter extrapolation
-- `r_ext::Int=1000`: DEPRECATED Target r value for extrapolation
 - `intercept0::Bool=true`: Whether to force linear extrapolation through origin
 
 # Returns
@@ -1453,7 +1451,7 @@ k_vec = [(k*pi,0.0) for k in 0:0.1:2]
 w_vec = collect(-3:0.1:3)
 
 #calculate the spin structure factor for the given k and ω 
-JSkw_mat = get_JSkw_mat("u_pade",4.0,k_vec,w_vec,c_iipDyn_mat,hte_lattice,r_min=3,r_max=3,r_ext=2000,f=0.48)
+JSkw_mat = get_JSkw_mat("u_pade",4.0,k_vec,w_vec,c_iipDyn_mat,hte_lattice,r_min=2,r_max=3,f=0.48)
 
 
 ```
@@ -1470,7 +1468,7 @@ JSkw_mat = get_JSkw_mat("u_pade",4.0,k_vec,w_vec,c_iipDyn_mat,hte_lattice,r_min=
 - `extrapolate_δvec`: Extrapolates δ parameters linearly
 - `JS`: Evaluates dynamic structure factor at single k,ω point
 """
-function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},c_iipDyn_mat::Array{Matrix{Rational{Int128}}},lattice::Dyn_HTE_Lattice;f::Float64=0.48,r_min::Int=3,r_max::Int=3,r_ext::Int=1000,intercept0::Bool=true)
+function get_JSkw_mat(method::String,x::Float64,k_vec::Vector,w_vec::Vector{Float64},c_iipDyn_mat::Array{Matrix{Rational{Int128}}},lattice::Dyn_HTE_Lattice;f::Float64=0.48,r_min::Int=3,r_max::Int=3,intercept0::Bool=true)
 
     JSkw_mat = 1.0*zeros(length(k_vec),length(w_vec))
 

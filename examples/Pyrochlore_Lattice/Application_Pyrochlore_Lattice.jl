@@ -8,8 +8,8 @@
 
 using JLD2,DelimitedFiles, HDF5, LaTeXStrings,Polynomials
 using DynHTE
-
 include("../plotConventions.jl")
+using CairoMakie
 
 ###############################################
 # Load DynHTE Data
@@ -44,7 +44,7 @@ Nk = 56
 n_max = L
 r_max = 3
 Jmev = 2.4
-x0 = 4
+x0 = 4.0
 w_vec = collect(0:0.055:12.01/Jmev)
 
 ###############################################
@@ -53,28 +53,21 @@ w_vec = collect(0:0.055:12.01/Jmev)
 function calculate_structure_factors(path)
     kvec, kticks_positions = create_brillouin_zone_path(path, Nk)
     m0_vec = Matrix{Float64}(undef, length(kvec), r_max+1)
+    f = 0.6
     
     # Calculate moments
     for (kpos, k) in enumerate(kvec)
         c_kDyn = get_c_k(k, c_iipDyn_mat, hte_lattice)
         m_vec = get_moments_from_c_kDyn(c_kDyn)
         poly_x = Polynomial([0, 1], :x)
+
         
         for r in 0:r_max
-            xm_norm_r = (m_vec[1+r] / m_vec[1+r](0)) * poly_x
-            f = 0.6
-            
-            if f > 0.3
-                xm_norm_r = coeffs(poly_x * m_vec[1+r] / (m_vec[1+r](0)))
+             xm_norm_r = coeffs(poly_x * m_vec[1+r] / (m_vec[1+r](0)))
                 ufromx_mat = get_LinearTrafoToCoeffs_u(n_max + 1, f)
                 p_u = Polynomial(ufromx_mat[1:n_max+2-2*r, 1:n_max+2-2*r] * xm_norm_r)
                 u0 = tanh.(f .* x0)
                 m0_vec[kpos, r+1] = m_vec[1+r](0)/x0 * get_pade(p_u, 6 - r, 6 - r)(u0)
-            else
-                xm_norm_r = coeffs(poly_x * m_vec[1+r] / (m_vec[1+r](0)))
-                p_x = Polynomial(xm_norm_r)
-                m0_vec[kpos, r+1] = m_vec[1+r](0)/x0 * get_pade(p_x, 6 - r, 6 - r)(x0)
-            end
         end
     end
     
@@ -82,11 +75,16 @@ function calculate_structure_factors(path)
     JS_mat = zeros(length(kvec), length(w_vec))
     for kpos in eachindex(kvec)
         δ_vec, r_vec = fromMomentsToδ(m0_vec[kpos,:])
-        δ_vec_ext = extrapolate_δvec(δ_vec, length(δ_vec) - 1, length(δ_vec) - 1, 2000, true)
-        JS_mat[kpos,:] = [JS(δ_vec_ext, 1.0 * x0, w, 0.02) for w in w_vec]
+        idx = findfirst(<(0), δ_vec)
+        lastidx = isnothing(idx) ? length(δ_vec) : idx - 1
+        r_max_eff = min(lastidx - 1, r_max)
+
+        extrap_params = get_extrapolation_params(δ_vec[1:r_max_eff+1],r_max_eff-1,r_max_eff,true)
+        JS_mat[kpos,:] = [JSwithTerminator(δ_vec[1:r_max_eff+1] ,x0,w,extrap_params) for w in w_vec]
     end
     return JS_mat
 end
+
 
 ###############################################
 # Import and Process INS Data
@@ -129,7 +127,7 @@ errINS = [err_22l,err_hh2]
 HTE_data = [calculate_structure_factors(path) for path in [path1, path2]]
 
 # Plot functions
-function plot_comparison_22l()
+function plot_full_comparison()
 
         title_string =["","","","","","","","",""] 
         
@@ -200,13 +198,13 @@ function plot_comparison_22l()
         
         resize_to_layout!(fig)
         display(fig)
-        save("examples/Pyrochlore_Lattice/INS_comp.png",fig;px_per_unit=2.0)
+       # save("examples/Pyrochlore_Lattice/INS_comp.png",fig;px_per_unit=2.0)
 
         
         
 end
 
-function plot_full_comparison()
+function plot_comparison_22l()
     #### PLot comparison of INS and DynHTE for 22L 
    
             
@@ -265,7 +263,7 @@ function plot_full_comparison()
         resize_to_layout!(fig)
     
         display(fig)
-        save("examples/Pyrochlore_Lattice/INS_comp_22l.png",fig;px_per_unit = 600/96)
+        #save("examples/Pyrochlore_Lattice/INS_comp_22l.png",fig;px_per_unit = 600/96)
         
 
 end
@@ -273,3 +271,4 @@ end
 # Generate plots
 plot_comparison_22l()
 plot_full_comparison()
+
