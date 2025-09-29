@@ -22,8 +22,5 @@ makedocs(;
     checkdocs = :exports,
 )
 
-deploydocs(;
-    repo="github.com/bsbierski/DynHTE.jl",
-    devbranch="package",
-)
+deploydocs(;repo="github.com/bsbierski/DynHTE.jl")
 
