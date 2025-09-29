@@ -18,6 +18,7 @@ c_iipDyn_mat = get_c_iipDyn_mat(Lgraph,[1],hte_graphs)
 ### test if uniform susceptibility is purely static (m=0 only)
 c_iipDyn_mat[1,1]+c_iipDyn_mat[2,1]+c_iipDyn_mat[3,1]+c_iipDyn_mat[4,1]
 
+
 ### test Dyn-HTE of local and non-local correlator (c.f. Eq. (A3) and (A4) in PRB-paper )
 c_iipDyn_mat[1,1]
 c_iipDyn_mat[2,1]
