@@ -1219,7 +1219,6 @@ function extrapolate_δvec(δ_vec::Vector{Float64},r_min::Int,r_max::Int,r_ext::
 end
 
 
-
 """
     get_extrapolation_params(δ_vec::Vector{Float64}, r_min::Int, r_max::Int, intercept0::Bool) -> Vector{Float64}
 
