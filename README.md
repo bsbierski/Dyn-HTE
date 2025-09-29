@@ -168,15 +168,14 @@ x0_vec = 1 ./ [3.0,1.8,1.2,0.95,0.8,0.7,0.6,0.5,0.43,0.38]
 For each temperature x0 we can now convert the numerical values of the moments in the list m0 to the continued fraction parameters $\delta_{\mathbf{k},r}$ shown in the middle panel as dots.
 ```julia
 δ_vec,r_vec = fromMomentsToδ(m0_vec[x0_pos])
-δ_vec_ext = extrapolate_δvec(δ_vec,r_max,r_max,4000,true)
 ```
 
-The second line provides the linear extrapolation of the $\delta_{\mathbf{k},r}$ for $r>3=r_{max}$ using a linear function through the origin and $\delta_{\mathbf{k},3}$ up to $r_{max}^{\prime}=4000$ (this is controlled by the last four arguments and shown by the straight lines in the figure, middle panel). Finally, we obtain the DSF $JS(\mathbf{k},\omega)$ for a vector of dimensionless energies $w=\omega/J$:
+Finally, we obtain the DSF $JS(\mathbf{k},\omega)$ for a vector of dimensionless energies $w=\omega/J$. We use linear extrapolation of the $\delta_{\mathbf{k},r}$ for $r>3=r_{max}$ using a linear function through the origin and $\delta_{\mathbf{k},3}$ (straight lines in the middle panel). This particular choice of termination function for the continued fraction is controlled by the arguments of the extrapolation function. 
 ```julia
 w_vec = collect(0.0:0.02:3.7)
-JSw_vec = [JS(δ_vec_ext,1.0*x0,w,0.02) for w in w_vec]
+JSw_vec = [JSwithTerminator(δ_vec,x0,w,get_extrapolation_params(δ_vec,r_max,r_max,true)) for w in w_vec]
 ```
-Here the extrapolated vector of $\delta_{\mathbf{k},r}$ is used and the broadening $\eta=0.02$. The result for all temperatures $1/x_{0}$ is shown in the right panel.
+The result for all temperatures $1/x_{0}$ is shown in the right panel.
 <p align="center"><img src="tutorialFigures/Triangular_DSF_kM.jpg" width="85%"/></p>
 
 ### Dynamic structure factor (DSF): k-path through BZ
