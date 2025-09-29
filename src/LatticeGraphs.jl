@@ -302,12 +302,15 @@ Generate a lattice where all sites are at most L steps away from center sites.
 
 # Returns
 - `Dyn_HTE_Lattice`: A structure containing the modified lattice, its graph 
-  representation, and identified center sites
+  representation, and identified center sites. See [`Dyn_HTE_Lattice`](@ref).
 
 # Description
 Creates a finite lattice centered around a reference site(s), including only
 sites that are within L steps (graph distance) from the center. For a chain
 lattice, a shortcut implementation is used with the middle site as center.
+
+Uses [`get_finite_Lattice`](@ref) to generate the initial lattice.
+To implement additional geometries, modify the `get_finite_Lattice` function.
 
 # Examples
 ```julia

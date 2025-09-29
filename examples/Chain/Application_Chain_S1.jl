@@ -115,7 +115,7 @@ k_vec = vcat(vcat((0.0001,0.0),[(k*pi,0.0) for k in 0:k_step_size:2][2:end-1] ),
 w_vec = collect(-3:w_step_size:3)
 
 #calculate the spin structure factor for the given k and ω 
-@time JSkw_mat = get_JSkw_mat("u_pade",x,k_vec,w_vec,c_iipDyn_mat,hte_lattice,r_min=3,r_max=3,f=0.48);
+@time JSkw_mat = get_JSkw_mat("u_pade",x,k_vec,w_vec,c_iipDyn_mat,hte_lattice,r_min=2,r_max=3,f=0.48);
 
 #plot the result
 fig = CairoMakie.Figure(size=(400,400),fontsize=20);

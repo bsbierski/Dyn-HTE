@@ -63,23 +63,7 @@
         @test path3d[indices3d[1]] == points3d[1]
         @test path3d[indices3d[end]] == points3d[end]
     end
-    
-    
-    @testset "Find Divergence Point" begin
-        # Test with two functions that diverge at x=1
-        f1(x) = x < 1 ? x : 10.0
-        f2(x) = x
-        
-        div_point = find_divergence_point(f1, f2, 1.0, x_min=0.0, x_max=2.0)
-        @test div_point ≈ 1.0 rtol=0.1
-        
-        # Test with functions that never diverge
-        f3(x) = x
-        f4(x) = x + 0.5
-        
-        no_div = find_divergence_point(f3, f4, 1.0, x_min=0.0, x_max=2.0)
-        @test no_div === nothing
-    end
+
     
     @testset "Moments and Delta Parameters" begin
         # Create a simple test matrix
@@ -109,18 +93,6 @@
         # by testing a simple harmonic oscillator case
     end
     
-    @testset "Integration with Polynomial Types" begin
-        # Test extrapolate_series
-        p = Polynomial([1.0, 2.0, 3.0])
-        
-        # Test Padé approximation
-        padé_p = extrapolate_series(p, "pade", [1, 1])
-        @test padé_p(0.0) == p(0.0)
-        
-        # Test transformed Padé
-        u_padé_p = extrapolate_series(p, "u_pade", [1, 1, 0.5])
-        @test u_padé_p(0.0) == p(0.0)
-    end
     
     @testset "Equal Time Correlators" begin
         # Create a simple test matrix

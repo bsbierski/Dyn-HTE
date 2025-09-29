@@ -6,7 +6,7 @@ is_simple_isomorphic(gG1::GraphG, gG2::GraphG) -> Bool
 Check if the underlying simple graphs of two GraphG objects are isomorphic.
 
 # Arguments
-- `gG1::GraphG`: First graph with external legs
+- `gG1::GraphG`: First graph with external legs. See [`GraphG`](@ref).
 - `gG2::GraphG`: Second graph with external legs
 
 # Returns
@@ -62,35 +62,62 @@ end
 #@save data_dir()*"/GraphFiles/unique_gG_vec_0.jld2" vector
 
 """
-    give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}}) -> Vector{Any}
+    give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}}) -> unique_Graphs
 
-Load or create a data structure that groups graphs by their underlying simple graph structure.
+Process graphs to identify unique topological representatives and group equivalent graphs.
 
 # Arguments
-- `gG_vec::Vector{Vector{GraphG}}`: Nested vector of graphs with external legs by order
+- `gG_vec::Vector{Vector{GraphG}}`: Nested vector of graphs with external legs organized by order
 
 # Returns
-- `Vector{Any}`: Structure containing unique graph representatives and related graphs
+- `unique_Graphs`: Structure containing unique graph representatives and their equivalent graphs.
+  See [`unique_Graphs`](@ref) for the complete structure definition.
 
 # Description
-Processes a collection of graphs to identify those with equivalent underlying
-simple graph structure, grouping them together for efficient processing.
-The resulting structure has the form:
-```
-[maxorder,
- [ 
-   [gG, [gG_index_1, gG_index_2, ...], dist],
-   ...
- ]]
-```
-Where:
-- `maxorder` is the highest order processed
-- `gG` is a representative graph
-- `gG_index_*` are indices of equivalent graphs with structure [order+1, index, symmetryfactor, is_symmetric]
-- `dist` is the graph distance between external legs
+This function processes a collection of `GraphG` objects to identify those with equivalent underlying
+simple graph topology (ignoring edge weights), grouping them together for efficient
+computation. This optimization is crucial for embedding calculations, as graphs with
+the same topology have identical embedding factors.
 
-# Note
-Results are cached to disk to avoid repeated computation.
+The function creates a `unique_Graphs` structure containing:
+- `max_order::Int`: The highest order processed
+- `graphs::Vector{unique_Graph}`: Array of unique graph representatives
+
+Each `unique_Graph` contains:
+- `ref_graph::GraphG`: A representative graph from the equivalence class
+- `distance::Int`: Graph distance between external vertices
+- `gG_vec::Vector{gG_properties}`: Properties of all equivalent graphs
+
+The function implements caching:
+1. First attempts to load precomputed results from disk
+2. If not found, loads results for one order lower and extends incrementally
+3. Progress is saved to disk to avoid recomputation
+
+For each new graph, the algorithm:
+1. Checks if it's topologically equivalent to any existing unique representative using [`is_simple_isomorphic`](@ref)
+2. If equivalent, adds its `gG_properties` to that representative's group
+3. If unique, creates a new `unique_Graph` entry with distance information
+
+# Performance Notes
+- Processes graphs in batches of 1000 with progress reporting
+- Results are cached to `/GraphFiles/unique_gG_vec_<maxorder>.jld2`
+
+# Examples
+```julia
+# Process all graphs up to order 10
+unique_graphs = give_unique_gG_vec(all_graphs_by_order)
+@assert unique_graphs isa unique_Graphs
+
+# Use in embedding calculations
+coeffs = Calculate_Correlator_fast(lattice, i, j, 10, unique_graphs, graph_coeffs)
+```
+
+# See Also
+- [`unique_Graphs`](@ref): The returned data structure
+- [`unique_Graph`](@ref): Individual equivalence classes of graphs
+- [`gG_properties`](@ref): Properties stored for each equivalent graph
+- [`is_simple_isomorphic`](@ref): Determines topological equivalence between graphs
+- [`Calculate_Correlator_fast`](@ref): Uses unique graph structure for efficient correlator calculation
 """
 function give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}})
 
@@ -146,7 +173,7 @@ function give_unique_gG_vec(gG_vec::Vector{Vector{GraphG}})
 end
 
 """
-    give_unique_gG_vec(max_order::Int) -> Vector{Any}
+    give_unique_gG_vec(max_order::Int) -> unique_Graphs
 
 Load precomputed unique graph representatives up to the specified maximum order.
 
@@ -154,12 +181,31 @@ Load precomputed unique graph representatives up to the specified maximum order.
 - `max_order::Int`: Maximum order of graphs to load
 
 # Returns
-- `Vector{Any}`: Structure containing unique graph representatives and related graphs
+- `unique_Graphs`: Structure containing unique graph representatives and their equivalent graphs.
+  See [`unique_Graphs`](@ref) for the complete structure definition.
 
 # Description
-Attempts to load the precomputed unique graph structure from disk for the specified
-maximum order. If the exact file isn't found, it may attempt to combine partial files
-for higher orders.
+Loads precomputed `unique_Graphs` structures from disk for the specified maximum order.
+This function provides access to cached results from previous computations, avoiding
+the need to reprocess large collections of `GraphG` objects.
+
+The returned `unique_Graphs` structure contains:
+- `max_order::Int`: Maximum order of graphs in the collection  
+- `graphs::Vector{unique_Graph}`: Array of unique graph representatives
+
+Each `unique_Graph` in the collection provides:
+- `ref_graph::GraphG`: Representative graph for the equivalence class
+- `distance::Int`: Graph distance between external vertices
+- `gG_vec::Vector{gG_properties}`: Properties of all graphs equivalent to the representative.
+
+The function handles several scenarios:
+1. **Direct load**: If `unique_gG_vec_<max_order>.jld2` exists, loads it directly
+2. **Error handling**: Throws `ArgumentError` if no suitable file is found
+
+# File Structure
+The function looks for files in the pattern:
+- `GraphFiles/unique_gG_vec_<order>.jld2` for most orders
+- `GraphFiles/unique_gG_vec_12_<part>.jld2` for order 12 parts (contains `unique_graphs_12_part`)
 
 # Throws
 - `ArgumentError`: If no suitable graph file is available for the requested order
@@ -168,7 +214,29 @@ for higher orders.
 ```julia
 # Load unique graph structure up to order 10
 unique_graphs = give_unique_gG_vec(10)
+@assert unique_graphs isa unique_Graphs
+@assert unique_graphs.max_order == 10
+
+# Handle the special case of order 12 (automatically combines parts)
+unique_graphs_12 = give_unique_gG_vec(12)
+
+# Access individual unique graphs
+for unique_graph in unique_graphs.graphs
+    ref = unique_graph.ref_graph        # GraphG representative
+    dist = unique_graph.distance        # Int distance
+    props = unique_graph.gG_vec        # Vector{gG_properties}
+end
+
+# Use in correlator calculations
+coeffs = Calculate_Correlator_fast(lattice, i, j, max_order, unique_graphs, coeffs)
 ```
+
+# See Also
+- [`unique_Graphs`](@ref): The returned data structure
+- [`unique_Graph`](@ref): Individual equivalence classes within the structure  
+- [`gG_properties`](@ref): Properties stored for equivalent graphs
+- [`give_unique_gG_vec(::Vector{Vector{GraphG}})`](@ref): Processes raw graphs to create unique structure
+- [`Calculate_Correlator_fast`](@ref): Main consumer of unique graph structures
 """
 function give_unique_gG_vec(max_order::Int)
     # try to load the file. if it does not exist try to load the file of one less order
@@ -201,11 +269,24 @@ end
 
 Calculate the embedding factor of a graph with external legs into a lattice.
 
+# Mathematical Background
+The lattice coefficients in the high-temperature expansion are related to the embedding 
+factors and graph coefficients through:
+```math
+c_{ii'}^{(n)}(i\\nu_m) = \\sum_{g^{(n)}} e(\\mathcal{L},i,i',g^{(n)}) \\cdot c_{g^{(n)}}(i\\nu_m)
+```
+where:
+- ``c_{ii'}^{(n)}(i\\nu_m)`` are the lattice coefficients for sites i, i' at order n
+- ``e(\\mathcal{L},i,i',g^{(n)})`` is the embedding factor (computed by this function)
+- ``c_{g^{(n)}}(i\\nu_m)`` are the coefficients on individual graphs g^{(n)}
+
+This function computes the embedding factor ``e(ℒ,i,i',g^{(n)})`` for a specific graph.
+
 # Arguments
-- `LL::SimpleGraph{Int}`: The lattice graph
-- `j::Int`: First external site in the lattice
-- `jp::Int`: Second external site in the lattice
-- `gG::GraphG`: Graph with external legs to embed
+- `LL::SimpleGraph{Int}`: The lattice graph ℒ
+- `j::Int`: First external site in the lattice (i)
+- `jp::Int`: Second external site in the lattice (i')
+- `gG::GraphG`: Graph g^{(n)} with external legs to embed
 
 # Returns
 - `Int`: Number of ways the graph can be embedded with j, jp as external sites
@@ -213,7 +294,9 @@ Calculate the embedding factor of a graph with external legs into a lattice.
 # Description
 Counts the number of isomorphic subgraphs in the lattice that match the given
 graph structure, with the constraint that the external legs must map to the
-specified lattice sites j and jp.
+specified lattice sites j and jp. This embedding factor quantifies how many
+ways a particular graph topology can be realized in the lattice with the
+specified external connections.
 
 # Note
 This is an optimized version that directly counts subgraph isomorphisms.
@@ -236,31 +319,40 @@ end
                              C_Dict_vec::Vector{Vector{Vector{Rational{Int128}}}}) 
                              -> Vector{Vector{Rational{Int128}}}
 
-Calculate the coefficients of (-x)^n for TG_ii'(iν_m) using optimized embedding calculations.
+Calculate the coefficients of ``(-x)^n`` for ``TG_{j_1 j_2}(iν_m)`` using optimized embedding calculations.
+
+# Mathematical Background
+The thermal Green's function is expanded in powers of x = J/T as:
+```math
+TG_{j_1 j_2}(i\\nu_m) = \\sum_{n=0}^\\infty (-x)^n c_{j_1 j_2}^{(n)}(i\\nu_m), \\quad (x = \\frac{J}{T})
+```
+This function computes the coefficients ``c_{j_1 j_2}^{(n)}(iν_m)`` for the high-temperature series expansion.
 
 # Arguments
 - `L::SimpleGraph{Int}`: The lattice graph
-- `ext_j1::Int`: First external site in the lattice
-- `ext_j2::Int`: Second external site in the lattice
-- `max_order::Int`: Maximum expansion order to calculate
+- `ext_j1::Int`: First external site in the lattice 
+- `ext_j2::Int`: Second external site in the lattice 
+- `max_order::Int`: Maximum expansion order n to calculate
 - `gG_vec_unique::unique_Graphs`: Structure of unique graph representatives
 - `C_Dict_vec::Vector{Vector{Vector{Rational{Int128}}}}`: Coefficients for each graph
 
 # Returns
-- `Vector{Vector{Rational{Int128}}}`: Array of coefficients for each order and power of Δ
+- `Vector{Vector{Rational{Int128}}}`: Array of coefficients for each order and power of  ``\\Delta = \\frac{1}{\\nu_m}``
 
 # Description
 Computes the coefficients of the high-temperature series expansion for a correlation
 function between sites ext_j1 and ext_j2. Each order returns a vector representing 
 prefactors of [δω, Δ², Δ⁴, Δ⁶, Δ⁸, Δ¹⁰, Δ¹², Δ¹⁴, Δ¹⁶, Δ¹⁸].
 
-The computation uses preprocessing of unique graph structures to minimize redundant 
-calculations of embedding factors.
+The computation uses preprocessing of [`unique_Graphs`](@ref) structures to minimize redundant 
+calculations of embedding factors. This optimization groups topologically equivalent graphs
+into [`unique_Graph`](@ref) equivalence classes, allowing embedding factors to be computed
+only once per unique topology via [`e_fast`](@ref).
 
 # Examples
 ```julia
-# Calculate correlation coefficients between sites 1 and 5 up to order 10
-coeffs = Calculate_Correlator_fast(lattice_graph, 1, 5, 10, unique_graphs, graph_coeffs)
+ # Calculate correlation coefficients between sites 1 and 5 up to order 10
+ coeffs = Calculate_Correlator_fast(lattice_graph, 1, 5, 10, unique_graphs, graph_coeffs)
 ```
 """
 function Calculate_Correlator_fast(L::SimpleGraph{Int},ext_j1::Int,ext_j2::Int,max_order::Int,gG_vec_unique::unique_Graphs,C_Dict_vec::Vector{Vector{Vector{Rational{Int128}}}})::Vector{Vector{Rational{Int128}}}

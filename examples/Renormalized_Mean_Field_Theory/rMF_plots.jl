@@ -3,7 +3,7 @@
 ###############################################
 using DynHTE
 using CairoMakie
-using Symbolics, TaylorSeries,Polynomials
+using Symbolics, TaylorSeries,Polynomials, LinearAlgebra
 
 ###############################################
 # Load Lattice Data

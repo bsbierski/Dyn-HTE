@@ -28,6 +28,10 @@ g = sym_element([-1.0 0.0; 0.0 1.0], [1.0, 0.0])
 # Create a 90-degree rotation around origin
 g = sym_element([0.0 -1.0; 1.0 0.0], [0.0, 0.0])
 ```
+
+# See Also
+- [`sym_group`](@ref): Groups of symmetry elements
+
 """
 mutable struct sym_element
     gMat    ::Matrix{Float64}
@@ -51,7 +55,7 @@ Represents a symmetry group consisting of a collection of symmetry elements.
 
 # Fields
 - `n_elements::Int`: Number of symmetry elements in the group
-- `elements::Vector{sym_element}`: Vector of symmetry elements
+- `elements::Vector{sym_element}`: Vector of symmetry elements. See [`sym_element`](@ref).
 
 # Examples
 ```julia
@@ -112,8 +116,8 @@ end
 Check if symmetry element `g` is part of symmetry group `G`.
 
 # Arguments
-- `g::sym_element`: The symmetry element to check
-- `G::sym_group`: The symmetry group to search in
+- `g::sym_element`: The symmetry element to check. See [`sym_element`](@ref).
+- `G::sym_group`: The symmetry group to search in. See [`sym_group`](@ref).
 
 # Returns
 - `Bool`: `true` if `g` is found in `G`, `false` otherwise
@@ -124,6 +128,7 @@ if is_element(g, G)
     println("Element is in the group")
 end
 ```
+
 """
 function is_element(g::sym_element, G::sym_group)::Bool
     for g2 in G.elements
@@ -170,13 +175,15 @@ end
 Modifies `g.gVec` so it's within the unit cell defined by translation group `T`.
 
 # Arguments
-- `g::sym_element`: Symmetry element to modify
-- `T::translation_group`: Translation group defining the unit cell
+- `g::sym_element`: Symmetry element to modify. See [`sym_element`](@ref).
+- `T::translation_group`: Translation group defining the unit cell. See [`translation_group`](@ref).
 
 # Description
 This ensures the translation vector of g is reduced modulo translations in T,
 bringing it to the canonical form within the unit cell.
 
+# See Also
+- [`floor_tol`](@ref): Used internally for tolerance-aware floor operations
 """
 function mod!(g::sym_element, T::translation_group)
     nvec = floor_tol.(inv(T.basis) * g.gVec) # integer part
@@ -190,8 +197,8 @@ end
 Compare two symmetry elements for equality.
 
 # Arguments
-- `g1::sym_element`: First symmetry element
-- `g2::sym_element`: Second symmetry element
+- `g1::sym_element`: First symmetry element. See [`sym_element`](@ref).
+- `g2::sym_element`: Second symmetry element. See [`sym_element`](@ref).
 
 # Returns
 - `Bool`: `true` if elements are approximately equal (within tolerance 1e-12)
@@ -199,6 +206,7 @@ Compare two symmetry elements for equality.
 # Note
 Equality is determined by comparing both the transformation matrix and 
 translation vector using `isapprox` with a tolerance of 1e-12.
+
 """
 function ==(g1::sym_element, g2::sym_element)::Bool
     return isapprox(g1.gVec, g2.gVec; atol = 1e-12)&& isapprox(g1.gMat,g2.gMat; atol = 1e-12)
@@ -210,8 +218,8 @@ end
 Compare two symmetry groups for equality.
 
 # Arguments
-- `G1::sym_group`: First symmetry group
-- `G2::sym_group`: Second symmetry group
+- `G1::sym_group`: First symmetry group. See [`sym_group`](@ref).
+- `G2::sym_group`: Second symmetry group. See [`sym_group`](@ref).
 
 # Returns
 - `Bool`: `true` if groups contain the same elements (possibly in different order)
@@ -219,6 +227,9 @@ Compare two symmetry groups for equality.
 # Description
 Two groups are equal if they have the same number of elements and
 every element in G1 is also found in G2 (implying the converse as well).
+
+# See Also
+- [`is_element`](@ref): Used internally to check element membership
 """
 function ==(G1::sym_group, G2::sym_group)::Bool
     if G1.n_elements == G2.n_elements
@@ -235,7 +246,7 @@ end
 Compute the n-th power of a symmetry element by repeated composition.
 
 # Arguments
-- `g::sym_element`: Symmetry element
+- `g::sym_element`: Symmetry element. See [`sym_element`](@ref).
 - `n::Int`: Power to raise the element to
 
 # Returns
@@ -251,6 +262,7 @@ rot180 = rot90^2
 # Note
 - When `n = 0`, returns the identity element
 - For `n > 0`, composes `g` with itself `n` times
+
 """
 function ^(g::sym_element, n::Int)::sym_element
     gout = g
@@ -270,8 +282,8 @@ end
 Returns the identity element of a symmetry element or group.
 
 # Arguments
-- `g::sym_element`: Reference symmetry element
-- `G::sym_group`: Symmetry group
+- `g::sym_element`: Reference symmetry element. See [`sym_element`](@ref).
+- `G::sym_group`: Symmetry group. See [`sym_group`](@ref).
 
 # Returns
 - `sym_element`: Identity element (identity matrix and zero translation) with same dimension as the input
@@ -283,6 +295,7 @@ g = sym_element([0 1; -1 0], [1.0, 2.0])  # 2D rotation
 id = neutral_elem(g)  # 2D identity element
 
 ```
+
 """
 function neutral_elem(g::sym_element)::sym_element
     d = length(g.gVec)
@@ -299,8 +312,8 @@ end
 Group operation: composition of symmetry elements.
 
 # Arguments
-- `g2::sym_element`: Right-hand symmetry element
-- `g1::sym_element`: Left-hand symmetry element
+- `g2::sym_element`: Right-hand symmetry element. See [`sym_element`](@ref).
+- `g1::sym_element`: Left-hand symmetry element. See [`sym_element`](@ref).
 
 # Returns
 - `sym_element`: Composition result (g2 ∘ g1)
@@ -317,6 +330,10 @@ g1 = sym_element([0.0 -1.0; 1.0 0.0], [0.0, 0.0])  # Rotation
 g2 = sym_element([1.0 0.0; 0.0 1.0], [1.0, 0.0])   # Translation
 g3 = g2 ∘ g1  # Rotation followed by translation
 ```
+
+# See Also
+- [`^`](@ref): Power operation that uses composition internally
+- [`inverse`](@ref): Related group operation
 """
 function ∘(g2::sym_element, g1::sym_element)::sym_element
     gMat = g2.gMat * g1.gMat
@@ -330,8 +347,8 @@ end
 Adds symmetry element `g` to group `G` and updates its element count.
 
 # Arguments
-- `g::sym_element`: Element to add
-- `G::sym_group`: Group to be modified
+- `g::sym_element`: Element to add. See [`sym_element`](@ref).
+- `G::sym_group`: Group to be modified. See [`sym_group`](@ref).
 
 # Effects
 - Adds `g` to G.elements
@@ -349,7 +366,7 @@ end
 Returns the inverse of symmetry element `g` such that g ∘ g⁻¹ = e.
 
 # Arguments
-- `g1::sym_element`: Symmetry element to invert
+- `g1::sym_element`: Symmetry element to invert. See [`sym_element`](@ref).
 
 # Returns
 - `sym_element`: Inverse element g⁻¹
@@ -365,6 +382,7 @@ g = sym_element([0.0 -1.0; 1.0 0.0], [1.0, 0.0])  # Rotation + translation
 g_inv = inverse(g)  # Inverse transformation
 g_inv ∘ g == neutral_elem(g)  # Returns True
 ```
+
 """
 function inverse(g1::sym_element)
     gMat = transpose(g1.gMat)
@@ -378,8 +396,8 @@ end
 Computes the commutator of two symmetry elements.
 
 # Arguments
-- `g1::sym_element`: First symmetry element
-- `g2::sym_element`: Second symmetry element
+- `g1::sym_element`: First symmetry element. See [`sym_element`](@ref).
+- `g2::sym_element`: Second symmetry element. See [`sym_element`](@ref).
 
 # Returns
 - `sym_element`: Commutator g2⁻¹ ∘ g1⁻¹ ∘ g2 ∘ g1
@@ -396,6 +414,9 @@ if comm == neutral_elem(g1)
     println("g1 and g2 commute")
 end
 ```
+
+# See Also
+- [`inverse`](@ref): Used internally to compute element inverses
 """
 function commutator(g1::sym_element, g2::sym_element)
     g1_inv = inverse(g1)
@@ -410,8 +431,8 @@ end
 Finds the smallest positive integer `n` such that `g^n = identity`.
 
 # Arguments
-- `g::sym_element`: Symmetry element
-- `T::translation_group`: Translation group for modular arithmetic
+- `g::sym_element`: Symmetry element. See [`sym_element`](@ref).
+- `T::translation_group`: Translation group for modular arithmetic. See [`translation_group`](@ref).
 
 # Returns
 - `Int`: Order of the element
@@ -431,6 +452,9 @@ T = translation_group([(1.0, 0.0), (0.0, 1.0)])
 rot60 = sym_element([0.5 -sqrt(3)/2; sqrt(3)/2 0.5], [0.0, 0.0])
 order = find_order(rot60, T)  # Should be 6
 ```
+
+# See Also
+- [`neutral_elem`](@ref): Identity element used for comparison
 """
 function find_order(g::sym_element,T::translation_group)::Int
     e = neutral_elem(g)
@@ -458,8 +482,8 @@ end
 Generates an overcomplete basis of symmetry elements that is closed under commutation.
 
 # Arguments
-- `basis::sym_group`: Initial set of symmetry elements
-- `T::translation_group`: Translation group for modular arithmetic
+- `basis::sym_group`: Initial set of symmetry elements. See [`sym_group`](@ref).
+- `T::translation_group`: Translation group for modular arithmetic. See [`translation_group`](@ref).
 
 # Returns
 - `sym_group`: Group containing all original elements plus necessary commutators
@@ -471,6 +495,11 @@ commutators until the group is closed under commutation.
 
 # Throws
 - Error if group size exceeds 100 elements, which may indicate an incorrect setup
+
+# See Also
+- [`commutator`](@ref): Function used to compute element commutators
+- [`is_element`](@ref): Used to check if commutators are already in the group
+- [`add_element!`](@ref): Used to add new commutators to the group
 """
 function generate_closed_basis(basis::sym_group, T::translation_group)::sym_group
     Gnew = sym_group(copy(basis.elements))
@@ -504,8 +533,8 @@ end
 Generates the full symmetry group from a given basis of symmetry elements.
 
 # Arguments
-- `basis::sym_group`: Initial elements to generate from
-- `T::translation_group`: Translation group for modular arithmetic
+- `basis::sym_group`: Initial elements to generate from. See [`sym_group`](@ref).
+- `T::translation_group`: Translation group for modular arithmetic. See [`translation_group`](@ref).
 
 # Returns
 - `sym_group`: Complete symmetry group containing all generated elements
@@ -527,6 +556,10 @@ basis = sym_group([neutral_elem(C4), C4, σᵥ])
 T = translation_group([(1.0, 0.0), (0.0, 1.0)])
 full_group = generate_symmetry_group(basis, T)  # D4 group with 8 elements
 ```
+
+# See Also
+- [`generate_closed_basis`](@ref): First step in group generation
+- [`find_order`](@ref): Used to determine element orders for power computation
 """
 function generate_symmetry_group(basis::sym_group, T::translation_group)::sym_group
     # First compute a commutation-closed basis
@@ -584,8 +617,8 @@ end
 Checks whether two bonds are equal.
 
 # Arguments
-- `bond1::bond`: First bond
-- `bond2::bond`: Second bond
+- `bond1::bond`: First bond. See [`bond`](@ref).
+- `bond2::bond`: Second bond. See [`bond`](@ref).
 
 # Returns
 - `Bool`: `true` if bonds are equivalent, `false` otherwise
@@ -603,6 +636,7 @@ b1 = bond([0.0, 0.0], [1.0, 0.0])
 b2 = bond([1.0, 0.0], [0.0, 0.0])
 b1 == b2  # Returns true
 ```
+
 """
 function ==(bond1::bond, bond2::bond)::Bool
     if isapprox(bond1.r1, bond2.r1; atol = 1e-12) && isapprox(bond1.r2, bond2.r2; atol = 1e-12)
@@ -620,7 +654,7 @@ end
 Flips the order of endpoints in a bond, swapping r1 and r2.
 
 # Arguments
-- `b::bond`: Bond to be flipped (modified in place)
+- `b::bond`: Bond to be flipped (modified in place). See [`bond`](@ref).
 
 # Description
 This operation reverses the direction of the bond without changing
@@ -631,6 +665,8 @@ its geometric meaning.
 b = bond([0.0, 0.0], [1.0, 0.0])
 flip_bond!(b)  # Now b is bond([1.0, 0.0], [0.0, 0.0])
 ```
+
+
 """
 function flip_bond!(b::bond)
     r1 =  b.r1
@@ -647,8 +683,8 @@ function flip_bond!(b::bond)
 Applies a symmetry operation `g` to a bond `b`.
 
 # Arguments
-- `g::sym_element`: Symmetry element to apply
-- `b::bond`: Bond to transform
+- `g::sym_element`: Symmetry element to apply. See [`sym_element`](@ref).
+- `b::bond`: Bond to transform. See [`bond`](@ref).
 
 # Returns
 - `bond`: Transformed bond with both endpoints mapped by g
@@ -665,6 +701,7 @@ b = bond([0.0, 0.0], [1.0, 0.0])
 g = sym_element([-1 0; 0 1], [0.0, 0.0])
 b_reflected = g ∘ b  # Bond from origin to (-1,0)
 ```
+
 """
 function ∘(g::sym_element, b::bond)::bond
     r1new = g.gMat * b.r1 + g.gVec
@@ -678,14 +715,17 @@ end
 Translates a bond so that the first endpoint lies in the first unit cell.
 
 # Arguments
-- `b::bond`: Bond to be modified in place
-- `T::translation_group`: Translation group defining the unit cell
-- `unitcell::UnitCell`: Unit cell information
+- `b::bond`: Bond to be modified in place. See [`bond`](@ref).
+- `T::translation_group`: Translation group defining the unit cell. See [`translation_group`](@ref).
+- `unitcell::UnitCell`: Unit cell information. See [`UnitCell`](@ref).
 
 # Description
 Shifts both endpoints of the bond by the same translation vector,
 such that r1 lies within the first unit cell. This preserves the
 relative position between r1 and r2 while normalizing the bond position.
+
+# See Also
+- [`is_approximately_integer_vector`](@ref): Used to check if translation vectors are integer-valued
 """
 function mod!(b::bond, T::translation_group, unitcell::UnitCell)
     nvec = b.r1
@@ -728,13 +768,15 @@ end
 Constructs a matrix of all bonds between a set of center_sites and all sites in the lattice.
 
 # Arguments
-- `lattice::Lattice`: Lattice containing site positions
+- `lattice::Lattice`: Lattice containing site positions. See [`Lattice`](@ref).
 - `center_sites`: Indices of center_sites
 
 # Returns
 - `Matrix{bond}`: Matrix where each row corresponds to a center_sites, 
   and each column to a target site in the lattice
 
+# See Also
+- [`bond`](@ref): Structure representing connections between lattice sites
 """
 function bond_matrix(lattice::Lattice, center_sites)
     mat = Matrix{bond}(undef, length(center_sites), lattice.length)
@@ -755,10 +797,10 @@ end
 Reduces the full list of bonds in the lattice using the provided symmetry group. 
 
 # Arguments
-- `lattice::Lattice`: The lattice object with site positions
+- `lattice::Lattice`: The lattice object with site positions. See [`Lattice`](@ref).
 - `center_sites`: Indices of reference sites to form initial bonds
-- `G::sym_group`: Symmetry group to apply for reduction
-- `T::translation_group`: Translation group for normalizing coordinates
+- `G::sym_group`: Symmetry group to apply for reduction. See [`sym_group`](@ref).
+- `T::translation_group`: Translation group for normalizing coordinates. See [`translation_group`](@ref).
 
 # Returns
 - `reduction_dict`: Dictionary mapping each full bond index to its representative bond index
@@ -775,6 +817,11 @@ This reduces computational overhead by eliminating redundant calculations.
 # Reduce bonds using symmetry
 red_dict, unique_bonds, pos_dict = sym_reduced_lattice(lattice, [1], point_group, T)
 ```
+
+# See Also
+- [`bond_matrix`](@ref): Creates the initial matrix of all bonds
+- [`flip_bond!`](@ref): Used to consider bond direction equivalence
+- [`mod!`](@ref): Used to normalize bond positions to the unit cell
 """
 function sym_reduced_lattice(lattice::Lattice, center_sites, G::sym_group, T::translation_group)
     bmat = bond_matrix(lattice, center_sites)             # Matrix of all bonds
@@ -845,8 +892,8 @@ Modify this function to add new lattice types.
 - `geometry::String`: Name of the lattice geometry
 
 # Returns
-- `sym_group`: Symmetry group for the specified lattice
-- `translation_group`: Translation group for the specified lattice
+- `sym_group`: Symmetry group for the specified lattice. See [`sym_group`](@ref).
+- `translation_group`: Translation group for the specified lattice. See [`translation_group`](@ref).
 
 # Supported Geometries
 - "chain": 1D chain with reflection symmetry
@@ -859,6 +906,9 @@ Modify this function to add new lattice types.
 # Throws
 - Error if the requested geometry is not implemented
 
+# See Also
+- [`generate_symmetry_group`](@ref): Used to generate full groups from basis elements
+- [`shiftRotation`](@ref): Used to create rotations around specific points (e.g., kagome)
 """
 function getSymmetryGroup(geometry::String)
 
@@ -959,6 +1009,9 @@ R = [0 -1; 1 0]  # 90° rotation matrix
 p = [1.0, 0.0]   # Rotation center
 sym = shiftRotation(R, p) # outputs sym_element([0.0 -1.0; 1.0 0.0], [1.0, -1.0])
 ```
+
+# See Also
+- [`getSymmetryGroup`](@ref): Uses this function for geometries like kagome
 """
 function shiftRotation(R::Matrix{<:Number}, p::Vector{<:Number})::sym_element
    return  sym_element(R,p-R*p)

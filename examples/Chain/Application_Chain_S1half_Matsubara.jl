@@ -1,5 +1,6 @@
-using JLD2,DelimitedFiles,HDF5,Polynomials
+using JLD2,DelimitedFiles,HDF5,Polynomials,Symbolics    
 using DynHTE
+
 include("../plotConventions.jl")
 
 ### load graph evaluations and prepare lattice  
@@ -38,6 +39,7 @@ end
 x_vec = collect(0:0.05:8.15)
 
 ###### plot Matsubara correlator in r-space
+
 if true
     ## real space i-i'=di
     di_vec = [0,1,2]
@@ -98,9 +100,42 @@ if true
         if m==0 Plots.annotate!(plt_vec[m_pos],x_vec_QMC[3]+0.5,TGiip_m_QMC[3,1+di,1+m]+0.02,Plots.text("i-i'="*string(di),7,color_vec[di+1])) end
     end
 
-    ### integrated-differential approximants
+### integrated-differential approximants
+
     if false
-        using DifferentialEquations
+
+    using DifferentialEquations
+function get_intDiffApprox(p::Polynomial,x_vec::Vector{Float64},M::Int,L::Int,N::Int)
+   
+    @assert M+L+N+2 <= Polynomials.degree(p)
+    pp= Polynomials.derivative(p)
+    @variables x
+
+    f = Symbolics.series(p.coeffs,x)
+    fp =Symbolics.series(pp.coeffs,x)
+
+    cs, = @variables c[1:(M+L+N+2)]
+    Q = Symbolics.series([c[k] for k in 1:M+1],x)
+    P = expand(1.0 + x*Symbolics.series([c[k] for k in M+2:M+1+L],x))
+    R = Symbolics.series([c[k] for k in M+2+L:M+L+N+2],x)
+    s = Q * fp + P * f + R
+    eqns = [taylor_coeff(s,x,m) ~ 0 for m in 0:M+L+N+1]
+    res = symbolic_linear_solve(eqns, cs)
+
+    ## solve differential equation
+    function Q_fit(x) return Symbolics.series([res[k] for k in 1:M+1],x) end
+    function P_fit(x) return expand(1.0 + x*Symbolics.series([res[k] for k in M+2:M+1+L],x)) end
+    function R_fit(x) return Symbolics.series([res[k] for k in M+2+L:M+L+N+2],x) end
+
+    g(f, ppp, x) = -(P_fit(x)*f+R_fit(x))/(Q_fit(x))
+    f0 = p(0.0)
+    xspan = (0.0, maximum(x_vec))
+    prob = ODEProblem(g, f0, xspan)
+    sol = DifferentialEquations.solve(prob, Tsit5(), reltol = 1e-8, abstol = 1e-8, saveat=x_vec)
+    return sol.u
+end
+    
+
         for di in di_vec, (m_pos,m) in enumerate(m_vec[1])
 
             p = get_TGiip_m_bare(c_iipDyn_mat,m,12)[center_sites[1]+di,1]

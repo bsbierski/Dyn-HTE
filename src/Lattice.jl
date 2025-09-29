@@ -340,3 +340,4 @@ function LatticeNoPBC(uc::UnitCell{D}, L::NTuple{D,Int}) where D
     # Return lattice
     return lattice
 end
+

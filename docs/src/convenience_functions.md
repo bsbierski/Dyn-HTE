@@ -57,14 +57,9 @@ flipEvenIndexEntries
 
 ```@docs
 get_pade
-get_intDiffApprox
-```
-
-## Variable Transformations
-
-```@docs
 get_p_u
 get_LinearTrafoToCoeffs_u
+extrapolate_series
 ```
 
 
@@ -81,17 +76,9 @@ get_extrapolation_params
 ## Dynamic Structure Factors
 
 ```@docs
-JS
 get_JSkw_mat
 ContFracTerminator
 JSwithTerminator
-```
-
-## Series Extrapolation
-
-```@docs
-extrapolate_series
-find_divergence_point
 ```
 
 

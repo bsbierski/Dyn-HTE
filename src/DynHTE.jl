@@ -58,9 +58,9 @@ export
     
     # Approximation methods
     get_pade,
-    get_intDiffApprox,
     get_p_u,
     get_LinearTrafoToCoeffs_u,
+    extrapolate_series,
     
     # Brillouin zone and k-space functions
     create_brillouin_zone_path,
@@ -77,7 +77,6 @@ export
     ContFracTerminator,
     get_extrapolation_params,
     JSwithTerminator,
-    JS,
     get_JSkw_mat,
     extrapolate_series,
     find_divergence_point,
