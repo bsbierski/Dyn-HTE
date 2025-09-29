@@ -16,11 +16,6 @@ Dyn_HTE_Graphs
 
 ```@docs
 get_c_iipDyn_mat
-```
-
-## Equal-Time Correlations
-
-```@docs
 get_c_iipEqualTime_mat
 ```
 

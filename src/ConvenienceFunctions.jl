@@ -56,7 +56,7 @@ and all sites in the graph.
 # Returns
 - `Array{Matrix{Rational{Int128}}}`: An array where element `[jp,b]` contains the expansion
   coefficients for correlations between site `jp` and basis site `b`. 
-The expansion coefficients themselves are written in a Matrix whose rows indicate orders of ``x = J/T``, and columns correspond to orders in ``\\Delta = 1/\\nu_m``.
+The expansion coefficients themselves are written in a Matrix whose rows indicate orders of ``-x = -J/T``, and columns correspond to Matsubara frequency ``m=0`` (first column) or even powers of ``\\Delta = 1/(2\\pi m)`` (other columns).
 
 # Notes
 - The second method provides significant performance improvements by leveraging lattice symmetries
@@ -161,7 +161,7 @@ end
 Perform frequency summation over real-space dynamic correlators to obtain equal-time correlators.
 
 This function converts dynamic frequency-dependent correlation functions into equal-time
-correlations by performing the appropriate frequency summation with predefined coefficients.
+correlations by performing the appropriate frequency summation with predefined coefficients. This allows to compare with conventional HTE.
 
 # Arguments
 - `c_iipDyn_mat::Matrix{Matrix{Rational{Int128}}}`: Matrix of dynamic correlators where each element 
@@ -986,7 +986,6 @@ m_vec = get_moments_from_c_kDyn(c_kDyn)
 ```
 
 # Notes
-- The function generalizes pattern: m₀=[+1,-1,+1,...], m₂=[+1,-1,+1,...], m₄=[-1,+1,-1,...], etc.
 - The maximum moment order is determined by the size of the input matrix
 - This implementation handles arbitrary-order moments up to r_max = floor(size(c_kDyn)[1]/2)
 
@@ -1020,7 +1019,7 @@ end
     fromMomentsToδ(m_vec::Vector{Float64}) -> (Vector{Float64}, Vector{Float64})
     fromMomentsToδ(m_vec::Vector{Polynomial{Float64, :x}}) -> Vector{Polynomial{Float64}}
 
-Convert moments [m₀, m₂, m₄, ...] to continued fraction parameters [δ₀, δ₁, ...].
+Convert moments [m0, m2, m4, ...] to continued fraction parameters [δ0, δ1, δ2, ...].
 
 This function implements the mathematical transformation from frequency moments to the
 δ parameters used in continued fraction expansions for spectral functions. The resulting
@@ -1117,9 +1116,9 @@ function fromMomentsToδ(m_vec::Vector{Polynomial{Float64, :x}})
 end
 
 """
-    contFrac(s::Number, δ_vec::Vector{Float64}) -> Number
+    contFrac(s::Number, δ_vec::Vector{Float64},a::Float64,b::Float64) -> Number
 
-Evaluate an infinite continued fraction at complex frequency s using δ parameters.
+Evaluate an infinite continued fraction at complex frequency s using δ parameters and terminator function controlled by a,b.
 
 This function recursively evaluates the continued fraction representation of the dynamic
 correlator using the δ parameters from the moment expansion:
