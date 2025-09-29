@@ -116,7 +116,7 @@ k_vec,kticks_positioins = create_brillouin_zone_path(path, Nk)
 ![](tutorialFigures/Triangular_StaticSF.jpg)
 ### Dynamic structure factor at k=M
 
-We now proceed to the DSF defined above. We wish to work at the point ``\mathbf{k}=M`` in momentum space. As a first step we Fourier transform the expansion coefficients ``c_{ii^{\prime}}^{(n)}(i\nu_{m})`` and then compute the HTE series of the moments ``m_{\mathbf{k},2r}(x)`` in ``x`` for ``r=0,1,...,6``:
+We now proceed to the DSF defined above. We wish to work at the point $\mathbf{k}=M$ in momentum space. As a first step we Fourier transform the expansion coefficients $c_{ii^{\prime}}^{(n)}(i\nu_{m})$ and then compute the HTE series of the moments $m_{\mathbf{k},2r}(x)$ in $x$ for $r=0,1,...,6$:
 ```julia
 k,k_label = M,"M"
 c_kDyn = get_c_k(k,c_iipDyn_mat,hte_lattice)
@@ -127,25 +127,23 @@ We normalize the moments as in the left panel of the figure below. This is done 
 poly_x = Polynomial([0,1],:x)
 xm_norm_r = coeffs(poly_x * (m_vec[1+r]/m_vec[1+r](0)))
 ```
-Like for the other quantities obtained from (Dyn-)HTE above, the bare series diverges already for ``x=O(1)`` but the two u-Padés \[7-r,6-r\] and \[6-r,5-r\] (dashed and dotted lines) agree reasonably well down to ``x=4`` for the first four moments ``r=0,1,2,3`` if we choose ``f=0.55``. We continue with these four moments in the following. We warn the reader that the transformation ``u=\mathrm{tanh}(fx)`` shows an unphysical freezing at large ``x \gtrsim 2/f``, so results for larger ``x`` must be considered as unphysical.
+Like for the other quantities obtained from (Dyn-)HTE above, the bare series diverges already for $x=O(1)$ but the two u-Padés [7-r,6-r] and [6-r,5-r] (dashed and dotted lines) agree reasonably well down to $x=4$ for the first four moments $r=0,1,2,3$ if we choose $f=0.55$. We continue with these four moments in the following. We warn the reader that the transformation $u=\mathrm{tanh}(fx)$ shows an unphysical freezing at large $x \gtrsim 2/f$, so results for larger $x$ must be considered as unphysical.
 
 Next we fix a set of particular (inverse) temperatures at which we obtain the moments from the u-Padé approximant [7-r,6-r]. 
 ```julia
 x0_vec = 1 ./ [3.0,1.8,1.2,0.95,0.8,0.7,0.6,0.5,0.43,0.38]
 ```
-For each temperature x0 we can now convert the numerical values of the moments in the list m0 to the continued fraction parameters ``\delta_{\mathbf{k},r}`` shown in the middle panel as dots.
+For each temperature x0 we can now convert the numerical values of the moments in the list m0 to the continued fraction parameters $\delta_{\mathbf{k},r}$ shown in the middle panel as dots.
 ```julia
 δ_vec,r_vec = fromMomentsToδ(m0_vec[x0_pos])
-δ_vec_ext = extrapolate_δvec(δ_vec,r_max,r_max,4000,true)
 ```
 
-The second line provides the linear extrapolation of the ``\delta_{\mathbf{k},r}`` for ``r>3=r_{max}`` using a linear function through the origin and ``\delta_{\mathbf{k},3}`` up to ``r_{max}^{\prime}=4000`` (this is controlled by the last four arguments and shown by the straight lines in the figure, middle panel). Finally, we obtain the DSF ``JS(\mathbf{k},\omega)`` for a vector of dimensionless energies ``w=\omega/J``:
+Finally, we obtain the DSF $JS(\mathbf{k},\omega)$ for a vector of dimensionless energies $w=\omega/J$. We use linear extrapolation of the $\delta_{\mathbf{k},r}$ for $r>3=r_{max}$ using a linear function through the origin and $\delta_{\mathbf{k},3}$ (straight lines in the middle panel). This particular choice of termination function for the continued fraction is controlled by the arguments of the extrapolation function. 
 ```julia
 w_vec = collect(0.0:0.02:3.7)
-JSw_vec = [JS(δ_vec_ext,1.0*x0,w,0.02) for w in w_vec]
+JSw_vec = [JSwithTerminator(δ_vec,x0,w,get_extrapolation_params(δ_vec,r_max,r_max,true)) for w in w_vec]
 ```
-Here the extrapolated vector of ``\delta_{\mathbf{k},r}`` is used and the broadening ``\eta=0.02``. The result for all temperatures ``1/x_{0}`` is shown in the right panel.
-
+The result for all temperatures $1/x_{0}$ is shown in the right panel.
 
 ![](tutorialFigures/Triangular_DSF_kM.jpg)
 
