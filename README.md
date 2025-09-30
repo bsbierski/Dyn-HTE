@@ -1,5 +1,7 @@
 # Dynamic high-temperature expansion for quantum spins (Dyn-HTE) 
 
+[![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://bsbierski.github.io/Dyn-HTE/)
+
 by Ruben Burkard, Benedikt Schneider, Björn Sbierski 
 
 This software allows to compute dynamic spin correlations (also known as dynamic structure factors) of spin-S Heisenberg models in thermal equilibrium via a high-temperature expansion (HTE) of the Matsubara spin-spin correlator. It is currently applicable for $S \leq 1$ models with a single coupling constant $J$, but arbitrary lattice geometry.
@@ -34,9 +36,11 @@ The DynHTE.jl package can be installed by invoking the following command in the 
 Since DynHTE.jl depends on the unregistered package RobustPade it needs to be added first. 
 Due to the size of the precomputed data, this can take a minute. 
 
-## Documenation
+## Documentation
 
-The documentation can currently be hosted locally by running the host_documentation.jl file. 
+The documentation is available online at: https://bsbierski.github.io/Dyn-HTE/
+
+Alternatively, the documentation can be hosted locally by running the host_documentation.jl file. 
 
 
 ## Tutorial: Spin-1/2 Heisenberg AFM on triangular lattice
