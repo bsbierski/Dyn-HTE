@@ -8,7 +8,7 @@ makedocs(;
     authors="BenediktSchneiderLMU <Schneider.benedikt@physik.uni-muenchen.de> and contributors",
     sitename="DynHTE.jl",
     format=Documenter.HTML(;
-        canonical="https://bsbierski.github.io/Dyn-HTE.jl",
+        canonical="https://bsbierski.github.io/Dyn-HTE",
         edit_link="package",
         assets=String[]
     ),
@@ -23,7 +23,7 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/bsbierski/DynHTE.jl",
+    repo="github.com/bsbierski/Dyn-HTE",
     devbranch="package",
 )
 
