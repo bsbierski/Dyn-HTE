@@ -1,8 +1,5 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-HypergeometricFunctions = "34004b35-14d8-5ef3-9330-4cdb6864b03a"
+DynHTE = "4c418324-5d4b-4ba6-83e1-c4a7fb1710ab"
 LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
-PaddedViews = "5432bcbf-9aad-5242-b902-cca2824c8663"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
-SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
-ToeplitzMatrices = "c751599d-da0a-543b-9d20-d0a503d91d24"
