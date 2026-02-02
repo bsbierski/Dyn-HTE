@@ -21,9 +21,11 @@ $$ S(\mathbf{k},\omega) = \int_{-\infty}^{+\infty}  \frac{\mathrm{d}t}{2\pi N} \
 ## Publication/Citation
 The theory background for Dyn-HTE and various applications are provided in the following two publications:
 
-[1] Ruben Burkard, Benedikt Schneider, Björn Sbierski, *High-temperature series expansion of the dynamic Matsubara spin correlator*, arxiv 2505.23699 (2025)
+[1] Ruben Burkard, Benedikt Schneider, Björn Sbierski, *High-temperature series expansion of the dynamic Matsubara spin correlator*
+PRB 113.075102 (2026) [https://link.aps.org/doi/10.1103/1l92-z6qd] or arxiv 2505.23699
 
-[2] Ruben Burkard, Benedikt Schneider, Björn Sbierski, *Dynamic correlations of frustrated quantum spins from high-temperature expansion*, arxiv 2505.14571 (2025)
+[2] Ruben Burkard, Benedikt Schneider, Björn Sbierski, *Dynamic correlations of frustrated quantum spins from high-temperature expansion*,
+PRL 136.056501 (2026) [https://link.aps.org/doi/10.1103/jtjk-x2lw] or arxiv 2505.14571 (2025)
 
 If Dyn-HTE benefits your research, please acknowledge it by citing these references.
 
